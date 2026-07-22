@@ -1,0 +1,15 @@
+[package]
+edition = "2024"
+name    = "pyro"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+tokio = { version = "1.53.1", features = ["full"] }
+
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = [
+  "wayland",
+] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", branch = "main", features = [
+  "wayland",
+] }

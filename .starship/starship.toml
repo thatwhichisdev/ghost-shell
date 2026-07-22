@@ -1,0 +1,14 @@
+add_newline = false
+command_timeout = 1300
+format = "$character"
+right_format = "$directory$git_branch$time"
+scan_timeout = 30
+
+[character]
+error_symbol = "|>"
+success_symbol = "|>"
+
+[directory]
+fish_style_pwd_dir_length = 1
+format = "[$path]($style) "
+truncation_length = 1
