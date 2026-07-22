@@ -1,0 +1,10 @@
+[package]
+name = "ghost-bar"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ghost-core.workspace = true
+gpui.workspace = true

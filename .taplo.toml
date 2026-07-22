@@ -1,7 +1,0 @@
-include = ["Cargo.toml"]
-
-[formatting]
-align_entries = true
-column_width = 80
-reorder_keys = true
-reorder_arrays = true

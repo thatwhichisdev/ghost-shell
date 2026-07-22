@@ -1,0 +1,42 @@
+toml-version = "v1.1.0"
+
+[files]
+include = ["**/*.toml"]
+exclude = [
+  ".direnv/**",
+  "target/**",
+  "result/**",
+]
+
+[format.rules]
+group-blank-lines-limit = 1
+indent-style = "space"
+indent-width = 2
+key-value-equals-sign-alignment = false
+line-ending = "lf"
+line-width = 100
+string-quote-style = "double"
+table-blank-lines = 1
+trailing-comment-alignment = false
+
+[lint.rules]
+dotted-keys-out-of-order = "warn"
+key-empty = "error"
+tables-out-of-order = "warn"
+
+[schema]
+enabled = true
+strict = false
+
+[[schemas]]
+toml-version = "v1.1.0"
+path = "tombi://www.schemastore.org/cargo.json"
+include = [
+  "Cargo.toml",
+  "crates/**/Cargo.toml",
+]
+
+[[schemas]]
+toml-version = "v1.1.0"
+path = "tombi://www.schemastore.org/tombi.json"
+include = ["tombi.toml"]

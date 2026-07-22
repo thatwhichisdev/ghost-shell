@@ -49,10 +49,10 @@ pkgs.mkShell {
   # Needed later when xkbcommon loads keyboard definitions.
   XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/share/X11/xkb";
 
-  STARSHIP_CONFIG = "${./.starship/starship.toml}";
+  STARSHIP_CONFIG = "${./.config/starship.toml}";
 
   shellHook = ''
     unset NIX_ENFORCE_PURITY
-    exec nu --config ${./.nu/config.nu}
+    exec nu --config ${./.config/config.nu}
   '';
 }
