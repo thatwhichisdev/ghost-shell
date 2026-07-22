@@ -1,8 +1,10 @@
 [package]
-name = "ghost-core"
+name = "ghost-shell-launcher"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+ghost-shell-core.workspace = true
+gpui.workspace = true

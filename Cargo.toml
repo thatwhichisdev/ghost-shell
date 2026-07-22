@@ -1,12 +1,12 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/ghost",
-  "crates/ghost-bar",
-  "crates/ghost-core",
-  "crates/ghost-launcher",
+  "crates/ghost-shell",
+  "crates/ghost-shell-bar",
+  "crates/ghost-shell-core",
+  "crates/ghost-shell-launcher",
 ]
-default-members = ["crates/ghost"]
+default-members = ["crates/ghost-shell"]
 
 [workspace.package]
 version = "0.1.0"
@@ -15,9 +15,9 @@ repository = "https://github.com/thatwhichisdev/ghost"
 publish = false
 
 [workspace.dependencies]
-ghost-bar = { path = "crates/ghost-bar" }
-ghost-core = { path = "crates/ghost-core" }
-ghost-launcher = { path = "crates/ghost-launcher" }
+ghost-shell-bar = { path = "crates/ghost-shell-bar" }
+ghost-shell-core = { path = "crates/ghost-shell-core" }
+ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 
 gpui = {
   git = "https://github.com/zed-industries/zed",

@@ -1887,33 +1887,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "ghost"
+name = "ghost-shell"
 version = "0.1.0"
 dependencies = [
- "ghost-bar",
- "ghost-core",
- "ghost-launcher",
+ "ghost-shell-bar",
+ "ghost-shell-core",
+ "ghost-shell-launcher",
  "gpui",
  "gpui_platform",
 ]
 
 [[package]]
-name = "ghost-bar"
+name = "ghost-shell-bar"
 version = "0.1.0"
 dependencies = [
- "ghost-core",
+ "ghost-shell-core",
  "gpui",
 ]
 
 [[package]]
-name = "ghost-core"
+name = "ghost-shell-core"
 version = "0.1.0"
 
 [[package]]
-name = "ghost-launcher"
+name = "ghost-shell-launcher"
 version = "0.1.0"
 dependencies = [
- "ghost-core",
+ "ghost-shell-core",
  "gpui",
 ]
 
