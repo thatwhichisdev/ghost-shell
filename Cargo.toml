@@ -11,7 +11,8 @@ default-members = ["crates/ghost-shell"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-repository = "https://github.com/thatwhichisdev/ghost"
+rust-version = "1.95.0"
+repository = "https://github.com/thatwhichisdev/ghost-shell"
 publish = false
 
 [workspace.dependencies]
