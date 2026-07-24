@@ -1,5 +1,5 @@
 {
-  description = "Ghost — a minimal GPU-rendered shell for Niri and Wayland";
+  description = "A desktop shell built with GPUI, designed exclusively for Wayland and Niri. ";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
