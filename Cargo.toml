@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "crates/ghost-shell",
   "crates/ghost-shell-bar",
+  "crates/ghost-shell-config",
   "crates/ghost-shell-core",
   "crates/ghost-shell-launcher",
 ]
@@ -17,6 +18,7 @@ publish = false
 
 [workspace.dependencies]
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
+ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-core = { path = "crates/ghost-shell-core" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 
@@ -34,6 +36,10 @@ gpui_platform = {
     "wayland",
   ]
 }
+
+serde = { version = "1.0.228", features = ["derive"] }
+
+thiserror = "2.0.18"
 
 [patch."https://github.com/zed-industries/zed"]
 gpui = {

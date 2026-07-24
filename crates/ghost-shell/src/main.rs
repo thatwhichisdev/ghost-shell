@@ -28,7 +28,13 @@ impl Render for Bar {
 }
 
 fn main() {
-    gpui_platform::application().run(|cx: &mut App| {
+    let app = gpui_platform::application();
+    let app_config = ghost_shell_config::load().expect("ghost-shell config is not present");
+    let app_state = ghost_shell_core::AppState::new(app_config);
+
+    app.run(|cx: &mut App| {
+        cx.set_global(app_state);
+
         for display in cx.displays() {
             let display_size = display.bounds().size;
             let app_id: String = format!("ghost-shell-{:?}", display.id());
