@@ -1,3 +1,7 @@
+# Preview
+
+![preview](assets/preview.png)
+
 ## Motivation
 
 System customization is one of my favorite aspects of Linux. The freedom of
@@ -19,9 +23,30 @@ For plugin development, I want to take inspiration from my beloved Helix Editor
 project, I also want to embed the Steel Scheme interpreter and allow the shell
 to be extended further using the Scheme language.
 
-Right now, this is only the beginning. I do not have a strict deadline, and I
-will commit to this repository whenever I have something meaningful to
-contribute. Beauty comes from patience and joy.
+Right now, this is only the beginning, I do not have a strict deadline, and I
+will commit to this repository whenever I have set and settings, beauty comes
+from patience and joy.
+
+## Roadmap
+
+- Bar
+  - Widgets
+    - Start
+      - OS menu
+      - Niri workspaces
+    - Center
+      - Focused window
+    - End
+      - Notifications
+      - Volume
+      - Micorofone
+      - Camera
+      - Bluetooth
+      - Wifi/Ethernet
+      - Battery
+      - Clock
+- Launcher
+- Lock screen
 
 # Licensing
 
