@@ -22,14 +22,14 @@ $env.PROMPT_COMMAND_RIGHT = { || create_right_prompt }
 def show_greeter [] {
     clear --keep-scrollback
 
-    print '|>   ____ _   _  ___  ____ _____   ____  _   _ _____ _     _     '
-    print '|>  / ___| | | |/ _ \/ ___|_   _| / ___|| | | | ____| |   | |    '
-    print '|> | |  _| |_| | | | \___ \ | |   \___ \| |_| |  _| | |   | |    '
-    print '|> | |_| |  _  | |_| |___) || |    ___) |  _  | |___| |___| |___ '
-    print '|>  \____|_| |_|\___/|____/ |_|   |____/|_| |_|_____|_____|_____|'
-    print '|>                                                               '
+    print '|>      ____ _   _  ___  ____ _____   ____  _   _ _____ _     _     '
+    print '|>     / ___| | | |/ _ \/ ___|_   _| / ___|| | | | ____| |   | |    '
+    print '|>    | |  _| |_| | | | \___ \ | |   \___ \| |_| |  _| | |   | |    '
+    print '|>    | |_| |  _  | |_| |___) || |    ___) |  _  | |___| |___| |___ '
+    print '|>     \____|_| |_|\___/|____/ |_|   |____/|_| |_|_____|_____|_____|'
+    print '|>                                                                  '
 
-    print $"|>    (ansi yellow_bold)Tools:(ansi reset)"
+    print $"|>    (ansi yellow_bold)Toolchain:(ansi reset)"
     print $"|>    (rustc --version)"
     print $"|>    (cargo --version)"
 

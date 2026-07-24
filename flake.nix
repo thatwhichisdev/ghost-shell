@@ -75,7 +75,7 @@
 
             shellHook = ''
               unset NIX_ENFORCE_PURITY
-              exec nu --config ${./.config/config.nu}
+              exec nu --config ${./.config/nushell.nu}
             '';
           };
         }
