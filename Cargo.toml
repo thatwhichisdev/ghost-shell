@@ -34,3 +34,12 @@ gpui_platform = {
     "wayland",
   ]
 }
+
+[patch."https://github.com/zed-industries/zed"]
+gpui = {
+  path = "../../zed-industries/zed/crates/gpui",
+}
+
+gpui_platform = {
+  path = "../../zed-industries/zed/crates/gpui_platform",
+}

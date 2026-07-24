@@ -19,6 +19,11 @@ def create_right_prompt [] {
 $env.PROMPT_COMMAND = { || create_left_prompt }
 $env.PROMPT_COMMAND_RIGHT = { || create_right_prompt }
 
+alias ll = ls -la
+alias fg = job unfreeze
+alias b = cargo build
+alias r = cargo run
+
 def show_greeter [] {
     clear --keep-scrollback
 

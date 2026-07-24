@@ -1,17 +1,18 @@
 use gpui::{
-    App, Context, IntoElement, Render, Size, Window, WindowBackgroundAppearance, WindowOptions,
-    div,
-    layer_shell::{Anchor, LayerShellOptions},
+    App, Context, IntoElement, Render, Size, Window, WindowBackgroundAppearance, WindowBounds,
+    WindowKind, WindowOptions, div,
+    layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     point,
     prelude::*,
     px, rgb, rgba,
 };
 
 const BAR_HEIGHT: f32 = 18.0;
+const EXCLUSIVE_ZONE_HEIGHT: f32 = 9.0;
 
-struct Ghost;
+struct Bar;
 
-impl Render for Ghost {
+impl Render for Bar {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .self_flex_end()
@@ -22,38 +23,50 @@ impl Render for Ghost {
             .text_color(rgb(0xffffff))
             .bg(rgba(0x00000000))
             .text_sm()
-            .child("ghost freaking fast shell environment built using blazing technlogies such as rust, gpui and wayland yo yo yo this thing goes brrrrrr")
+            .child("<bar>")
     }
 }
 
 fn main() {
     gpui_platform::application().run(|cx: &mut App| {
-        let display_size = cx
-            .primary_display()
-            .map(|display| display.bounds().size)
-            .unwrap_or_else(|| Size::new(px(1920.0), px(1080.0)));
+        for display in cx.displays() {
+            let display_size = display.bounds().size;
+            let app_id: String = format!("ghost-shell-{:?}", display.id());
+            let namespace: String = format!("namespace-{:?}", display.id());
 
-        let options = WindowOptions {
-            app_id: Some("ghost".to_owned()),
-            titlebar: None,
-            window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds {
-                origin: point(px(0.0), px(0.0)),
-                size: Size::new(display_size.width, px(BAR_HEIGHT)),
-            })),
-            window_background: WindowBackgroundAppearance::Blurred,
-            kind: gpui::WindowKind::LayerShell(LayerShellOptions {
-                namespace: "pyro-bar".to_string(),
-                layer: gpui::layer_shell::Layer::Top,
-                anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                exclusive_zone: Some(px(BAR_HEIGHT)),
-                keyboard_interactivity: gpui::layer_shell::KeyboardInteractivity::None,
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+            let window_options = WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(gpui::Bounds {
+                    origin: point(px(0.0), px(0.0)),
+                    size: Size::new(display_size.width, px(BAR_HEIGHT)),
+                })),
+                titlebar: None,
+                focus: false,
+                show: true,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: namespace,
+                    layer: Layer::Top,
+                    anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
+                    exclusive_zone: Some(px(EXCLUSIVE_ZONE_HEIGHT)),
+                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    ..Default::default()
+                }),
+                is_movable: true,
+                app_owns_titlebar_drag: false,
+                is_resizable: true,
+                is_minimizable: true,
+                display_id: Some(display.id()),
+                window_background: WindowBackgroundAppearance::Blurred,
+                app_id: Some(app_id),
+                window_min_size: None,
+                window_decorations: None,
+                icon: None,
+                tabbing_identifier: None,
+            };
 
-        cx.open_window(options, |_, cx| cx.new(|_| Ghost))
-            .expect("failed to open the ghost window");
+            let _handle = cx
+                .open_window(window_options, |_, cx| cx.new(|_| Bar))
+                .expect("failed to create window on display");
+        }
 
         cx.activate(true);
     });
