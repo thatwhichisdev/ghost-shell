@@ -1,10 +1,31 @@
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use ghost_shell_app::AppConfig;
+use gpui::Global;
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AppConfig {
+    pub bar_height: f32,
+    pub bar_exclusive_zone: f32,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            bar_height: 27.0,
+            bar_exclusive_zone: 9.0,
+        }
+    }
+}
+
+impl Global for AppConfig {}
 
 pub fn load() -> Result<AppConfig, ConfigError> {
     let dirs = ProjectDirs::from("dev", "thatwhichis", "ghost-shell")
-        .ok_or_else(|| ConfigError::NotFound("app config dir doesn't exist".to_string()))?;
+        .ok_or_else(|| {
+            ConfigError::NotFound("app config dir doesn't exist".to_string())
+        })?;
 
     let config_path = dirs.config_dir().join("config.toml");
     let config = Config::builder()

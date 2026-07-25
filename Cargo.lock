@@ -1974,9 +1974,6 @@ name = "ghost-shell"
 version = "0.1.0"
 dependencies = [
  "ghost-shell-app",
- "ghost-shell-bar",
- "ghost-shell-config",
- "ghost-shell-launcher",
  "gpui",
  "gpui_platform",
 ]
@@ -1985,15 +1982,16 @@ dependencies = [
 name = "ghost-shell-app"
 version = "0.1.0"
 dependencies = [
+ "ghost-shell-bar",
+ "ghost-shell-config",
+ "ghost-shell-launcher",
  "gpui",
- "serde",
 ]
 
 [[package]]
 name = "ghost-shell-bar"
 version = "0.1.0"
 dependencies = [
- "ghost-shell-app",
  "gpui",
 ]
 
@@ -2003,7 +2001,7 @@ version = "0.1.0"
 dependencies = [
  "config",
  "directories",
- "ghost-shell-app",
+ "gpui",
  "serde",
 ]
 
@@ -2011,7 +2009,6 @@ dependencies = [
 name = "ghost-shell-launcher"
 version = "0.1.0"
 dependencies = [
- "ghost-shell-app",
  "gpui",
 ]
 

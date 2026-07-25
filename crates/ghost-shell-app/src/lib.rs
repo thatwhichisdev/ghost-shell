@@ -1,31 +1,14 @@
 use std::rc::Rc;
 
+use ghost_shell_config::AppConfig;
 use gpui::{
-    App, Context, DisplayId, Global, IntoElement, Pixels, PlatformDisplay, Render, Size, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
+    App, DisplayId, Global, Pixels, PlatformDisplay, Size,
+    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     point,
     prelude::*,
-    px, rgb, rgba,
+    px,
 };
-use serde::Deserialize;
-
-pub struct Bar;
-
-impl Render for Bar {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .self_flex_end()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(rgb(0xffffff))
-            .bg(rgba(0x00000000))
-            .text_sm()
-            .child("<bar>")
-    }
-}
 
 pub struct BarConfig {
     pub display_id: DisplayId,
@@ -38,7 +21,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: AppConfig, displays: Vec<Rc<dyn PlatformDisplay>>) -> Self {
+    pub fn new(
+        config: AppConfig,
+        displays: Vec<Rc<dyn PlatformDisplay>>,
+    ) -> Self {
         let bars: Vec<BarConfig> = displays
             .iter()
             .map(|display| {
@@ -56,17 +42,18 @@ impl AppState {
 
 impl Global for AppState {}
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AppConfig {
-    pub bar_height: f32,
-    pub bar_exclusive_zone: f32,
-}
+pub fn init(cx: &mut App) {
+    let app_config = match ghost_shell_config::load() {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("Failed to load config, using default {:?}", err);
+            AppConfig::default()
+        }
+    };
 
-pub fn windows_options(cx: &mut App) -> Vec<WindowOptions> {
-    let app_state = cx.global::<AppState>();
+    let app_state = AppState::new(app_config.clone(), cx.displays());
 
-    app_state
+    let windows_options: Vec<WindowOptions> = app_state
         .bars
         .iter()
         .map(|bar| {
@@ -84,7 +71,9 @@ pub fn windows_options(cx: &mut App) -> Vec<WindowOptions> {
                     namespace: namespace,
                     layer: Layer::Top,
                     anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-                    exclusive_zone: Some(px(app_state.config.bar_exclusive_zone)),
+                    exclusive_zone: Some(px(app_state
+                        .config
+                        .bar_exclusive_zone)),
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     ..Default::default()
                 }),
@@ -101,5 +90,15 @@ pub fn windows_options(cx: &mut App) -> Vec<WindowOptions> {
                 tabbing_identifier: None,
             }
         })
-        .collect()
+        .collect();
+
+    for window_options in windows_options {
+        cx.open_window(window_options, |_, cx| {
+            cx.new(|_| ghost_shell_bar::Bar)
+        })
+        .expect("failed to create window on display");
+    }
+
+    cx.set_global(app_config);
+    cx.set_global(app_state);
 }
