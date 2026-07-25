@@ -1,8 +1,9 @@
 use anyhow::Result;
 use ghost_shell_config::AppConfig;
 use gpui::{
-    App, DisplayId, Global, Pixels, PlatformDisplay, Size,
+    App, DisplayId, Global, KeyBinding, Pixels, PlatformDisplay, Size,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions,
+    actions,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     point,
     prelude::*,
@@ -43,6 +44,12 @@ impl AppState {
 
 impl Global for AppState {}
 
+actions!(window, [Quit]);
+
+/// Initializes shell
+///
+/// # Errors
+/// Bubbles up errors from gpui
 pub fn init(cx: &mut App) -> Result<()> {
     let app_config = match ghost_shell_config::load() {
         Ok(config) => config,
@@ -101,6 +108,10 @@ pub fn init(cx: &mut App) -> Result<()> {
 
     cx.set_global(app_config);
     cx.set_global(app_state);
+
+    cx.on_action(|_: &Quit, cx| cx.quit());
+
+    cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
 
     Ok(())
 }

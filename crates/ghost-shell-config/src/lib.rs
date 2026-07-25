@@ -24,8 +24,7 @@ impl Global for AppConfig {}
 /// Load configuration of the shell by searching config according to XDG base directory specification
 ///
 /// # Errors
-/// - `ConfigError::NotFound` when directory or file is not found
-/// - `ConfigError::FileParse` when file is in wrong format or contains errors
+/// - `ConfigError::NotFound`
 pub fn load() -> Result<AppConfig, ConfigError> {
     let dirs = ProjectDirs::from("dev", "thatwhichis", "ghost-shell")
         .ok_or_else(|| {
