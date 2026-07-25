@@ -1973,6 +1973,7 @@ dependencies = [
 name = "ghost-shell"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ghost-shell-app",
  "gpui",
  "gpui_platform",
@@ -1982,6 +1983,7 @@ dependencies = [
 name = "ghost-shell-app"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ghost-shell-bar",
  "ghost-shell-config",
  "ghost-shell-launcher",

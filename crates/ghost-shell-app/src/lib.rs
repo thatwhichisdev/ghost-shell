@@ -1,5 +1,4 @@
-use std::rc::Rc;
-
+use anyhow::Result;
 use ghost_shell_config::AppConfig;
 use gpui::{
     App, DisplayId, Global, Pixels, PlatformDisplay, Size,
@@ -9,6 +8,7 @@ use gpui::{
     prelude::*,
     px,
 };
+use std::rc::Rc;
 
 pub struct BarConfig {
     pub display_id: DisplayId,
@@ -21,9 +21,10 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[must_use]
     pub fn new(
         config: AppConfig,
-        displays: Vec<Rc<dyn PlatformDisplay>>,
+        displays: &[Rc<dyn PlatformDisplay>],
     ) -> Self {
         let bars: Vec<BarConfig> = displays
             .iter()
@@ -36,22 +37,22 @@ impl AppState {
             })
             .collect();
 
-        Self { config, bars: bars }
+        Self { config, bars }
     }
 }
 
 impl Global for AppState {}
 
-pub fn init(cx: &mut App) {
+pub fn init(cx: &mut App) -> Result<()> {
     let app_config = match ghost_shell_config::load() {
         Ok(config) => config,
         Err(err) => {
-            eprintln!("Failed to load config, using default {:?}", err);
+            eprintln!("Failed to load config, using default {err:?}");
             AppConfig::default()
         }
     };
 
-    let app_state = AppState::new(app_config.clone(), cx.displays());
+    let app_state = AppState::new(app_config.clone(), &cx.displays());
 
     let windows_options: Vec<WindowOptions> = app_state
         .bars
@@ -68,7 +69,7 @@ pub fn init(cx: &mut App) {
                 focus: false,
                 show: true,
                 kind: WindowKind::LayerShell(LayerShellOptions {
-                    namespace: namespace,
+                    namespace,
                     layer: Layer::Top,
                     anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
                     exclusive_zone: Some(px(app_state
@@ -95,10 +96,11 @@ pub fn init(cx: &mut App) {
     for window_options in windows_options {
         cx.open_window(window_options, |_, cx| {
             cx.new(|_| ghost_shell_bar::Bar)
-        })
-        .expect("failed to create window on display");
+        })?;
     }
 
     cx.set_global(app_config);
     cx.set_global(app_state);
+
+    Ok(())
 }

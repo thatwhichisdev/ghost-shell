@@ -14,8 +14,8 @@ impl Render for Bar {
             .flex()
             .items_center()
             .justify_center()
-            .text_color(rgb(0xffffff))
-            .bg(rgba(0x00000000))
+            .text_color(rgb(0x00ff_ffff))
+            .bg(rgba(0x0000_0000))
             .text_sm()
             .child("<bar>")
     }

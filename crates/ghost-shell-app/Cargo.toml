@@ -11,4 +11,5 @@ ghost-shell-bar.workspace = true
 ghost-shell-config.workspace = true
 ghost-shell-launcher.workspace = true
 
+anyhow.workspace = true
 gpui.workspace = true
