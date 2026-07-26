@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use anyhow::{Context, Result};
 use ghost_shell_config::{AppConfig, BarConfig, GeneralConfig};
-use ghost_shell_system::clock::Clock;
+use ghost_shell_system::{clock::Clock, menu::Menu};
 use gpui::{
     App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind,
@@ -10,11 +10,12 @@ use gpui::{
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     point,
     prelude::*,
-    px, rgb, rgba,
+    px, rgba,
 };
 
 pub struct Bar {
     config: GeneralConfig,
+    menu_widget: Entity<Menu>,
     clock_widget: Entity<Clock>,
 }
 
@@ -31,22 +32,22 @@ impl Render for Bar {
             .items_center()
             .justify_center()
             .bg(rgba(self.config.bg))
-            .text_color(rgb(self.config.fg))
+            .text_color(rgba(self.config.fg))
             .px(px(4.0))
             .text_size(px(self.config.font_size))
-            .child(start_section())
+            .child(start_section(self.menu_widget.clone()))
             .child(center_section())
             .child(end_section(self.clock_widget.clone()))
     }
 }
 
-fn start_section() -> impl IntoElement {
+fn start_section(menu_widget: Entity<Menu>) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
         .items_center()
         .justify_start()
-        .child(mock_widget("menu", "󰍜"))
+        .child(menu_widget)
         .child(mock_widget("workspaces", ""))
 }
 
@@ -59,9 +60,7 @@ fn center_section() -> impl IntoElement {
         .child(mock_widget("focused", "~/development/mock"))
 }
 
-fn end_section(
-    clock_widget: Entity<ghost_shell_system::clock::Clock>,
-) -> impl IntoElement {
+fn end_section(clock_widget: Entity<Clock>) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
@@ -78,7 +77,7 @@ fn end_section(
         .child(clock_widget)
 }
 
-pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
+fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
     div().id(id).flex().items_center().px_2().child(label)
 }
 
@@ -86,12 +85,14 @@ pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
 pub fn open(
     display: &Rc<dyn PlatformDisplay>,
     config: AppConfig,
-    clock_widget: Entity<ghost_shell_system::clock::Clock>,
+    menu_widget: Entity<Menu>,
+    clock_widget: Entity<Clock>,
     cx: &mut App,
 ) -> Result<WindowHandle<Bar>> {
-    let window_options = window_options(&display, &config.bar);
+    let window_options = window_options(display, &config.bar);
     let bar = Bar {
         config: config.general,
+        menu_widget,
         clock_widget,
     };
 
@@ -105,7 +106,7 @@ fn window_options(
     config: &BarConfig,
 ) -> WindowOptions {
     let app_id: String = "dev.thatwhichis.ghost-shell".to_string();
-    let namespace: String = format!("namespace-{:?}", display.id());
+    let namespace: String = "ghost-shell-bar".to_string();
     let display_size = display.bounds().size;
     let window_size = Size::new(display_size.width, px(config.height));
 
