@@ -48,6 +48,27 @@ from patience and joy.
 - Launcher
 - Lock screen
 
+## Configuration
+
+Application discovers configuration based on XDG specifications.
+
+Example
+
+```toml
+[general]
+font_family = "BerkeleyMono Nerd Font Mono"
+font_size = 13
+fg = 0xffffffff
+bg = 0x00000000
+
+[bar]
+height = 27.0
+exclusive_zone = 27.0
+
+[clock]
+format = "%H:%M"
+```
+
 # Licensing
 
 The code in this project is licensed under the MIT License. Check the

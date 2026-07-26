@@ -2082,6 +2082,7 @@ version = "0.1.0"
 name = "ghost-shell-system"
 version = "0.1.0"
 dependencies = [
+ "ghost-shell-config",
  "gpui",
  "jiff",
 ]

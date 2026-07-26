@@ -20,11 +20,13 @@ pub fn init(cx: &mut App) -> Result<()> {
         .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
         .unwrap_or_default();
 
-    let clock_widget = cx.new(ghost_shell_system::clock::Clock::new);
+    let clock_widget = cx.new(|cx| {
+        ghost_shell_system::clock::Clock::new(config.clock.clone(), cx)
+    });
 
     for display in cx.displays() {
         ghost_shell_bar::open(
-            display,
+            &display,
             config.clone(),
             clock_widget.clone(),
             cx,

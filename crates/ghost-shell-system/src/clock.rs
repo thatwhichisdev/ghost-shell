@@ -1,35 +1,35 @@
 use std::time::Duration;
 
-use gpui::{Context, SharedString, Task, Window, div, prelude::*};
+use gpui::{Context, SharedString, Window, div, prelude::*};
 use jiff::Zoned;
+
+use ghost_shell_config::ClockConfig;
 
 pub struct Clock {
     time: SharedString,
-    _refresh_task: Task<()>,
 }
 
 impl Clock {
     #[must_use]
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let refresh_task = cx.spawn(async move |clock, cx| {
+    pub fn new(config: ClockConfig, cx: &mut Context<Self>) -> Self {
+        let time = formatted_time(&config.format);
+
+        // Spawn a task that will update clock's state every 60 seconds
+        cx.spawn(async move |clock, cx| {
             loop {
-                cx.background_executor()
-                    .timer(Duration::from_secs(60))
-                    .await;
+                cx.background_executor().timer(Duration::from_mins(1)).await;
 
                 if let Err(err) = clock.update(cx, |clock, cx| {
-                    clock.time = formatted_time();
+                    clock.time = formatted_time(&config.format);
                     cx.notify();
                 }) {
                     eprintln!("Failed to update clock widget state {err:#}");
                 }
             }
-        });
+        })
+        .detach();
 
-        Self {
-            time: formatted_time(),
-            _refresh_task: refresh_task,
-        }
+        Self { time }
     }
 }
 
@@ -48,6 +48,6 @@ impl Render for Clock {
     }
 }
 
-fn formatted_time() -> SharedString {
-    Zoned::now().strftime("%H:%M").to_string().into()
+fn formatted_time(format: &str) -> SharedString {
+    Zoned::now().strftime(format).to_string().into()
 }

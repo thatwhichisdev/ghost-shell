@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use anyhow::{Context, Result};
-use ghost_shell_config::AppConfig;
+use ghost_shell_config::{AppConfig, BarConfig, GeneralConfig};
 use ghost_shell_system::clock::Clock;
 use gpui::{
     App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
@@ -14,6 +14,7 @@ use gpui::{
 };
 
 pub struct Bar {
+    config: GeneralConfig,
     clock_widget: Entity<Clock>,
 }
 
@@ -24,15 +25,15 @@ impl Render for Bar {
         _cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
         div()
-            .font_family("BerkeleyMono Nerd Font Mono")
+            .font_family(self.config.font_family.clone())
             .size_full()
             .flex()
             .items_center()
             .justify_center()
-            .bg(rgba(0x0000_0000))
-            .text_color(rgb(0x00ff_ffff))
+            .bg(rgba(self.config.bg))
+            .text_color(rgb(self.config.fg))
             .px(px(4.0))
-            .text_sm()
+            .text_size(px(self.config.font_size))
             .child(start_section())
             .child(center_section())
             .child(end_section(self.clock_widget.clone()))
@@ -83,13 +84,16 @@ pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
 
 /// Open bar for given display, based on display properties will calculate bar width
 pub fn open(
-    display: Rc<dyn PlatformDisplay>,
+    display: &Rc<dyn PlatformDisplay>,
     config: AppConfig,
     clock_widget: Entity<ghost_shell_system::clock::Clock>,
     cx: &mut App,
 ) -> Result<WindowHandle<Bar>> {
-    let window_options = window_options(display, config);
-    let bar = Bar { clock_widget };
+    let window_options = window_options(&display, &config.bar);
+    let bar = Bar {
+        config: config.general,
+        clock_widget,
+    };
 
     cx.open_window(window_options, |_window, cx| cx.new(|_cx| bar))
         .context("failed to open bar")
@@ -97,13 +101,13 @@ pub fn open(
 
 /// Build `WindowOptions` for given display based on it's properties and application config
 fn window_options(
-    display: Rc<dyn PlatformDisplay>,
-    config: AppConfig,
+    display: &Rc<dyn PlatformDisplay>,
+    config: &BarConfig,
 ) -> WindowOptions {
     let app_id: String = "dev.thatwhichis.ghost-shell".to_string();
     let namespace: String = format!("namespace-{:?}", display.id());
     let display_size = display.bounds().size;
-    let window_size = Size::new(display_size.width, px(config.bar_height));
+    let window_size = Size::new(display_size.width, px(config.height));
 
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(gpui::Bounds {
@@ -117,7 +121,7 @@ fn window_options(
             namespace,
             layer: Layer::Top,
             anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-            exclusive_zone: Some(px(config.bar_exclusive_zone)),
+            exclusive_zone: Some(px(config.exclusive_zone)),
             keyboard_interactivity: KeyboardInteractivity::None,
             ..Default::default()
         }),

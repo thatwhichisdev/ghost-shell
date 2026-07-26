@@ -2,18 +2,60 @@ use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Default, Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
-    pub bar_height: f32,
-    pub bar_exclusive_zone: f32,
+    pub general: GeneralConfig,
+    pub bar: BarConfig,
+    pub clock: ClockConfig,
 }
 
-impl Default for AppConfig {
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct GeneralConfig {
+    pub font_family: String,
+    pub font_size: f32,
+    pub fg: u32,
+    pub bg: u32,
+}
+
+impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
-            bar_height: 27.0,
-            bar_exclusive_zone: 9.0,
+            font_family: "monospace".into(),
+            font_size: 13.0,
+            fg: 0xffff_ffff,
+            bg: 0x0000_0000,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct BarConfig {
+    pub height: f32,
+    pub exclusive_zone: f32,
+}
+
+impl Default for BarConfig {
+    fn default() -> Self {
+        Self {
+            height: 27.0,
+            exclusive_zone: 27.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct ClockConfig {
+    pub format: String,
+}
+
+impl Default for ClockConfig {
+    fn default() -> Self {
+        Self {
+            format: "%H:%M".into(),
         }
     }
 }
