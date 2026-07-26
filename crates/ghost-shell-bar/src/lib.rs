@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use anyhow::{Context, Result};
 use ghost_shell_config::AppConfig;
+use ghost_shell_system::clock::Clock;
 use gpui::{
-    App, IntoElement, PlatformDisplay, Render, Size, Window,
+    App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind,
     WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
@@ -12,15 +13,18 @@ use gpui::{
     px, rgb, rgba,
 };
 
-pub struct WindowBar;
+pub struct Bar {
+    clock_widget: Entity<Clock>,
+}
 
-impl Render for WindowBar {
+impl Render for Bar {
     fn render(
         &mut self,
         _window: &mut Window,
         _cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
         div()
+            .font_family("BerkeleyMono Nerd Font Mono")
             .size_full()
             .flex()
             .items_center()
@@ -28,10 +32,10 @@ impl Render for WindowBar {
             .bg(rgba(0x0000_0000))
             .text_color(rgb(0x00ff_ffff))
             .px(px(4.0))
-            .text_lg()
+            .text_sm()
             .child(start_section())
             .child(center_section())
-            .child(end_section())
+            .child(end_section(self.clock_widget.clone()))
     }
 }
 
@@ -41,7 +45,6 @@ fn start_section() -> impl IntoElement {
         .flex_1()
         .items_center()
         .justify_start()
-        .gap_x(px(2.0))
         .child(mock_widget("menu", "󰍜"))
         .child(mock_widget("workspaces", ""))
 }
@@ -52,17 +55,17 @@ fn center_section() -> impl IntoElement {
         .flex_1()
         .items_center()
         .justify_center()
-        .gap_x(px(2.0))
         .child(mock_widget("focused", "~/development/mock"))
 }
 
-fn end_section() -> impl IntoElement {
+fn end_section(
+    clock_widget: Entity<ghost_shell_system::clock::Clock>,
+) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
         .items_center()
         .justify_end()
-        .gap_x(px(2.0))
         .child(mock_widget("tray", "󱊔"))
         .child(mock_widget("notifications", ""))
         .child(mock_widget("volume", ""))
@@ -71,7 +74,7 @@ fn end_section() -> impl IntoElement {
         .child(mock_widget("bluetooth", "󰂯"))
         .child(mock_widget("network", "󰤨"))
         .child(mock_widget("battery", "󰁹"))
-        .child(mock_widget("clock", "11:56"))
+        .child(clock_widget)
 }
 
 pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
@@ -82,11 +85,13 @@ pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
 pub fn open(
     display: Rc<dyn PlatformDisplay>,
     config: AppConfig,
+    clock_widget: Entity<ghost_shell_system::clock::Clock>,
     cx: &mut App,
-) -> Result<WindowHandle<WindowBar>> {
+) -> Result<WindowHandle<Bar>> {
     let window_options = window_options(display, config);
+    let bar = Bar { clock_widget };
 
-    cx.open_window(window_options, |_window, cx| cx.new(|_cx| WindowBar))
+    cx.open_window(window_options, |_window, cx| cx.new(|_cx| bar))
         .context("failed to open bar")
 }
 

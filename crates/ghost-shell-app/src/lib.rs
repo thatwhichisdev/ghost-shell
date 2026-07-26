@@ -1,5 +1,5 @@
 use anyhow::Result;
-use gpui::App;
+use gpui::{App, prelude::*};
 
 pub struct AppState;
 
@@ -20,8 +20,15 @@ pub fn init(cx: &mut App) -> Result<()> {
         .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
         .unwrap_or_default();
 
+    let clock_widget = cx.new(ghost_shell_system::clock::Clock::new);
+
     for display in cx.displays() {
-        ghost_shell_bar::open(display, config.clone(), cx)?;
+        ghost_shell_bar::open(
+            display,
+            config.clone(),
+            clock_widget.clone(),
+            cx,
+        )?;
     }
 
     Ok(())
