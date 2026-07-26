@@ -21,6 +21,7 @@ pub fn init(cx: &mut App) -> Result<()> {
         .unwrap_or_default();
 
     let menu_widget = cx.new(|_cx| ghost_shell_system::menu::Menu {});
+    let battery_widget = cx.new(|_cx| ghost_shell_power::battery::Battery {});
     let clock_widget = cx.new(|cx| {
         ghost_shell_system::clock::Clock::new(config.clock.clone(), cx)
     });
@@ -30,6 +31,7 @@ pub fn init(cx: &mut App) -> Result<()> {
             &display,
             config.clone(),
             menu_widget.clone(),
+            battery_widget.clone(),
             clock_widget.clone(),
             cx,
         )?;

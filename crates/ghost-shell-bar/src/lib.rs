@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use anyhow::{Context, Result};
 use ghost_shell_config::{AppConfig, BarConfig, GeneralConfig};
+use ghost_shell_power::battery::Battery;
 use ghost_shell_system::{clock::Clock, menu::Menu};
 use gpui::{
     App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
@@ -16,6 +17,7 @@ use gpui::{
 pub struct Bar {
     config: GeneralConfig,
     menu_widget: Entity<Menu>,
+    battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
 }
 
@@ -37,7 +39,10 @@ impl Render for Bar {
             .text_size(px(self.config.font_size))
             .child(start_section(self.menu_widget.clone()))
             .child(center_section())
-            .child(end_section(self.clock_widget.clone()))
+            .child(end_section(
+                self.battery_widget.clone(),
+                self.clock_widget.clone(),
+            ))
     }
 }
 
@@ -60,7 +65,10 @@ fn center_section() -> impl IntoElement {
         .child(mock_widget("focused", "~/development/mock"))
 }
 
-fn end_section(clock_widget: Entity<Clock>) -> impl IntoElement {
+fn end_section(
+    battery_widget: Entity<Battery>,
+    clock_widget: Entity<Clock>,
+) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
@@ -73,7 +81,7 @@ fn end_section(clock_widget: Entity<Clock>) -> impl IntoElement {
         .child(mock_widget("camera", "󰄀"))
         .child(mock_widget("bluetooth", "󰂯"))
         .child(mock_widget("network", "󰤨"))
-        .child(mock_widget("battery", "󰁹"))
+        .child(battery_widget)
         .child(clock_widget)
 }
 
@@ -86,6 +94,7 @@ pub fn open(
     display: &Rc<dyn PlatformDisplay>,
     config: AppConfig,
     menu_widget: Entity<Menu>,
+    battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
     cx: &mut App,
 ) -> Result<WindowHandle<Bar>> {
@@ -93,6 +102,7 @@ pub fn open(
     let bar = Bar {
         config: config.general,
         menu_widget,
+        battery_widget,
         clock_widget,
     };
 

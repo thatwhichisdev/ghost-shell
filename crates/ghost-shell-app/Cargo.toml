@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 ghost-shell-bar.workspace = true
 ghost-shell-config.workspace = true
+ghost-shell-power.workspace = true
 ghost-shell-system.workspace = true
 
 anyhow.workspace = true

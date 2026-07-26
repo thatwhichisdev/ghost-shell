@@ -2019,6 +2019,7 @@ dependencies = [
  "anyhow",
  "ghost-shell-bar",
  "ghost-shell-config",
+ "ghost-shell-power",
  "ghost-shell-system",
  "gpui",
 ]
@@ -2077,6 +2078,9 @@ version = "0.1.0"
 [[package]]
 name = "ghost-shell-power"
 version = "0.1.0"
+dependencies = [
+ "gpui",
+]
 
 [[package]]
 name = "ghost-shell-system"
