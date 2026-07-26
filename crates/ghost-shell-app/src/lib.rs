@@ -1,5 +1,4 @@
 use anyhow::Result;
-use ghost_shell_config::AppConfig;
 use gpui::App;
 
 pub struct AppState;
@@ -11,21 +10,18 @@ impl AppState {
     }
 }
 
-/// Initializes shell
+/// Loads app configuration and opens bars on available displays.
 ///
 /// # Errors
 /// Bubbles up errors from bar initialization
+///
 pub fn init(cx: &mut App) -> Result<()> {
-    let app_config = match ghost_shell_config::load() {
-        Ok(config) => config,
-        Err(err) => {
-            eprintln!("Failed to load config, using default {err:?}");
-            AppConfig::default()
-        }
-    };
+    let config = ghost_shell_config::load()
+        .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
+        .unwrap_or_default();
 
     for display in cx.displays() {
-        ghost_shell_bar::open(display, app_config.clone(), cx)?;
+        ghost_shell_bar::open(display, config.clone(), cx)?;
     }
 
     Ok(())

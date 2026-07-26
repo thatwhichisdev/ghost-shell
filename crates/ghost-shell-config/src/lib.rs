@@ -1,6 +1,5 @@
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use gpui::Global;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -18,8 +17,6 @@ impl Default for AppConfig {
         }
     }
 }
-
-impl Global for AppConfig {}
 
 /// Load configuration of the shell by searching config according to XDG base directory specification
 ///

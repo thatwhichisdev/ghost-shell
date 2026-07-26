@@ -3,11 +3,12 @@ use gpui::App;
 fn main() {
     let app = gpui_platform::application();
 
-    app.run(|cx: &mut App| {
-        if let Err(err) = ghost_shell_app::init(cx) {
+    app.run(|cx: &mut App| match ghost_shell_app::init(cx) {
+        Err(err) => {
             eprintln!("App initialization failed {err:?}");
             cx.quit();
-        } else {
+        }
+        Ok(()) => {
             println!("App initialized");
             cx.activate(true);
         }

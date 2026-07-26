@@ -36,23 +36,24 @@ impl Render for WindowBar {
 /// Open bar for given display, based on display properties will calculate bar width
 pub fn open(
     display: Rc<dyn PlatformDisplay>,
-    app_config: AppConfig,
+    config: AppConfig,
     cx: &mut App,
 ) -> Result<WindowHandle<WindowBar>> {
-    let window_options = window_options(display, app_config);
+    let window_options = window_options(display, config);
 
     cx.open_window(window_options, |_, cx| cx.new(|_| WindowBar))
         .context("failed to open bar")
 }
 
+/// Build `WindowOptions` for given display based on it's properties and application config
 fn window_options(
     display: Rc<dyn PlatformDisplay>,
-    app_config: AppConfig,
+    config: AppConfig,
 ) -> WindowOptions {
     let app_id: String = format!("ghost-shell-{:?}", display.id());
     let namespace: String = format!("namespace-{:?}", display.id());
     let display_size = display.bounds().size;
-    let window_size = Size::new(display_size.width, px(app_config.bar_height));
+    let window_size = Size::new(display_size.width, px(config.bar_height));
 
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(gpui::Bounds {
@@ -66,7 +67,7 @@ fn window_options(
             namespace,
             layer: Layer::Top,
             anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
-            exclusive_zone: Some(px(app_config.bar_exclusive_zone)),
+            exclusive_zone: Some(px(config.bar_exclusive_zone)),
             keyboard_interactivity: KeyboardInteractivity::OnDemand,
             ..Default::default()
         }),

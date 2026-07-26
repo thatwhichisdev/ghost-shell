@@ -9,5 +9,4 @@ publish.workspace = true
 [dependencies]
 config = "0.15.23"
 directories = "6.0.0"
-gpui.workspace = true
 serde.workspace = true
