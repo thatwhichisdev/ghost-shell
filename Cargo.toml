@@ -7,6 +7,7 @@ members = [
   "crates/ghost-shell-bar",
   "crates/ghost-shell-config",
   "crates/ghost-shell-launcher",
+  "crates/ghost-shell-lockscreen",
   "crates/ghost-shell-network",
   "crates/ghost-shell-niri",
   "crates/ghost-shell-notifications",
@@ -28,6 +29,7 @@ ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
+ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
 ghost-shell-network = { path = "crates/ghost-shell-network" }
 ghost-shell-niri = { path = "crates/ghost-shell-niri" }
 ghost-shell-notifications = { path = "crates/ghost-shell-notifications" }

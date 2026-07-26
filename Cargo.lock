@@ -2028,6 +2028,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghost-shell-lockscreen"
+version = "0.1.0"
+
+[[package]]
 name = "ghost-shell-network"
 version = "0.1.0"
 
