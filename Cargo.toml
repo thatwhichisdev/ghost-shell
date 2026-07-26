@@ -23,15 +23,15 @@ ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 
 gpui = {
-  git = "https://github.com/zed-industries/zed",
-  rev = "9902238fe0d643cf7b4b0d054425605e1808976d",
+  git = "https://github.com/thatwhichisdev/zed",
+  rev = "aa0c1b6acde47fd181f02a6b83fdc894fa3c8135",
   features = [
     "wayland",
   ]
 }
 gpui_platform = {
-  git = "https://github.com/zed-industries/zed",
-  rev = "9902238fe0d643cf7b4b0d054425605e1808976d",
+  git = "https://github.com/thatwhichisdev/zed",
+  rev = "aa0c1b6acde47fd181f02a6b83fdc894fa3c8135",
   features = [
     "wayland",
   ]
@@ -41,12 +41,3 @@ serde = { version = "1.0.228", features = ["derive"] }
 
 anyhow = "1.0.104"
 thiserror = "2.0.18"
-
-[patch."https://github.com/zed-industries/zed"]
-gpui = {
-  path = "../../zed-industries/zed/crates/gpui",
-}
-
-gpui_platform = {
-  path = "../../zed-industries/zed/crates/gpui_platform",
-}
