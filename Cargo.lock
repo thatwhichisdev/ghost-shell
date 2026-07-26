@@ -1993,12 +1993,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghost-shell-audio"
+version = "0.1.0"
+
+[[package]]
 name = "ghost-shell-bar"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghost-shell-audio",
  "ghost-shell-config",
- "ghost-shell-widgets",
+ "ghost-shell-network",
+ "ghost-shell-niri",
+ "ghost-shell-notifications",
+ "ghost-shell-power",
+ "ghost-shell-system",
  "gpui",
 ]
 
@@ -2019,11 +2028,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "ghost-shell-widgets"
+name = "ghost-shell-network"
 version = "0.1.0"
-dependencies = [
- "gpui",
-]
+
+[[package]]
+name = "ghost-shell-niri"
+version = "0.1.0"
+
+[[package]]
+name = "ghost-shell-notifications"
+version = "0.1.0"
+
+[[package]]
+name = "ghost-shell-power"
+version = "0.1.0"
+
+[[package]]
+name = "ghost-shell-system"
+version = "0.1.0"
 
 [[package]]
 name = "gif"

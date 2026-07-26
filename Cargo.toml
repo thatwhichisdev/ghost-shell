@@ -3,10 +3,15 @@ resolver = "3"
 members = [
   "crates/ghost-shell",
   "crates/ghost-shell-app",
+  "crates/ghost-shell-audio",
   "crates/ghost-shell-bar",
   "crates/ghost-shell-config",
   "crates/ghost-shell-launcher",
-  "crates/ghost-shell-widgets",
+  "crates/ghost-shell-network",
+  "crates/ghost-shell-niri",
+  "crates/ghost-shell-notifications",
+  "crates/ghost-shell-power",
+  "crates/ghost-shell-system"
 ]
 default-members = ["crates/ghost-shell"]
 
@@ -19,10 +24,15 @@ publish = false
 
 [workspace.dependencies]
 ghost-shell-app = { path = "crates/ghost-shell-app" }
+ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
-ghost-shell-widgets = { path = "crates/ghost-shell-widgets" }
+ghost-shell-network = { path = "crates/ghost-shell-network" }
+ghost-shell-niri = { path = "crates/ghost-shell-niri" }
+ghost-shell-notifications = { path = "crates/ghost-shell-notifications" }
+ghost-shell-power = { path = "crates/ghost-shell-power" }
+ghost-shell-system = { path = "crates/ghost-shell-system" }
 
 gpui = {
   git = "https://github.com/thatwhichisdev/zed",

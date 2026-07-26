@@ -28,49 +28,54 @@ impl Render for WindowBar {
             .bg(rgba(0x0000_0000))
             .text_color(rgb(0x00ff_ffff))
             .px(px(4.0))
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .items_center()
-                    .justify_start()
-                    .gap_x(px(2.0))
-                    .child(ghost_shell_widgets::mock_widget("menu", "󰍜"))
-                    .child(ghost_shell_widgets::mock_widget("workspaces", "")),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .items_center()
-                    .justify_center()
-                    .gap_x(px(2.0))
-                    .child(ghost_shell_widgets::mock_widget(
-                        "focused",
-                        "~/development/mock",
-                    )),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_1()
-                    .items_center()
-                    .justify_end()
-                    .gap_x(px(2.0))
-                    .child(ghost_shell_widgets::mock_widget("tray", "󱊔"))
-                    .child(ghost_shell_widgets::mock_widget(
-                        "notifications",
-                        "",
-                    ))
-                    .child(ghost_shell_widgets::mock_widget("volume", ""))
-                    .child(ghost_shell_widgets::mock_widget("microphone", ""))
-                    .child(ghost_shell_widgets::mock_widget("camera", ""))
-                    .child(ghost_shell_widgets::mock_widget("bluetooth", ""))
-                    .child(ghost_shell_widgets::mock_widget("network", "󰛳"))
-                    .child(ghost_shell_widgets::mock_widget("battery", ""))
-                    .child(ghost_shell_widgets::mock_widget("clock", "11:56")),
-            )
+            .text_lg()
+            .child(start_section())
+            .child(center_section())
+            .child(end_section())
     }
+}
+
+fn start_section() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_1()
+        .items_center()
+        .justify_start()
+        .gap_x(px(2.0))
+        .child(mock_widget("menu", "󰍜"))
+        .child(mock_widget("workspaces", ""))
+}
+
+fn center_section() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_1()
+        .items_center()
+        .justify_center()
+        .gap_x(px(2.0))
+        .child(mock_widget("focused", "~/development/mock"))
+}
+
+fn end_section() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_1()
+        .items_center()
+        .justify_end()
+        .gap_x(px(2.0))
+        .child(mock_widget("tray", "󱊔"))
+        .child(mock_widget("notifications", ""))
+        .child(mock_widget("volume", ""))
+        .child(mock_widget("microphone", ""))
+        .child(mock_widget("camera", "󰄀"))
+        .child(mock_widget("bluetooth", "󰂯"))
+        .child(mock_widget("network", "󰤨"))
+        .child(mock_widget("battery", "󰁹"))
+        .child(mock_widget("clock", "11:56"))
+}
+
+pub fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
+    div().id(id).flex().items_center().px_2().child(label)
 }
 
 /// Open bar for given display, based on display properties will calculate bar width
