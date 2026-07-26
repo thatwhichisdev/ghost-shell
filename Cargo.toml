@@ -6,6 +6,7 @@ members = [
   "crates/ghost-shell-bar",
   "crates/ghost-shell-config",
   "crates/ghost-shell-launcher",
+  "crates/ghost-shell-widgets",
 ]
 default-members = ["crates/ghost-shell"]
 
@@ -21,6 +22,7 @@ ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
+ghost-shell-widgets = { path = "crates/ghost-shell-widgets" }
 
 gpui = {
   git = "https://github.com/thatwhichisdev/zed",

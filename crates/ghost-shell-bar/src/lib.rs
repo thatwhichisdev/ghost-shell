@@ -21,15 +21,55 @@ impl Render for WindowBar {
         _cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
         div()
-            .self_flex_end()
             .size_full()
             .flex()
             .items_center()
             .justify_center()
-            .text_color(rgb(0x00ff_ffff))
             .bg(rgba(0x0000_0000))
-            .text_sm()
-            .child("<bar>")
+            .text_color(rgb(0x00ff_ffff))
+            .px(px(4.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .justify_start()
+                    .gap_x(px(2.0))
+                    .child(ghost_shell_widgets::mock_widget("menu", "󰍜"))
+                    .child(ghost_shell_widgets::mock_widget("workspaces", "")),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .justify_center()
+                    .gap_x(px(2.0))
+                    .child(ghost_shell_widgets::mock_widget(
+                        "focused",
+                        "~/development/mock",
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .justify_end()
+                    .gap_x(px(2.0))
+                    .child(ghost_shell_widgets::mock_widget("tray", "󱊔"))
+                    .child(ghost_shell_widgets::mock_widget(
+                        "notifications",
+                        "",
+                    ))
+                    .child(ghost_shell_widgets::mock_widget("volume", ""))
+                    .child(ghost_shell_widgets::mock_widget("microphone", ""))
+                    .child(ghost_shell_widgets::mock_widget("camera", ""))
+                    .child(ghost_shell_widgets::mock_widget("bluetooth", ""))
+                    .child(ghost_shell_widgets::mock_widget("network", "󰛳"))
+                    .child(ghost_shell_widgets::mock_widget("battery", ""))
+                    .child(ghost_shell_widgets::mock_widget("clock", "11:56")),
+            )
     }
 }
 
@@ -41,7 +81,7 @@ pub fn open(
 ) -> Result<WindowHandle<WindowBar>> {
     let window_options = window_options(display, config);
 
-    cx.open_window(window_options, |_, cx| cx.new(|_| WindowBar))
+    cx.open_window(window_options, |_window, cx| cx.new(|_cx| WindowBar))
         .context("failed to open bar")
 }
 
@@ -50,7 +90,7 @@ fn window_options(
     display: Rc<dyn PlatformDisplay>,
     config: AppConfig,
 ) -> WindowOptions {
-    let app_id: String = format!("ghost-shell-{:?}", display.id());
+    let app_id: String = "dev.thatwhichis.ghost-shell".to_string();
     let namespace: String = format!("namespace-{:?}", display.id());
     let display_size = display.bounds().size;
     let window_size = Size::new(display_size.width, px(config.bar_height));
@@ -68,7 +108,7 @@ fn window_options(
             layer: Layer::Top,
             anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
             exclusive_zone: Some(px(config.bar_exclusive_zone)),
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+            keyboard_interactivity: KeyboardInteractivity::None,
             ..Default::default()
         }),
         is_movable: false,

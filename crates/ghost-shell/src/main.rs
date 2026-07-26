@@ -5,7 +5,7 @@ fn main() {
 
     app.run(|cx: &mut App| match ghost_shell_app::init(cx) {
         Err(err) => {
-            eprintln!("App initialization failed {err:?}");
+            eprintln!("App initialization failed {err:#}");
             cx.quit();
         }
         Ok(()) => {

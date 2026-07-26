@@ -1998,6 +1998,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ghost-shell-config",
+ "ghost-shell-widgets",
  "gpui",
 ]
 
@@ -2012,6 +2013,13 @@ dependencies = [
 
 [[package]]
 name = "ghost-shell-launcher"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+]
+
+[[package]]
+name = "ghost-shell-widgets"
 version = "0.1.0"
 dependencies = [
  "gpui",
