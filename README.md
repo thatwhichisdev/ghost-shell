@@ -26,21 +26,17 @@ it is not yet ready for general use.
 The current goal is to implement the following basic functionality:
 
 - [ ] Bar
-      - [ ] Widgets
-            - [ ] Start
-                  - [ ] System Menu
-                  - [ ] Niri Workspaces
-            - [ ] Center
-                  - [ ] Focused Window
-            - [ ] End
-                  - [ ] Tray
-                  - [ ] Notifications
-                  - [ ] Camera
-                  - [ ] Audio Control (Speakers/Microfone)
-                  - [ ] Bluetooth Control
-                  - [ ] Network Control (Wifi/Ethernet)
-                  - [ ] Battery
-                  - [ ] Clock
+- [ ] Widget: System Menu
+- [ ] Widget: Niri Workspaces
+- [ ] Widget: Focused Window
+- [ ] Widget: Tray
+- [ ] Widget: Notifications
+- [ ] Widget: Camera
+- [ ] Widget: Audio Control (Speakers/Microfone)
+- [ ] Widget: Bluetooth Control
+- [ ] Widget: Network Control (Wifi/Ethernet)
+- [ ] Widget: Battery
+- [ ] Widget: Clock
 - [ ] App Launcher
 - [ ] Lock Screen
 - [ ] Clipboard Inspector
