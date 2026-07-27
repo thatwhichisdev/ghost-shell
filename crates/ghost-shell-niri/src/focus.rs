@@ -41,7 +41,7 @@ impl Focus {
         .detach();
 
         Self {
-            title: "test".into(),
+            title: Default::default(),
         }
     }
 }

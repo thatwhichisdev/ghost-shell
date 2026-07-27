@@ -35,8 +35,6 @@ pub fn init(cx: &mut App) -> Result<()> {
 
     let niri_event_receiver = niri_event_reader.subscribe();
 
-    Tokio::spawn(cx, niri_event_reader.run()).detach();
-
     let focus_widget = cx
         .new(|cx| ghost_shell_niri::focus::Focus::new(cx, niri_event_receiver));
 
@@ -46,11 +44,21 @@ pub fn init(cx: &mut App) -> Result<()> {
                 Uuid::new_v5(&Uuid::NAMESPACE_DNS, output_name.as_bytes());
             display.uuid().is_ok_and(|uuid| uuid == output_uuid)
         }) {
+            let niri_event_receiver = niri_event_reader.subscribe();
+            let workspaces_widget = cx.new(|cx| {
+                ghost_shell_niri::workspaces::Workspaces::new(
+                    cx,
+                    output_name,
+                    niri_event_receiver,
+                )
+            });
+
             ghost_shell_bar::open(
                 &display,
                 config.general.clone(),
                 bar_config,
                 menu_widget.clone(),
+                workspaces_widget,
                 focus_widget.clone(),
                 battery_widget.clone(),
                 clock_widget.clone(),
@@ -58,6 +66,8 @@ pub fn init(cx: &mut App) -> Result<()> {
             )?;
         }
     }
+
+    Tokio::spawn(cx, niri_event_reader.run()).detach();
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use anyhow::{Context, Result};
 use ghost_shell_config::{BarConfig, GeneralConfig};
-use ghost_shell_niri::focus::Focus;
+use ghost_shell_niri::{focus::Focus, workspaces::Workspaces};
 use ghost_shell_power::battery::Battery;
 use ghost_shell_system::{clock::Clock, menu::Menu};
 use gpui::{
@@ -18,6 +18,7 @@ use gpui::{
 pub struct Bar {
     config: GeneralConfig,
     menu_widget: Entity<Menu>,
+    workspaces_widget: Entity<Workspaces>,
     focus_widget: Entity<Focus>,
     battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
@@ -39,7 +40,10 @@ impl Render for Bar {
             .text_color(rgba(self.config.fg))
             .px(px(4.0))
             .text_size(px(self.config.font_size))
-            .child(start_section(self.menu_widget.clone()))
+            .child(start_section(
+                self.menu_widget.clone(),
+                self.workspaces_widget.clone(),
+            ))
             .child(center_section(self.focus_widget.clone()))
             .child(end_section(
                 self.battery_widget.clone(),
@@ -48,14 +52,18 @@ impl Render for Bar {
     }
 }
 
-fn start_section(menu_widget: Entity<Menu>) -> impl IntoElement {
+fn start_section(
+    menu_widget: Entity<Menu>,
+    workspaces_widget: Entity<Workspaces>,
+) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
+        .gap_x_2()
         .items_center()
         .justify_start()
         .child(menu_widget)
-        .child(mock_widget("workspaces", ""))
+        .child(workspaces_widget)
 }
 
 fn center_section(focus_widget: Entity<Focus>) -> impl IntoElement {
@@ -74,6 +82,7 @@ fn end_section(
     div()
         .flex()
         .flex_1()
+        .gap_x_2()
         .items_center()
         .justify_end()
         .child(mock_widget("tray", "󱊔"))
@@ -88,7 +97,7 @@ fn end_section(
 }
 
 fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
-    div().id(id).flex().items_center().px_2().child(label)
+    div().id(id).flex().items_center().child(label)
 }
 
 /// Open bar for given display, based on display properties will calculate bar width
@@ -97,15 +106,18 @@ pub fn open(
     general_config: GeneralConfig,
     bar_config: BarConfig,
     menu_widget: Entity<Menu>,
+    workspaces_widget: Entity<Workspaces>,
     focus_widget: Entity<Focus>,
     battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
     cx: &mut App,
 ) -> Result<WindowHandle<Bar>> {
     let window_options = window_options(display, &bar_config);
+
     let bar = Bar {
         config: general_config,
         menu_widget,
+        workspaces_widget,
         focus_widget,
         battery_widget,
         clock_widget,

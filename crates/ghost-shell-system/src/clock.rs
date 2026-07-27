@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use gpui::{Context, SharedString, Window, div, prelude::*};
+use gpui::{Context, SharedString, Window, div, prelude::*, px};
 use jiff::Zoned;
 
 use ghost_shell_config::ClockConfig;
@@ -43,7 +43,7 @@ impl Render for Clock {
             .id("clock")
             .flex()
             .items_center()
-            .px_2()
+            .pr(px(8.0))
             .child(self.time.clone())
     }
 }

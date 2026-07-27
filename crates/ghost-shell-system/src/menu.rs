@@ -8,10 +8,10 @@ impl Render for Menu {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        div().id("menu").flex().items_center().px_2().child(
+        div().id("menu").flex().items_center().pl(px(8.0)).child(
             svg()
                 .path("nixos.svg")
-                .size(px(16.0))
+                .size(px(18.0))
                 .text_color(rgba(0xffff_ffff)),
         )
     }

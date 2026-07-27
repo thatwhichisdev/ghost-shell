@@ -8,7 +8,7 @@ impl Render for Battery {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        div().id("power").flex().items_center().px_2().child(
+        div().id("power").flex().items_center().child(
             svg()
                 .path("battery.svg")
                 .size(px(27.0))
