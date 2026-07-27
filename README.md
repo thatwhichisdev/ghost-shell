@@ -5,54 +5,87 @@
 ## Motivation
 
 System customization is one of my favorite aspects of Linux. The freedom of
-choice that the Linux environment gives you is beyond imagination.
+choice that the Linux environment provides is beyond imagination. Over the last
+few years, I have experimented with vairous bars, launchers, and shell
+environments, but none of them really clicked with me. Ultimately, I decided to
+try building my own shell environment in Rust. My personal goals are to improve
+my Rust programming skills and explore new programming domains.
 
-Over the last few years, I have tried many bars, launchers, and shell
-environments, but none of them have really given me that inner satisfaction.
-They are either incomplete, based on outdated technologies, or they are too
-clunky and give you much more than you actually need.
+# Overview
 
-In my ideal world, a shell environment should be small, efficient, and easy to
-use. If extensions are needed, they should be easy and enjoyable to develop.
+Ghost Shell is a desktop shell built exclusively for the Niri Wayland
+compositor. This project explores a combination of modern technologies intended
+to produce a small and resource efficient shell environment. The project's name
+is inspired by the anime Ghost in the Shell.
 
-Ultimately, I decided that I should give building my own shell environment in
-Rust a try. For the UI, I chose Zed's GPUI, which has proven to be an excellent
-Rust UI library with minimal external dependencies.
+The project does not claim to be the best option on the market, nor does it aim
+to become one. I simply want to build a good tool that I will enjoy using on the
+daily basis. The project is currently in a very early stage of development, so
+it is not yet ready for general use.
 
-For plugin development, I want to take inspiration from my beloved Helix Editor
-project, I also want to embed the Steel Scheme interpreter and allow the shell
-to be extended further using the Scheme language.
+The current goal is to implement the following basic functionality:
 
-Right now, this is only the beginning, I do not have a strict deadline, and I
-will commit to this repository whenever I have set and settings, beauty comes
-from patience and joy.
+- [ ] Bar
+      - [ ] Widgets
+            - [ ] Start
+                  - [ ] System Menu
+                  - [ ] Niri Workspaces
+            - [ ] Center
+                  - [ ] Focused Window
+            - [ ] End
+                  - [ ] Tray
+                  - [ ] Notifications
+                  - [ ] Camera
+                  - [ ] Audio Control (Speakers/Microfone)
+                  - [ ] Bluetooth Control
+                  - [ ] Network Control (Wifi/Ethernet)
+                  - [ ] Battery
+                  - [ ] Clock
+- [ ] App Launcher
+- [ ] Lock Screen
+- [ ] Clipboard Inspector
 
-## Roadmap
+# Getting Started
 
-- Bar
-  - Widgets
-    - Start
-      - OS menu
-      - Niri workspaces
-    - Center
-      - Focused window
-    - End
-      - Notifications
-      - Volume
-      - Micorofone
-      - Camera
-      - Bluetooth
-      - Wifi/Ethernet
-      - Battery
-      - Clock
-- Launcher
-- Lock screen
+## Prerequisities
+
+Development is currently intended for NixOS systems. There are no plans to
+support other systems at this time.
+
+## Installation
+
+Clone the repository:
+
+```shell
+git clone https://github.com/thatwhichisdev/ghost-shell
+```
+
+## Developing
+
+To enter a development environment with all the necessary tools, run:
+
+```shell
+nix develop
+```
+
+## Building
+
+```
+cargo build  
+```
+
+## Running
+
+```
+cargo run   
+```
 
 ## Configuration
 
-Application discovers configuration based on XDG specifications.
+Ghost Shell discovers its configuration according to the XDG Base Directory
+Specification. I keep my configuration at `~/.config/ghost-shell/config.toml`.
 
-Example
+Here is an example of the current configuration:
 
 ```toml
 [general]
@@ -61,7 +94,13 @@ font_size = 13
 fg = 0xffffffff
 bg = 0x00000000
 
-[bar]
+[bar."eDP-1"]
+output = "eDP-1"
+height = 27.0
+exclusive_zone = 27.0
+
+[bar."DP-1"]
+output = "DP-1"
 height = 27.0
 exclusive_zone = 27.0
 

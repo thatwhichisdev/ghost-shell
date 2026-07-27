@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use anyhow::{Context, Result};
-use ghost_shell_config::{AppConfig, BarConfig, GeneralConfig};
+use ghost_shell_config::{BarConfig, GeneralConfig};
+use ghost_shell_niri::focus::Focus;
 use ghost_shell_power::battery::Battery;
 use ghost_shell_system::{clock::Clock, menu::Menu};
 use gpui::{
@@ -17,6 +18,7 @@ use gpui::{
 pub struct Bar {
     config: GeneralConfig,
     menu_widget: Entity<Menu>,
+    focus_widget: Entity<Focus>,
     battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
 }
@@ -38,7 +40,7 @@ impl Render for Bar {
             .px(px(4.0))
             .text_size(px(self.config.font_size))
             .child(start_section(self.menu_widget.clone()))
-            .child(center_section())
+            .child(center_section(self.focus_widget.clone()))
             .child(end_section(
                 self.battery_widget.clone(),
                 self.clock_widget.clone(),
@@ -56,13 +58,13 @@ fn start_section(menu_widget: Entity<Menu>) -> impl IntoElement {
         .child(mock_widget("workspaces", ""))
 }
 
-fn center_section() -> impl IntoElement {
+fn center_section(focus_widget: Entity<Focus>) -> impl IntoElement {
     div()
         .flex()
         .flex_1()
         .items_center()
         .justify_center()
-        .child(mock_widget("focused", "~/development/mock"))
+        .child(focus_widget)
 }
 
 fn end_section(
@@ -92,16 +94,19 @@ fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
 /// Open bar for given display, based on display properties will calculate bar width
 pub fn open(
     display: &Rc<dyn PlatformDisplay>,
-    config: AppConfig,
+    general_config: GeneralConfig,
+    bar_config: BarConfig,
     menu_widget: Entity<Menu>,
+    focus_widget: Entity<Focus>,
     battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
     cx: &mut App,
 ) -> Result<WindowHandle<Bar>> {
-    let window_options = window_options(display, &config.bar);
+    let window_options = window_options(display, &bar_config);
     let bar = Bar {
-        config: config.general,
+        config: general_config,
         menu_widget,
+        focus_widget,
         battery_widget,
         clock_widget,
     };

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
 use serde::Deserialize;
@@ -6,7 +8,10 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct AppConfig {
     pub general: GeneralConfig,
-    pub bar: BarConfig,
+
+    #[serde(rename = "bar")]
+    pub bars: HashMap<String, BarConfig>,
+
     pub clock: ClockConfig,
 }
 
@@ -33,6 +38,7 @@ impl Default for GeneralConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct BarConfig {
+    pub output: String,
     pub height: f32,
     pub exclusive_zone: f32,
 }
@@ -40,6 +46,7 @@ pub struct BarConfig {
 impl Default for BarConfig {
     fn default() -> Self {
         Self {
+            output: "<default>".to_string(),
             height: 27.0,
             exclusive_zone: 27.0,
         }

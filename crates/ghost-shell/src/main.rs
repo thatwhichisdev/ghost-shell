@@ -40,6 +40,8 @@ fn main() {
     });
 
     app.run(|cx: &mut App| {
+        gpui_tokio::init(cx);
+
         if let Err(err) = ghost_shell_app::init(cx) {
             eprintln!("App initialization failed {err:#}");
             cx.quit();

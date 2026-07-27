@@ -11,3 +11,4 @@ anyhow.workspace = true
 ghost-shell-app.workspace = true
 gpui.workspace = true
 gpui_platform.workspace = true
+gpui_tokio.workspace = true
