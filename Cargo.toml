@@ -1,11 +1,13 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/ghost-shell",
   "crates/ghost-shell-app",
   "crates/ghost-shell-audio",
   "crates/ghost-shell-bar",
+  "crates/ghost-shell-cli",
   "crates/ghost-shell-config",
+  "crates/ghost-shell-daemon",
+  "crates/ghost-shell-ipc",
   "crates/ghost-shell-launcher",
   "crates/ghost-shell-lockscreen",
   "crates/ghost-shell-network",
@@ -14,7 +16,7 @@ members = [
   "crates/ghost-shell-power",
   "crates/ghost-shell-system"
 ]
-default-members = ["crates/ghost-shell"]
+default-members = ["crates/ghost-shell-daemon"]
 
 [workspace.package]
 version = "0.1.0"
@@ -28,6 +30,7 @@ ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
+ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
 ghost-shell-network = { path = "crates/ghost-shell-network" }
@@ -62,6 +65,8 @@ tokio = {
     "sync",
   ],
 }
+
+clap = "4.6.4"
 
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.151"
