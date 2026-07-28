@@ -11,8 +11,9 @@ name = "ghost-shell-daemon"
 path = "src/main.rs"
 
 [dependencies]
-anyhow.workspace = true
 ghost-shell-app.workspace = true
+
+anyhow.workspace = true
 gpui.workspace = true
 gpui_platform.workspace = true
 gpui_tokio.workspace = true
