@@ -1,1 +1,7 @@
 flavor = "gfm"
+
+[format]
+line-width = 80
+
+[extensions]
+gfm-auto-identifiers = true
