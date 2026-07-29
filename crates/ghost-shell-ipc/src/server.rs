@@ -1,5 +1,8 @@
 use anyhow::{Context as _, Result, anyhow};
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{UnixListener, UnixStream, unix::SocketAddr},
@@ -35,6 +38,11 @@ impl Server {
         request_sender: mpsc::Sender<AsyncRequest>,
     ) -> Result<Self> {
         let path = path.as_ref().to_owned();
+
+        if path.exists() {
+            fs::remove_file(&path)?;
+        }
+
         let listener = UnixListener::bind(&path)?;
 
         Ok(Self {
@@ -160,5 +168,13 @@ impl Connection {
 
             writer.flush().await.context("failed to flush IPC reply")?;
         }
+    }
+}
+
+impl Drop for Server {
+    fn drop(&mut self) {
+        if let Err(err) = std::fs::remove_file(&self.path) {
+            eprintln!("failed to remove IPC socket {err:#}");
+        };
     }
 }
