@@ -2106,6 +2106,7 @@ dependencies = [
  "ghost-shell-bar",
  "ghost-shell-config",
  "ghost-shell-ipc",
+ "ghost-shell-launcher",
  "ghost-shell-niri",
  "ghost-shell-power",
  "ghost-shell-system",
@@ -2178,6 +2179,7 @@ dependencies = [
 name = "ghost-shell-launcher"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "gpui",
 ]
 

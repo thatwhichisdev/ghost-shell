@@ -8,3 +8,5 @@ publish.workspace = true
 
 [dependencies]
 gpui.workspace = true
+
+anyhow.workspace = true

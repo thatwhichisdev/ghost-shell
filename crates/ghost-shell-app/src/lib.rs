@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 use ghost_shell_ipc::{
-    protocol::{Request, Response},
+    protocol::{LauncherAction, Request, Response},
     server::{AsyncRequest, Server},
 };
 use ghost_shell_niri::client::client::NiriClient;
@@ -87,16 +87,34 @@ pub fn init(cx: &mut App) -> Result<()> {
     Tokio::spawn(cx, niri_event_reader.run()).detach();
     Tokio::spawn(cx, ipc_server.run()).detach();
 
+    let launcher = cx.new(|_| ghost_shell_launcher::Launcher::new());
+    let launcher = launcher.clone();
+
+    let primary_display_name =
+        Uuid::new_v5(&Uuid::NAMESPACE_DNS, "DP-1".as_bytes());
+    let primary_display = cx
+        .displays()
+        .into_iter()
+        .find(|display| {
+            display
+                .uuid()
+                .is_ok_and(|uuid| uuid == primary_display_name)
+        })
+        .unwrap();
+
     // Spawn task to handle request over IPC connection
     cx.spawn(async move |cx| {
         while let Some(incoming) = request_receiver.recv().await {
             let reply: std::result::Result<Response, String> =
-                cx.update(|_cx| match incoming.request {
-                    Request::Launcher { action } => {
-                        println!("Launcher action: {action:?}");
-
-                        Ok(Response::Handled)
-                    }
+                cx.update(|cx| match incoming.request {
+                    Request::Launcher { action } => match action {
+                        LauncherAction::Toggle => {
+                            launcher.update(cx, |launcher, cx| {
+                                let _ = launcher.toggle(cx, primary_display.clone()).inspect_err(|err| eprintln!("failed to toggle launcher {err:#}"));
+                            });
+                            Ok(Response::Handled)
+                        }
+                    },
                 });
 
             let _ = incoming.reply.send(reply);
