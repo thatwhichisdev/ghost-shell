@@ -46,6 +46,7 @@ gpui = {
     "wayland",
   ]
 }
+
 gpui_platform = {
   git = "https://github.com/thatwhichisdev/zed",
   rev = "aa0c1b6acde47fd181f02a6b83fdc894fa3c8135",
@@ -53,9 +54,15 @@ gpui_platform = {
     "wayland",
   ]
 }
+
 gpui_tokio = {
   git = "https://github.com/thatwhichisdev/zed",
   rev = "aa0c1b6acde47fd181f02a6b83fdc894fa3c8135",
+}
+
+gpui-component = {
+  git = "https://github.com/thatwhichisdev/gpui-component",
+  rev = "12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
 }
 
 tokio = {

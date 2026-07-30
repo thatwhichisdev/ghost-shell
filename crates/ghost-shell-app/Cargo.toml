@@ -15,9 +15,11 @@ ghost-shell-niri.workspace = true
 ghost-shell-power.workspace = true
 ghost-shell-system.workspace = true
 
-anyhow.workspace = true
 gpui.workspace = true
+gpui-component.workspace = true
 gpui_tokio.workspace = true
+
+anyhow.workspace = true
 tokio = {
   workspace = true,
   features = ["sync"],
