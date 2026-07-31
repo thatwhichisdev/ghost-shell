@@ -2313,6 +2313,7 @@ dependencies = [
  "ghost-shell-power",
  "ghost-shell-system",
  "gpui",
+ "gpui-component",
 ]
 
 [[package]]
@@ -2342,6 +2343,7 @@ dependencies = [
  "anyhow",
  "ghost-shell-app",
  "gpui",
+ "gpui-component",
  "gpui_platform",
  "gpui_tokio",
 ]

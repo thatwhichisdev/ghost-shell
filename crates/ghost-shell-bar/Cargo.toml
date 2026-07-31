@@ -15,5 +15,7 @@ ghost-shell-notifications.workspace = true
 ghost-shell-power.workspace = true
 ghost-shell-system.workspace = true
 
-anyhow.workspace = true
 gpui.workspace = true
+gpui-component.workspace = true
+
+anyhow.workspace = true

@@ -14,6 +14,7 @@ use gpui::{
     prelude::*,
     px, rgba,
 };
+use gpui_component::{Root, ThemeMode};
 
 pub struct Bar {
     config: GeneralConfig,
@@ -85,19 +86,8 @@ fn end_section(
         .gap_x_2()
         .items_center()
         .justify_end()
-        .child(mock_widget("tray", "󱊔"))
-        .child(mock_widget("notifications", ""))
-        .child(mock_widget("volume", ""))
-        .child(mock_widget("microphone", ""))
-        .child(mock_widget("camera", "󰄀"))
-        .child(mock_widget("bluetooth", "󰂯"))
-        .child(mock_widget("network", "󰤨"))
         .child(battery_widget)
         .child(clock_widget)
-}
-
-fn mock_widget(id: &'static str, label: &'static str) -> impl IntoElement {
-    div().id(id).flex().items_center().child(label)
 }
 
 /// Open bar for given display, based on display properties will calculate bar width
@@ -111,20 +101,24 @@ pub fn open(
     battery_widget: Entity<Battery>,
     clock_widget: Entity<Clock>,
     cx: &mut App,
-) -> Result<WindowHandle<Bar>> {
+) -> Result<WindowHandle<Root>> {
     let window_options = window_options(display, &bar_config);
 
-    let bar = Bar {
-        config: general_config,
-        menu_widget,
-        workspaces_widget,
-        focus_widget,
-        battery_widget,
-        clock_widget,
-    };
+    cx.open_window(window_options, |window, cx| {
+        gpui_component::theme::Theme::change(ThemeMode::Dark, Some(window), cx);
 
-    cx.open_window(window_options, |_window, cx| cx.new(|_cx| bar))
-        .context("failed to open bar")
+        let bar = Bar {
+            config: general_config,
+            menu_widget,
+            workspaces_widget,
+            focus_widget,
+            battery_widget,
+            clock_widget,
+        };
+        let view = cx.new(|_| bar);
+        cx.new(|cx| Root::new(view, window, cx).bordered(false))
+    })
+    .context("failed to open bar")
 }
 
 /// Build `WindowOptions` for given display based on it's properties and application config

@@ -9,6 +9,7 @@ use gpui::{
     prelude::*,
     px, rgb, size,
 };
+use gpui_component::Root;
 
 pub struct Launcher {
     window: Option<AnyWindowHandle>,
@@ -65,8 +66,9 @@ impl Launcher {
             ..Default::default()
         };
 
-        let handle = cx.open_window(window_options, |_window, cx| {
-            cx.new(|_| LauncherView)
+        let handle = cx.open_window(window_options, |window, cx| {
+            let view = cx.new(|_| LauncherView);
+            cx.new(|cx| Root::new(view, window, cx))
         })?;
 
         self.window = Some(handle.into());

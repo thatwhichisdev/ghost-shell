@@ -13,7 +13,9 @@ path = "src/main.rs"
 [dependencies]
 ghost-shell-app.workspace = true
 
-anyhow.workspace = true
 gpui.workspace = true
+gpui-component.workspace = true
 gpui_platform.workspace = true
 gpui_tokio.workspace = true
+
+anyhow.workspace = true
