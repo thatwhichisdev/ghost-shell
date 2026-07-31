@@ -10,4 +10,6 @@ publish.workspace = true
 ghost-shell-config.workspace = true
 
 gpui.workspace = true
+gpui-component.workspace = true
+
 jiff.workspace = true
