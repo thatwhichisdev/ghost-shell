@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
   "crates/ghost-shell-app",
+  "crates/ghost-shell-assets",
   "crates/ghost-shell-audio",
   "crates/ghost-shell-bar",
   "crates/ghost-shell-cli",
@@ -27,6 +28,7 @@ publish = false
 
 [workspace.dependencies]
 ghost-shell-app = { path = "crates/ghost-shell-app" }
+ghost-shell-assets = { path = "crates/ghost-shell-assets" }
 ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
@@ -73,12 +75,10 @@ tokio = {
   ],
 }
 
+anyhow = "1.0.104"
 clap = "4.6.4"
-
+jiff = "0.2.35"
+rust-embed = "8.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.151"
-
-anyhow = "1.0.104"
 thiserror = "2.0.18"
-
-jiff = "0.2.35"

@@ -2297,6 +2297,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghost-shell-assets"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "gpui",
+ "rust-embed",
+]
+
+[[package]]
 name = "ghost-shell-audio"
 version = "0.1.0"
 
@@ -2342,6 +2351,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ghost-shell-app",
+ "ghost-shell-assets",
  "gpui",
  "gpui-component",
  "gpui_platform",

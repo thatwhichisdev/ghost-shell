@@ -1,4 +1,4 @@
-use gpui::{Context, Window, div, prelude::*, px, rgba, svg};
+use gpui::{Context, Window, div, prelude::*, px};
 use gpui_component::{Icon, Sizable};
 
 pub struct Menu;
