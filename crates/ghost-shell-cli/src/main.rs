@@ -35,6 +35,10 @@ pub enum LauncherCommand {
     Toggle,
 }
 
+/// Entry point for the command line interface.
+///
+/// Parses commands and communicates with `ghost-shell-daemon` using IPC socket.
+///
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let cli = Cli::parse();

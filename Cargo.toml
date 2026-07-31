@@ -3,7 +3,6 @@ resolver = "3"
 members = [
   "crates/ghost-shell-app",
   "crates/ghost-shell-assets",
-  "crates/ghost-shell-audio",
   "crates/ghost-shell-bar",
   "crates/ghost-shell-cli",
   "crates/ghost-shell-config",
@@ -11,11 +10,15 @@ members = [
   "crates/ghost-shell-ipc",
   "crates/ghost-shell-launcher",
   "crates/ghost-shell-lockscreen",
-  "crates/ghost-shell-network",
   "crates/ghost-shell-niri",
-  "crates/ghost-shell-notifications",
-  "crates/ghost-shell-power",
-  "crates/ghost-shell-system"
+  "crates/ghost-shell-widgets/ghost-shell-widget-audio",
+  "crates/ghost-shell-widgets/ghost-shell-widget-clock",
+  "crates/ghost-shell-widgets/ghost-shell-widget-focus",
+  "crates/ghost-shell-widgets/ghost-shell-widget-menu",
+  "crates/ghost-shell-widgets/ghost-shell-widget-network",
+  "crates/ghost-shell-widgets/ghost-shell-widget-notifications",
+  "crates/ghost-shell-widgets/ghost-shell-widget-power",
+  "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
 ]
 default-members = ["crates/ghost-shell-daemon"]
 
@@ -29,17 +32,25 @@ publish = false
 [workspace.dependencies]
 ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-assets = { path = "crates/ghost-shell-assets" }
-ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
-ghost-shell-network = { path = "crates/ghost-shell-network" }
 ghost-shell-niri = { path = "crates/ghost-shell-niri" }
-ghost-shell-notifications = { path = "crates/ghost-shell-notifications" }
-ghost-shell-power = { path = "crates/ghost-shell-power" }
-ghost-shell-system = { path = "crates/ghost-shell-system" }
+
+ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
+ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
+ghost-shell-widget-focus = { path = "crates/ghost-shell-widgets/ghost-shell-widget-focus" }
+ghost-shell-widget-menu = { path = "crates/ghost-shell-widgets/ghost-shell-widget-menu" }
+ghost-shell-widget-network = { path = "crates/ghost-shell-widgets/ghost-shell-widget-network" }
+ghost-shell-widget-notifications = {
+  path = "crates/ghost-shell-widgets/ghost-shell-widget-notifications"
+}
+ghost-shell-widget-power = { path = "crates/ghost-shell-widgets/ghost-shell-widget-power" }
+ghost-shell-widget-workspaces = {
+  path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces"
+}
 
 gpui = {
   git = "https://github.com/thatwhichisdev/zed",

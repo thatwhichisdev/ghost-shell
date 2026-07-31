@@ -1,3 +1,5 @@
 pub mod client;
-pub mod focus;
-pub mod workspaces;
+pub mod protocol;
+
+pub use client::*;
+pub use protocol::*;

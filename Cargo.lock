@@ -2288,8 +2288,14 @@ dependencies = [
  "ghost-shell-ipc",
  "ghost-shell-launcher",
  "ghost-shell-niri",
- "ghost-shell-power",
- "ghost-shell-system",
+ "ghost-shell-widget-audio",
+ "ghost-shell-widget-clock",
+ "ghost-shell-widget-focus",
+ "ghost-shell-widget-menu",
+ "ghost-shell-widget-network",
+ "ghost-shell-widget-notifications",
+ "ghost-shell-widget-power",
+ "ghost-shell-widget-workspaces",
  "gpui",
  "gpui-component",
  "gpui_tokio",
@@ -2306,21 +2312,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "ghost-shell-audio"
-version = "0.1.0"
-
-[[package]]
 name = "ghost-shell-bar"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ghost-shell-audio",
  "ghost-shell-config",
- "ghost-shell-network",
  "ghost-shell-niri",
- "ghost-shell-notifications",
- "ghost-shell-power",
- "ghost-shell-system",
+ "ghost-shell-widget-audio",
+ "ghost-shell-widget-clock",
+ "ghost-shell-widget-focus",
+ "ghost-shell-widget-menu",
+ "ghost-shell-widget-network",
+ "ghost-shell-widget-notifications",
+ "ghost-shell-widget-power",
+ "ghost-shell-widget-workspaces",
  "gpui",
  "gpui-component",
 ]
@@ -2382,10 +2387,6 @@ name = "ghost-shell-lockscreen"
 version = "0.1.0"
 
 [[package]]
-name = "ghost-shell-network"
-version = "0.1.0"
-
-[[package]]
 name = "ghost-shell-niri"
 version = "0.1.0"
 dependencies = [
@@ -2398,24 +2399,63 @@ dependencies = [
 ]
 
 [[package]]
-name = "ghost-shell-notifications"
+name = "ghost-shell-widget-audio"
 version = "0.1.0"
 
 [[package]]
-name = "ghost-shell-power"
-version = "0.1.0"
-dependencies = [
- "gpui",
-]
-
-[[package]]
-name = "ghost-shell-system"
+name = "ghost-shell-widget-clock"
 version = "0.1.0"
 dependencies = [
  "ghost-shell-config",
  "gpui",
  "gpui-component",
  "jiff",
+]
+
+[[package]]
+name = "ghost-shell-widget-focus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ghost-shell-niri",
+ "gpui",
+ "gpui_tokio",
+ "tokio",
+]
+
+[[package]]
+name = "ghost-shell-widget-menu"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-config",
+ "gpui",
+ "gpui-component",
+]
+
+[[package]]
+name = "ghost-shell-widget-network"
+version = "0.1.0"
+
+[[package]]
+name = "ghost-shell-widget-notifications"
+version = "0.1.0"
+
+[[package]]
+name = "ghost-shell-widget-power"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+]
+
+[[package]]
+name = "ghost-shell-widget-workspaces"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ghost-shell-niri",
+ "gpui",
+ "gpui_tokio",
+ "tokio",
 ]
 
 [[package]]

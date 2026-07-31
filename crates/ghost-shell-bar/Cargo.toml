@@ -7,13 +7,17 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-ghost-shell-audio.workspace = true
 ghost-shell-config.workspace = true
-ghost-shell-network.workspace = true
 ghost-shell-niri.workspace = true
-ghost-shell-notifications.workspace = true
-ghost-shell-power.workspace = true
-ghost-shell-system.workspace = true
+
+ghost-shell-widget-audio.workspace = true
+ghost-shell-widget-clock.workspace = true
+ghost-shell-widget-focus.workspace = true
+ghost-shell-widget-menu.workspace = true
+ghost-shell-widget-network.workspace = true
+ghost-shell-widget-notifications.workspace = true
+ghost-shell-widget-power.workspace = true
+ghost-shell-widget-workspaces.workspace = true
 
 gpui.workspace = true
 gpui-component.workspace = true
