@@ -41,6 +41,7 @@ pub struct BarConfig {
     pub output: String,
     pub height: f32,
     pub exclusive_zone: f32,
+    pub primary: bool,
 }
 
 impl Default for BarConfig {
@@ -49,6 +50,7 @@ impl Default for BarConfig {
             output: "<default>".to_string(),
             height: 27.0,
             exclusive_zone: 27.0,
+            primary: false,
         }
     }
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use gpui::Global;
 use serde::{Deserialize, Serialize};
 
 pub type Reply = std::result::Result<Response, String>;
@@ -145,3 +146,5 @@ impl NiriState {
         }
     }
 }
+
+impl Global for NiriState {}

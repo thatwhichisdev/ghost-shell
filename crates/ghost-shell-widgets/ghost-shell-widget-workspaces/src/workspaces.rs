@@ -1,10 +1,13 @@
 use ghost_shell_niri::NiriState;
-use gpui::{Context, Window, div, prelude::*, px, rgba, svg};
-use tokio::sync::broadcast;
+use gpui::{Context, Subscription, Window, div, prelude::*, px, rgba, svg};
 
 pub struct WorkspacesWidget {
     output: String,
+
     state: Vec<Workspace>,
+
+    #[allow(unused)]
+    subscription: Subscription,
 }
 
 struct Workspace {
@@ -14,46 +17,35 @@ struct Workspace {
 
 impl WorkspacesWidget {
     #[must_use]
-    pub fn new(
-        cx: &mut Context<Self>,
-        output: String,
-        mut receiver: broadcast::Receiver<NiriState>,
-    ) -> Self {
-        // Spawn a task that will update workspaces when compositor's state has changed
-        cx.spawn(async move |widget, cx| {
-            loop {
-                if let Ok(state) = receiver.recv().await {
-                    widget
-                        .update(cx, |widget, cx| {
-                            let mut state: Vec<Workspace> = state
-                                .workspaces
-                                .values()
-                                .filter(|workspace| {
-                                    workspace.output.as_ref().is_some_and(
-                                        |output| *output == widget.output,
-                                    )
-                                })
-                                .map(|workspace| Workspace {
-                                    idx: workspace.idx,
-                                    is_active: workspace.is_active,
-                                })
-                                .collect();
+    pub fn new(cx: &mut Context<Self>, output: String) -> Self {
+        let subscription = cx.observe_global::<NiriState>(|widget, cx| {
+            let mut state: Vec<Workspace> = cx
+                .global::<NiriState>()
+                .workspaces
+                .values()
+                .filter(|workspace| {
+                    workspace
+                        .output
+                        .as_ref()
+                        .is_some_and(|output| *output == widget.output)
+                })
+                .map(|workspace| Workspace {
+                    idx: workspace.idx,
+                    is_active: workspace.is_active,
+                })
+                .collect();
 
-                            state.sort_by_key(|workspace| workspace.idx);
+            state.sort_by_key(|workspace| workspace.idx);
 
-                            widget.state = state;
+            widget.state = state;
 
-                            cx.notify();
-                        })
-                        .unwrap();
-                }
-            }
-        })
-        .detach();
+            cx.notify();
+        });
 
         Self {
             output,
             state: Vec::default(),
+            subscription,
         }
     }
 }

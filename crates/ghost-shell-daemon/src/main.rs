@@ -11,6 +11,9 @@ use gpui::App;
 /// Initializes gpui-component components using `gpui_component`,
 /// required for building UI compontens.
 ///
+/// Initializes niri ipc client and event stream,
+/// required niri related widgets to send events to niri and also receive niri state over event stream.
+///
 /// Initializes shell application itself, which loads bars and initializes all widgets.
 ///
 fn main() {
@@ -20,6 +23,8 @@ fn main() {
     app.run(|cx: &mut App| {
         gpui_tokio::init(cx);
         gpui_component::init(cx);
+
+        ghost_shell_niri::init(cx);
 
         if let Err(err) = ghost_shell_app::init(cx) {
             eprintln!("App initialization failed {err:#}");

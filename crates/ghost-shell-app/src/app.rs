@@ -4,29 +4,20 @@ use std::{
 };
 
 use anyhow::Result;
+use gpui::{App, accesskit::Uuid, prelude::*};
+use gpui_tokio::Tokio;
+use tokio::sync::mpsc;
+
 use ghost_shell_ipc::{
     protocol::{LauncherAction, Request, Response},
     server::{AsyncRequest, Server},
 };
 use ghost_shell_launcher::Launcher;
-use ghost_shell_niri::NiriClient;
 use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
 use ghost_shell_widget_power::PowerWidget;
 use ghost_shell_widget_workspaces::WorkspacesWidget;
-use gpui::{App, accesskit::Uuid, prelude::*};
-use gpui_tokio::Tokio;
-use tokio::sync::mpsc;
-
-pub struct AppState;
-
-impl AppState {
-    #[must_use]
-    pub fn new() -> Self {
-        Self
-    }
-}
 
 /// Loads app configuration and opens bars on available displays.
 ///
@@ -37,12 +28,6 @@ pub fn init(cx: &mut App) -> Result<()> {
     let config = ghost_shell_config::load()
         .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
         .unwrap_or_default();
-
-    let niri_ipc_client =
-        Tokio::handle(cx).block_on(NiriClient::new()).unwrap();
-    let niri_event_reader =
-        Tokio::handle(cx).block_on(niri_ipc_client.into_event_reader());
-    let niri_event_receiver = niri_event_reader.subscribe();
 
     let (request_sender, mut request_receiver) =
         mpsc::channel::<AsyncRequest>(32);
@@ -56,7 +41,7 @@ pub fn init(cx: &mut App) -> Result<()> {
     let menu_widget = cx.new(|_cx| MenuWidget {});
     let power_widget = cx.new(|_cx| PowerWidget {});
     let clock_widget = cx.new(|cx| ClockWidget::new(config.clock.clone(), cx));
-    let focus_widget = cx.new(|cx| FocusWidget::new(cx, niri_event_receiver));
+    let focus_widget = cx.new(|cx| FocusWidget::new(cx));
 
     for (output_name, bar_config) in config.bars {
         if let Some(display) = cx.displays().into_iter().find(|display| {
@@ -64,10 +49,8 @@ pub fn init(cx: &mut App) -> Result<()> {
                 Uuid::new_v5(&Uuid::NAMESPACE_DNS, output_name.as_bytes());
             display.uuid().is_ok_and(|uuid| uuid == output_uuid)
         }) {
-            let niri_event_receiver = niri_event_reader.subscribe();
-            let workspaces_widget = cx.new(|cx| {
-                WorkspacesWidget::new(cx, output_name, niri_event_receiver)
-            });
+            let workspaces_widget =
+                cx.new(|cx| WorkspacesWidget::new(cx, output_name));
 
             ghost_shell_bar::open(
                 &display,
@@ -83,7 +66,6 @@ pub fn init(cx: &mut App) -> Result<()> {
         }
     }
 
-    Tokio::spawn(cx, niri_event_reader.run()).detach();
     Tokio::spawn(cx, ipc_server.run()).detach();
 
     let launcher = cx.new(|_| Launcher::new());

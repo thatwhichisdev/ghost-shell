@@ -2357,6 +2357,7 @@ dependencies = [
  "anyhow",
  "ghost-shell-app",
  "ghost-shell-assets",
+ "ghost-shell-niri",
  "gpui",
  "gpui-component",
  "gpui_platform",

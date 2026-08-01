@@ -1,46 +1,35 @@
 use ghost_shell_niri::NiriState;
-use gpui::{Context, SharedString, Window, div, prelude::*};
-use tokio::sync::broadcast;
+use gpui::{Context, SharedString, Subscription, Window, div, prelude::*};
 
 pub struct FocusWidget {
-    title: SharedString,
+    pub title: SharedString,
+
+    #[allow(unused)]
+    subscription: Subscription,
 }
 
 impl FocusWidget {
     #[must_use]
-    pub fn new(
-        cx: &mut Context<Self>,
-        mut receiver: broadcast::Receiver<NiriState>,
-    ) -> Self {
-        // Spawn a task that will update title when focused window changes
-        cx.spawn(async move |focus, cx| {
-            loop {
-                if let Ok(state) = receiver.recv().await {
-                    focus
-                        .update(cx, |clock, cx| {
-                            if let Some(window) = state
-                                .windows
-                                .into_iter()
-                                .find(|window| window.1.is_focused == true)
-                            {
-                                clock.title = window
-                                    .1
-                                    .title
-                                    .map(|title| title.to_string())
-                                    .unwrap_or("".to_owned())
-                                    .into();
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let subscription = cx.observe_global::<NiriState>(|widget, cx| {
+            let title: SharedString = cx
+                .global::<NiriState>()
+                .windows
+                .values()
+                .find(|window| window.is_focused)
+                .and_then(|window| window.title.as_deref())
+                .unwrap_or_default()
+                .to_owned()
+                .into();
 
-                                cx.notify();
-                            }
-                        })
-                        .unwrap();
-                }
-            }
-        })
-        .detach();
+            widget.title = title;
+
+            cx.notify();
+        });
 
         Self {
             title: Default::default(),
+            subscription,
         }
     }
 }

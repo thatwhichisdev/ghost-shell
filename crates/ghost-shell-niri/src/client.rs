@@ -1,4 +1,5 @@
 use anyhow::{Context as _, Result};
+use gpui::Global;
 use std::{env, path::PathBuf};
 
 use tokio::{
@@ -7,10 +8,9 @@ use tokio::{
         UnixStream,
         unix::{OwnedReadHalf, OwnedWriteHalf},
     },
-    sync::broadcast::{self, Receiver, Sender},
 };
 
-use crate::protocol::{Event, NiriState, Reply, Request};
+use crate::protocol::{Reply, Request};
 
 pub struct NiriClient {
     reader: BufReader<OwnedReadHalf>,
@@ -19,7 +19,7 @@ pub struct NiriClient {
 
 impl NiriClient {
     #[must_use]
-    pub async fn new() -> Result<Self> {
+    pub async fn try_new() -> Result<Self> {
         let socket_path = env::var_os("NIRI_SOCKET")
             .map(PathBuf::from)
             .context("NIRI_SOCKET is not set; is Ghost running under Niri?")?;
@@ -40,66 +40,30 @@ impl NiriClient {
         })
     }
 
-    pub async fn send(&mut self, request: Request) -> Result<Reply> {
-        let mut buf = serde_json::to_string(&request).unwrap();
+    async fn write(&mut self, request: Request) -> Result<()> {
+        let mut buf = serde_json::to_string(&request)?;
         buf.push('\n');
 
-        self.writer.write_all(buf.as_bytes()).await.unwrap();
+        self.writer.write_all(buf.as_bytes()).await?;
 
-        buf.clear();
-        self.reader.read_line(&mut buf).await.unwrap();
+        Ok(())
+    }
 
-        let reply = serde_json::from_str(&buf).unwrap();
+    async fn read(&mut self) -> Result<Reply> {
+        let mut buf = String::new();
+        self.reader.read_line(&mut buf).await?;
+
+        let reply = serde_json::from_str(&buf)?;
+
         Ok(reply)
     }
 
-    pub async fn into_event_reader(mut self) -> NiriStateReader {
-        let _ = self.send(Request::EventStream).await.unwrap();
-        self.writer.shutdown().await.unwrap();
+    pub async fn send(&mut self, request: Request) -> Result<Reply> {
+        self.write(request).await?;
+        let reply = self.read().await?;
 
-        NiriStateReader::new(self.reader)
+        Ok(reply)
     }
 }
 
-pub struct NiriStateReader {
-    reader: BufReader<OwnedReadHalf>,
-    sender: Sender<NiriState>,
-    state: NiriState,
-}
-
-impl NiriStateReader {
-    #[must_use]
-    pub fn new(reader: BufReader<OwnedReadHalf>) -> Self {
-        let (sender, _) = broadcast::channel(256);
-        Self {
-            reader,
-            sender,
-            state: NiriState::default(),
-        }
-    }
-
-    pub fn subscribe(&self) -> Receiver<NiriState> {
-        self.sender.subscribe()
-    }
-
-    pub async fn read_events(&mut self) -> Result<Event> {
-        let mut buf = String::new();
-        self.reader.read_line(&mut buf).await.unwrap();
-
-        serde_json::from_str(&buf).map_err(|err| err.into())
-    }
-
-    pub async fn run(mut self) {
-        loop {
-            match self.read_events().await {
-                Ok(event) => {
-                    self.state.update(event);
-                    self.sender.send(self.state.clone()).unwrap();
-                }
-                Err(err) => {
-                    eprintln!("failed to process niri event {err:?}");
-                }
-            }
-        }
-    }
-}
+impl Global for NiriClient {}
