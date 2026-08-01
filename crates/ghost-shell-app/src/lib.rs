@@ -1,3 +1,65 @@
 pub mod app;
 
 pub use app::*;
+
+use std::collections::HashMap;
+
+use gpui::{App, DisplayId, Entity, accesskit::Uuid, prelude::*};
+
+use ghost_shell_bar::{Bar, Widgets};
+use ghost_shell_launcher::Launcher;
+use ghost_shell_widget_clock::ClockWidget;
+use ghost_shell_widget_focus::FocusWidget;
+use ghost_shell_widget_menu::MenuWidget;
+use ghost_shell_widget_power::PowerWidget;
+use ghost_shell_widget_workspaces::WorkspacesWidget;
+
+/// Loads app configuration and opens bars on available displays.
+///
+pub fn init(cx: &mut App) {
+    let config = ghost_shell_config::load()
+        .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
+        .unwrap_or_default();
+
+    let launcher = cx.new(|_cx| Launcher::new());
+    let menu = cx.new(|_cx| MenuWidget {});
+    let power = cx.new(|_cx| PowerWidget {});
+    let clock = cx.new(|cx| ClockWidget::new(config.clock.clone(), cx));
+    let focus = cx.new(|cx| FocusWidget::new(cx));
+
+    let bars: HashMap<DisplayId, Entity<Bar>> = config
+        .bars
+        .into_iter()
+        .map(|(output, bar_config)| {
+            let id = Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes());
+            let display = cx
+                .displays()
+                .iter()
+                .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
+                .cloned()
+                .unwrap(); // for now display should be always present in the config, will change later
+
+            let workspaces = cx.new(|cx| WorkspacesWidget::new(cx, id));
+            let widgets = Widgets {
+                menu: menu.clone(),
+                workspaces,
+                focus: focus.clone(),
+                power: power.clone(),
+                clock: clock.clone(),
+            };
+
+            let bar = Bar::new(cx, bar_config, widgets, display.clone());
+
+            bar.update(cx, |bar, cx| {
+                bar.open(cx);
+            });
+
+            (display.id(), bar)
+        })
+        .collect();
+
+    let shell = GhostShell::new(launcher, bars);
+
+    cx.set_global(shell);
+    cx.activate(true);
+}

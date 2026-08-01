@@ -2357,6 +2357,7 @@ dependencies = [
  "anyhow",
  "ghost-shell-app",
  "ghost-shell-assets",
+ "ghost-shell-ipc",
  "ghost-shell-niri",
  "gpui",
  "gpui-component",
@@ -2369,6 +2370,8 @@ name = "ghost-shell-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "gpui",
+ "gpui_tokio",
  "serde",
  "serde_json",
  "tokio",
@@ -2379,6 +2382,8 @@ name = "ghost-shell-launcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghost-shell-ipc",
+ "ghost-shell-niri",
  "gpui",
  "gpui-component",
 ]

@@ -1,8 +1,11 @@
 use ghost_shell_niri::NiriState;
-use gpui::{Context, Subscription, Window, div, prelude::*, px, rgba, svg};
+use gpui::{
+    Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, rgba,
+    svg,
+};
 
 pub struct WorkspacesWidget {
-    output: String,
+    display_uuid: Uuid,
 
     state: Vec<Workspace>,
 
@@ -17,17 +20,20 @@ struct Workspace {
 
 impl WorkspacesWidget {
     #[must_use]
-    pub fn new(cx: &mut Context<Self>, output: String) -> Self {
+    pub fn new(cx: &mut Context<Self>, display_uuid: Uuid) -> Self {
         let subscription = cx.observe_global::<NiriState>(|widget, cx| {
             let mut state: Vec<Workspace> = cx
                 .global::<NiriState>()
                 .workspaces
                 .values()
                 .filter(|workspace| {
-                    workspace
-                        .output
-                        .as_ref()
-                        .is_some_and(|output| *output == widget.output)
+                    let output_name = workspace.output.as_ref().unwrap();
+                    let output_uuid = Uuid::new_v5(
+                        &Uuid::NAMESPACE_DNS,
+                        output_name.as_bytes(),
+                    );
+
+                    output_uuid == widget.display_uuid
                 })
                 .map(|workspace| Workspace {
                     idx: workspace.idx,
@@ -43,7 +49,7 @@ impl WorkspacesWidget {
         });
 
         Self {
-            output,
+            display_uuid,
             state: Vec::default(),
             subscription,
         }

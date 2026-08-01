@@ -13,6 +13,8 @@ use crate::{Event, Reply, Request};
 
 pub struct NiriStream {
     reader: BufReader<OwnedReadHalf>,
+
+    #[allow(unused)]
     writer: OwnedWriteHalf,
 }
 

@@ -1,5 +1,3 @@
-use gpui::App;
-
 /// Entry point for the daemon.
 ///
 /// Initializes shell application assets, required to load *.svg icons.
@@ -20,17 +18,12 @@ fn main() {
     let app = gpui_platform::application()
         .with_assets(ghost_shell_assets::GhostShellAssets);
 
-    app.run(|cx: &mut App| {
+    app.run(|cx: &mut gpui::App| {
         gpui_tokio::init(cx);
         gpui_component::init(cx);
 
         ghost_shell_niri::init(cx);
-
-        if let Err(err) = ghost_shell_app::init(cx) {
-            eprintln!("App initialization failed {err:#}");
-            cx.quit();
-        } else {
-            cx.activate(true);
-        }
+        ghost_shell_ipc::init(cx);
+        ghost_shell_app::init(cx);
     });
 }
