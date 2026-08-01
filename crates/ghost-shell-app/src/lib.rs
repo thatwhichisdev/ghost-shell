@@ -4,7 +4,7 @@ pub use app::*;
 
 use std::collections::HashMap;
 
-use gpui::{App, DisplayId, Entity, accesskit::Uuid, prelude::*};
+use gpui::{App, Entity, accesskit::Uuid, prelude::*};
 
 use ghost_shell_bar::{Bar, Widgets};
 use ghost_shell_launcher::Launcher;
@@ -30,7 +30,7 @@ pub fn init(cx: &mut App) {
     let clock = cx.new(|cx| ClockWidget::new(config.clock.clone(), cx));
     let focus = cx.new(FocusWidget::new);
 
-    let bars: HashMap<DisplayId, Entity<Bar>> = config
+    let bars: HashMap<Uuid, Entity<Bar>> = config
         .bars
         .into_iter()
         .map(|(output, bar_config)| {
@@ -57,7 +57,7 @@ pub fn init(cx: &mut App) {
                 bar.open(cx);
             });
 
-            (display.id(), bar)
+            (display.uuid().unwrap(), bar)
         })
         .collect();
 
