@@ -7,7 +7,6 @@ pub use protocol::*;
 pub use server::*;
 
 use gpui::{App, Global};
-use gpui_tokio::Tokio;
 use std::{env, path::PathBuf};
 use tokio::sync::mpsc::{self, Receiver};
 
@@ -25,9 +24,7 @@ pub fn init(cx: &mut App) {
         .unwrap()
         .join("ghost-shell-daemon");
 
-    let server = Tokio::handle(cx)
-        .block_on(Server::bind(socket_path, sender))
-        .unwrap();
+    let server = Server::bind(socket_path, sender).unwrap();
 
     gpui_tokio::Tokio::spawn(cx, server.run()).detach();
 

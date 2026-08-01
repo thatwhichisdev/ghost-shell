@@ -27,13 +27,12 @@ pub struct Server {
 struct Connection {
     #[allow(unused)]
     address: SocketAddr,
-    request_sender: mpsc::Sender<AsyncRequest>,
     stream: UnixStream,
+    request_sender: mpsc::Sender<AsyncRequest>,
 }
 
 impl Server {
-    #[must_use]
-    pub async fn bind(
+    pub fn bind(
         path: impl AsRef<Path>,
         request_sender: mpsc::Sender<AsyncRequest>,
     ) -> Result<Self> {
@@ -110,8 +109,8 @@ impl Connection {
     pub async fn handle(self) -> Result<()> {
         let Self {
             address,
-            request_sender,
             stream,
+            request_sender,
         } = self;
 
         let (reader, writer) = stream.into_split();
@@ -175,6 +174,6 @@ impl Drop for Server {
     fn drop(&mut self) {
         if let Err(err) = std::fs::remove_file(&self.path) {
             eprintln!("failed to remove IPC socket {err:#}");
-        };
+        }
     }
 }

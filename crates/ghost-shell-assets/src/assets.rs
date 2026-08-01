@@ -8,8 +8,15 @@ use std::borrow::Cow;
 pub struct GhostShellAssets;
 
 impl GhostShellAssets {
+    #[must_use]
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl Default for GhostShellAssets {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -21,7 +28,7 @@ impl AssetSource for GhostShellAssets {
 
         Self::get(path)
             .map(|f| Some(f.data))
-            .ok_or_else(|| anyhow!("could not find asset at path \"{}\"", path))
+            .ok_or_else(|| anyhow!("could not find asset at path \"{path}\""))
     }
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {

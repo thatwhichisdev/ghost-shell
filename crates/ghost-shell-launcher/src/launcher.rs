@@ -26,18 +26,19 @@ impl Launcher {
     pub fn toggle(
         &mut self,
         cx: &mut Context<Self>,
-        display: Rc<dyn PlatformDisplay>,
+        display: &Rc<dyn PlatformDisplay>,
     ) -> Result<()> {
-        match self.window.is_some() {
-            true => self.close(cx),
-            false => self.open(cx, display),
+        if self.window.is_some() {
+            self.close(cx)
+        } else {
+            self.open(cx, display)
         }
     }
 
     pub fn open(
         &mut self,
         cx: &mut Context<Self>,
-        display: Rc<dyn PlatformDisplay>,
+        display: &Rc<dyn PlatformDisplay>,
     ) -> Result<()> {
         let bounds = Bounds::centered(
             Some(display.id()),
@@ -93,6 +94,12 @@ impl Launcher {
     }
 }
 
+impl Default for Launcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Render for LauncherView {
     fn render(
         &mut self,
@@ -107,9 +114,9 @@ impl Render for LauncherView {
             .justify_center()
             .rounded_lg()
             .border_1()
-            .border_color(rgb(0x444444))
-            .bg(rgb(0x181818))
-            .text_color(rgb(0xffffff))
+            .border_color(rgb(0x44_4444))
+            .bg(rgb(0x18_1818))
+            .text_color(rgb(0xff_ffff))
             .child("Ghost Launcher")
     }
 }

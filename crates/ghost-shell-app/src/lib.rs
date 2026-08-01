@@ -16,16 +16,19 @@ use ghost_shell_widget_workspaces::WorkspacesWidget;
 
 /// Loads app configuration and opens bars on available displays.
 ///
+/// # Panics
+/// Panics when app initialization fails.
+///
 pub fn init(cx: &mut App) {
     let config = ghost_shell_config::load()
         .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
         .unwrap_or_default();
 
-    let launcher = cx.new(|_cx| Launcher::new());
+    let launcher = cx.new(|_cx| Launcher::default());
     let menu = cx.new(|_cx| MenuWidget {});
     let power = cx.new(|_cx| PowerWidget {});
     let clock = cx.new(|cx| ClockWidget::new(config.clock.clone(), cx));
-    let focus = cx.new(|cx| FocusWidget::new(cx));
+    let focus = cx.new(FocusWidget::new);
 
     let bars: HashMap<DisplayId, Entity<Bar>> = config
         .bars

@@ -19,7 +19,6 @@ pub struct NiriStream {
 }
 
 impl NiriStream {
-    #[must_use]
     pub async fn try_new() -> Result<Self> {
         let socket_path = env::var_os("NIRI_SOCKET")
             .map(PathBuf::from)

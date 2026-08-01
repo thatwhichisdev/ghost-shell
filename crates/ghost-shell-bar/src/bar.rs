@@ -46,16 +46,19 @@ impl Bar {
     ) -> Entity<Self> {
         let view = cx.new(|_| BarView { widgets });
 
-        let bar = cx.new(|_| Self {
+        cx.new(|_| Self {
             config,
             view,
             display,
             window: None,
-        });
-
-        bar
+        })
     }
 
+    /// Opens bar and draws it's view
+    ///
+    /// # Panics
+    /// Panics with fails to open the bar.
+    ///
     pub fn open(&mut self, cx: &mut App) {
         let window_options = {
             let app_id: String = "dev.thatwhichis.ghost-shell".to_string();

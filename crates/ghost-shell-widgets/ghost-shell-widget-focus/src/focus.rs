@@ -28,7 +28,7 @@ impl FocusWidget {
         });
 
         Self {
-            title: Default::default(),
+            title: SharedString::default(),
             subscription,
         }
     }
