@@ -57,9 +57,14 @@ impl NiriStream {
         }
     }
 
-    pub async fn read(&mut self) -> Result<Event> {
+    pub async fn read(&mut self) -> Result<Option<Event>> {
         let mut buf = String::new();
-        self.reader.read_line(&mut buf).await?;
+        let len = self.reader.read_line(&mut buf).await?;
+
+        // if len is zero that means that stream is closed
+        if len == 0 {
+            return Ok(None);
+        }
 
         serde_json::from_str(&buf).map_err(Into::into)
     }

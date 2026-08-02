@@ -28,8 +28,18 @@ pub fn init(cx: &mut App) {
     // Spawn niri stream reader task on tokio runtime
     gpui_tokio::Tokio::spawn(cx, async move {
         loop {
-            if let Ok(event) = niri_stream.read().await {
-                event_sender.send(event).await.unwrap();
+            match niri_stream.read().await {
+                Ok(Some(event)) => {
+                    event_sender.send(event).await.unwrap();
+                }
+                Ok(None) => {
+                    eprintln!("Niri event stream closed");
+                    break;
+                }
+                Err(err) => {
+                    eprintln!("Failed to read niri event {err:#}");
+                    continue;
+                }
             }
         }
     })
