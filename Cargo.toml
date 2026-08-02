@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/ghost-shell-actions",
   "crates/ghost-shell-app",
   "crates/ghost-shell-assets",
   "crates/ghost-shell-bar",
@@ -30,6 +31,7 @@ repository = "https://github.com/thatwhichisdev/ghost-shell"
 publish = false
 
 [workspace.dependencies]
+ghost-shell-actions = { path = "crates/ghost-shell-actions" }
 ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-assets = { path = "crates/ghost-shell-assets" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }

@@ -7,6 +7,8 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+ghost-shell-actions.workspace = true
+
 gpui.workspace = true
 gpui_tokio.workspace = true
 

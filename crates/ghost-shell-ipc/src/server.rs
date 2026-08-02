@@ -32,7 +32,7 @@ struct Connection {
 }
 
 impl Server {
-    pub fn bind(
+    pub async fn bind(
         path: impl AsRef<Path>,
         request_sender: mpsc::Sender<AsyncRequest>,
     ) -> Result<Self> {

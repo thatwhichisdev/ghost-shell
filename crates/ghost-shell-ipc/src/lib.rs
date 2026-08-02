@@ -6,28 +6,42 @@ pub use client::*;
 pub use protocol::*;
 pub use server::*;
 
-use gpui::{App, Global};
 use std::{env, path::PathBuf};
-use tokio::sync::mpsc::{self, Receiver};
 
-pub struct RequestHandler {
-    pub receiver: Receiver<AsyncRequest>,
-}
+use gpui::App;
+use tokio::sync::mpsc::{self};
 
-impl Global for RequestHandler {}
+use ghost_shell_actions::ToggleLauncher;
 
 pub fn init(cx: &mut App) {
-    let (sender, receiver) = mpsc::channel::<AsyncRequest>(256);
+    let (sender, mut receiver) = mpsc::channel::<AsyncRequest>(256);
 
     let socket_path = env::var_os("XDG_RUNTIME_DIR")
         .map(PathBuf::from)
         .unwrap()
         .join("ghost-shell-daemon");
 
-    let server = Server::bind(socket_path, sender).unwrap();
+    let server = gpui_tokio::Tokio::handle(cx)
+        .block_on(Server::bind(socket_path, sender))
+        .unwrap();
 
     gpui_tokio::Tokio::spawn(cx, server.run()).detach();
 
-    let request_handler = RequestHandler { receiver };
-    cx.set_global(request_handler);
+    cx.spawn(async move |cx| {
+        while let Some(request) = receiver.recv().await {
+            let AsyncRequest { request, reply } = request;
+
+            cx.update(|cx| {
+                let action = match request {
+                    Request::Launcher {
+                        action: LauncherAction::Toggle,
+                    } => ToggleLauncher,
+                };
+                cx.dispatch_action(&action);
+            });
+
+            let _ = reply.send(Ok(Response::Handled));
+        }
+    })
+    .detach();
 }

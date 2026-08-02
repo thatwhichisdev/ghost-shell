@@ -7,10 +7,12 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+ghost-shell-actions.workspace = true
 ghost-shell-bar.workspace = true
 ghost-shell-config.workspace = true
 ghost-shell-ipc.workspace = true
 ghost-shell-launcher.workspace = true
+ghost-shell-lockscreen.workspace = true
 ghost-shell-niri.workspace = true
 
 ghost-shell-widget-audio.workspace = true

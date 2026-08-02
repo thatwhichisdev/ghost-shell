@@ -1,0 +1,10 @@
+[package]
+name = "ghost-shell-actions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+gpui.workspace = true

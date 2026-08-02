@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use anyhow::{Context as _, Result};
 use gpui::{
-    AnyWindowHandle, Bounds, Context, Global, IntoElement, PlatformDisplay,
-    Render, Window, WindowBackgroundAppearance, WindowBounds, WindowKind,
-    WindowOptions, div,
+    AnyWindowHandle, App, Bounds, Context, Global, IntoElement,
+    PlatformDisplay, Render, Window, WindowBackgroundAppearance, WindowBounds,
+    WindowKind, WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
     px, rgb, size,
@@ -25,7 +25,7 @@ impl Launcher {
 
     pub fn toggle(
         &mut self,
-        cx: &mut Context<Self>,
+        cx: &mut App,
         display: &Rc<dyn PlatformDisplay>,
     ) -> Result<()> {
         if self.window.is_some() {
@@ -37,7 +37,7 @@ impl Launcher {
 
     pub fn open(
         &mut self,
-        cx: &mut Context<Self>,
+        cx: &mut App,
         display: &Rc<dyn PlatformDisplay>,
     ) -> Result<()> {
         let bounds = Bounds::centered(
@@ -79,7 +79,7 @@ impl Launcher {
         Ok(())
     }
 
-    pub fn close(&mut self, cx: &mut Context<Self>) -> Result<()> {
+    pub fn close(&mut self, cx: &mut App) -> Result<()> {
         let Some(handle) = self.window.take() else {
             return Ok(());
         };

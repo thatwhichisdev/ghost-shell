@@ -6,8 +6,8 @@ use gpui::{Entity, Global, accesskit::Uuid};
 use ghost_shell_launcher::Launcher;
 
 pub struct GhostShell {
-    launcher: Entity<Launcher>,
-    bars: HashMap<Uuid, Entity<Bar>>,
+    pub launcher: Entity<Launcher>,
+    pub bars: HashMap<Uuid, Entity<Bar>>,
 }
 
 impl GhostShell {

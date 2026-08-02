@@ -1,6 +1,8 @@
 pub mod app;
 
 pub use app::*;
+use ghost_shell_actions::ToggleLauncher;
+use ghost_shell_niri::NiriState;
 
 use std::collections::HashMap;
 
@@ -62,7 +64,34 @@ pub fn init(cx: &mut App) {
         .collect();
 
     let shell = GhostShell::new(launcher, bars);
-
     cx.set_global(shell);
+
+    cx.on_action(|_: &ToggleLauncher, cx| {
+        cx.update_global::<GhostShell, _>(|shell, cx| {
+            cx.update_entity::<Launcher, _>(&shell.launcher, |launcher, cx| {
+                let niri_state = cx.global::<NiriState>();
+                let id = niri_state
+                    .clone()
+                    .workspaces
+                    .into_values()
+                    .find(|workspace| workspace.is_focused == true)
+                    .and_then(|workspace| workspace.output)
+                    .map(|output| {
+                        Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
+                    })
+                    .unwrap(); // for now panic, but ideally we should toggle launcher on primary output if nothing is focused
+
+                let display = cx
+                    .displays()
+                    .iter()
+                    .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
+                    .cloned()
+                    .unwrap(); // for now display should be always present in the config, will change later
+
+                let _ = launcher.toggle(cx, &display);
+            });
+        });
+    });
+
     cx.activate(true);
 }

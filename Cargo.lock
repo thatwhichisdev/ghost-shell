@@ -2279,14 +2279,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghost-shell-actions"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+]
+
+[[package]]
 name = "ghost-shell-app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghost-shell-actions",
  "ghost-shell-bar",
  "ghost-shell-config",
  "ghost-shell-ipc",
  "ghost-shell-launcher",
+ "ghost-shell-lockscreen",
  "ghost-shell-niri",
  "ghost-shell-widget-audio",
  "ghost-shell-widget-clock",
@@ -2370,6 +2379,7 @@ name = "ghost-shell-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghost-shell-actions",
  "gpui",
  "gpui_tokio",
  "serde",
