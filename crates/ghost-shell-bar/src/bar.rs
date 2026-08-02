@@ -15,7 +15,7 @@ use gpui::{
     prelude::*,
     px,
 };
-use gpui_component::{Root, ThemeMode};
+use gpui_component::Root;
 
 pub struct Bar {
     config: BarConfig,
@@ -99,12 +99,6 @@ impl Bar {
 
         let handle = cx
             .open_window(window_options, |window, cx| {
-                gpui_component::theme::Theme::change(
-                    ThemeMode::Dark,
-                    Some(window),
-                    cx,
-                );
-
                 cx.new(|cx| {
                     Root::new(self.view.clone(), window, cx).bordered(false)
                 })

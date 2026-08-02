@@ -2,6 +2,7 @@ pub mod app;
 
 pub use app::*;
 use ghost_shell_actions::ToggleLauncher;
+use ghost_shell_config::AppConfig;
 use ghost_shell_niri::NiriState;
 
 use std::collections::HashMap;
@@ -22,14 +23,12 @@ use ghost_shell_widget_workspaces::WorkspacesWidget;
 /// Panics when app initialization fails.
 ///
 pub fn init(cx: &mut App) {
-    let config = ghost_shell_config::load()
-        .inspect_err(|e| eprintln!("Failed to load config {e:?}"))
-        .unwrap_or_default();
+    let config = cx.global::<AppConfig>().clone();
 
     let launcher = cx.new(|_cx| Launcher::default());
     let menu = cx.new(|_cx| MenuWidget {});
     let power = cx.new(|_cx| PowerWidget {});
-    let clock = cx.new(|cx| ClockWidget::new(config.clock.clone(), cx));
+    let clock = cx.new(ClockWidget::new);
     let focus = cx.new(FocusWidget::new);
 
     let bars: HashMap<Uuid, Entity<Bar>> = config

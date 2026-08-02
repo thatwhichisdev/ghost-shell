@@ -3,7 +3,7 @@ use std::time::Duration;
 use gpui::{Context, SharedString, Window, div, prelude::*, px};
 use jiff::Zoned;
 
-use ghost_shell_config::ClockConfig;
+use ghost_shell_config::AppConfig;
 
 pub struct ClockWidget {
     time: SharedString,
@@ -11,7 +11,8 @@ pub struct ClockWidget {
 
 impl ClockWidget {
     #[must_use]
-    pub fn new(config: ClockConfig, cx: &mut Context<Self>) -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let config = cx.global::<AppConfig>().clock.clone();
         let time = formatted_time(&config.format);
 
         // Spawn a task that will update clock's state every 60 seconds

@@ -2356,6 +2356,7 @@ version = "0.1.0"
 dependencies = [
  "config",
  "directories",
+ "gpui",
  "serde",
 ]
 
@@ -2366,8 +2367,10 @@ dependencies = [
  "anyhow",
  "ghost-shell-app",
  "ghost-shell-assets",
+ "ghost-shell-config",
  "ghost-shell-ipc",
  "ghost-shell-niri",
+ "ghost-shell-theme",
  "gpui",
  "gpui-component",
  "gpui_platform",
@@ -2412,6 +2415,15 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "ghost-shell-theme"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-config",
+ "gpui",
+ "gpui-component",
 ]
 
 [[package]]

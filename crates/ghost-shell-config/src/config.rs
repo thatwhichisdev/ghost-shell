@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
+use gpui::Global;
 use serde::Deserialize;
 
 #[derive(Default, Debug, Clone, Deserialize)]
@@ -14,6 +15,8 @@ pub struct AppConfig {
 
     pub clock: ClockConfig,
 }
+
+impl Global for AppConfig {}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]

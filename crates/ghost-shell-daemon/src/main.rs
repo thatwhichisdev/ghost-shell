@@ -22,6 +22,8 @@ fn main() {
         gpui_tokio::init(cx);
         gpui_component::init(cx);
 
+        ghost_shell_config::init(cx);
+        ghost_shell_theme::init(cx);
         ghost_shell_niri::init(cx);
         ghost_shell_ipc::init(cx);
         ghost_shell_app::init(cx);

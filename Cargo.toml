@@ -12,6 +12,7 @@ members = [
   "crates/ghost-shell-launcher",
   "crates/ghost-shell-lockscreen",
   "crates/ghost-shell-niri",
+  "crates/ghost-shell-theme",
   "crates/ghost-shell-widgets/ghost-shell-widget-audio",
   "crates/ghost-shell-widgets/ghost-shell-widget-clock",
   "crates/ghost-shell-widgets/ghost-shell-widget-focus",
@@ -40,6 +41,7 @@ ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
 ghost-shell-niri = { path = "crates/ghost-shell-niri" }
+ghost-shell-theme = { path = "crates/ghost-shell-theme" }
 
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
