@@ -3,14 +3,14 @@ use std::rc::Rc;
 use anyhow::{Context as _, Result};
 use gpui::{
     AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Pixels,
-    PlatformDisplay, Render, Window, WindowBackgroundAppearance, WindowBounds,
-    WindowKind, WindowOptions, div,
+    PlatformDisplay, Render, StyleRefinement, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
-    px, size,
+    px, rgb, size,
 };
 use gpui_component::{
-    IndexPath, Root, Sizable,
+    ActiveTheme as _, IndexPath, Root, Sizable, StyledExt,
     input::{Input, InputState},
     list::{List, ListDelegate, ListItem, ListState},
 };
@@ -51,7 +51,7 @@ impl Launcher {
     ) -> Result<()> {
         let bounds = Bounds::centered(
             Some(display.id()),
-            size(px(400.0), px(400.0)),
+            size(px(540.0), px(450.0)),
             cx,
         );
 
@@ -80,7 +80,7 @@ impl Launcher {
 
         let handle = cx.open_window(window_options, |window, cx| {
             let view = cx.new(|cx| LauncherView::new(window, cx));
-            cx.new(|cx| Root::new(view, window, cx))
+            cx.new(|cx| Root::new(view, window, cx).bordered(false))
         })?;
 
         self.window = Some(handle.into());
@@ -131,16 +131,17 @@ impl Render for LauncherView {
     fn render(
         &mut self,
         _window: &mut Window,
-        _cx: &mut Context<Self>,
+        cx: &mut Context<Self>,
     ) -> impl IntoElement {
         div()
             .id("launcher")
             .size_full()
-            .overflow_hidden()
+            .rounded_lg()
             .flex()
             .flex_col()
-            .rounded_lg()
-            .border_1()
+            .bg(rgb(0x00_0000))
+            .overflow_hidden()
+            .text_color(cx.theme().colors.foreground)
             .child(
                 div()
                     .id("launcher-input")
@@ -182,8 +183,30 @@ impl ListDelegate for ApplicationListDelegate {
         _cx: &mut Context<gpui_component::list::ListState<Self>>,
     ) -> Option<Self::Item> {
         let app = self.apps.get(index.row)?;
+        let content = div()
+            .w_full()
+            .h_full()
+            .flex()
+            .flex_col()
+            .justify_start()
+            .child(
+                div()
+                    .w_full()
+                    .font_bold()
+                    .truncate()
+                    .child(app.name.clone()),
+            )
+            .child(
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .text_sm()
+                    .truncate()
+                    .child(app.desc.clone().unwrap_or_default()),
+            );
+
         let item = ListItem::new(index)
-            .child(app.name.clone())
+            .child(content)
             .selected(self.index == Some(index));
 
         Some(item)
