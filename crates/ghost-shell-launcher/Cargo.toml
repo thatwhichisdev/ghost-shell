@@ -14,3 +14,7 @@ ghost-shell-ipc.workspace = true
 ghost-shell-niri.workspace = true
 
 anyhow.workspace = true
+fff-search.workspace = true
+freedesktop-desktop-entry.workspace = true
+freedesktop-icons.workspace = true
+neo_frizbee.workspace = true

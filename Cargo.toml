@@ -92,7 +92,11 @@ tokio = {
 
 anyhow = "1.0.104"
 clap = "4.6.4"
+fff-search = "0.10.1"
+freedesktop-desktop-entry = "0.8.1"
+freedesktop-icons = "0.4.0"
 jiff = "0.2.35"
+neo_frizbee = "0.11.0"
 rust-embed = "8.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.151"

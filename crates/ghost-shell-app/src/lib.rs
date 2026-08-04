@@ -25,7 +25,7 @@ use ghost_shell_widget_workspaces::WorkspacesWidget;
 pub fn init(cx: &mut App) {
     let config = cx.global::<AppConfig>().clone();
 
-    let launcher = cx.new(|_cx| Launcher::default());
+    let launcher = cx.new(|_cx| Launcher::new());
     let menu = cx.new(|_cx| MenuWidget {});
     let power = cx.new(|_cx| PowerWidget {});
     let clock = cx.new(ClockWidget::new);

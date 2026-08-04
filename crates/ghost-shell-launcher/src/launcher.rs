@@ -2,20 +2,29 @@ use std::rc::Rc;
 
 use anyhow::{Context as _, Result};
 use gpui::{
-    AnyWindowHandle, App, Bounds, Context, Global, IntoElement,
+    AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Pixels,
     PlatformDisplay, Render, Window, WindowBackgroundAppearance, WindowBounds,
     WindowKind, WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
-    px, rgb, size,
+    px, size,
 };
-use gpui_component::Root;
+use gpui_component::{
+    IndexPath, Root, Sizable,
+    input::{Input, InputState},
+    list::{List, ListDelegate, ListItem, ListState},
+};
+
+use crate::{Application, applications};
 
 pub struct Launcher {
     window: Option<AnyWindowHandle>,
 }
 
-struct LauncherView;
+struct LauncherView {
+    list: Entity<ListState<ApplicationListDelegate>>,
+    query: Entity<InputState>,
+}
 
 impl Launcher {
     #[must_use]
@@ -70,7 +79,7 @@ impl Launcher {
         };
 
         let handle = cx.open_window(window_options, |window, cx| {
-            let view = cx.new(|_| LauncherView);
+            let view = cx.new(|cx| LauncherView::new(window, cx));
             cx.new(|cx| Root::new(view, window, cx))
         })?;
 
@@ -94,9 +103,27 @@ impl Launcher {
     }
 }
 
-impl Default for Launcher {
-    fn default() -> Self {
-        Self::new()
+impl LauncherView {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let apps = applications::load();
+
+        let list = cx.new(|cx| {
+            ListState::new(
+                ApplicationListDelegate { apps, index: None },
+                window,
+                cx,
+            )
+        });
+
+        let query = cx.new(|cx| {
+            InputState::new(window, cx).placeholder("Search applications...")
+        });
+
+        query.update(cx, |query, cx| {
+            query.focus(window, cx);
+        });
+
+        Self { list, query }
     }
 }
 
@@ -109,16 +136,66 @@ impl Render for LauncherView {
         div()
             .id("launcher")
             .size_full()
+            .overflow_hidden()
             .flex()
-            .items_center()
-            .justify_center()
+            .flex_col()
             .rounded_lg()
             .border_1()
-            .border_color(rgb(0x44_4444))
-            .bg(rgb(0x18_1818))
-            .text_color(rgb(0xff_ffff))
-            .child("Ghost Launcher")
+            .child(
+                div()
+                    .id("launcher-input")
+                    .w_full()
+                    .p_3()
+                    .border_b_1()
+                    .child(Input::new(&self.query).large().cleanable(true)),
+            )
+            .child(
+                div()
+                    .id("launcher-results")
+                    .w_full()
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_hidden()
+                    .child(List::new(&self.list).size_full()),
+            )
     }
 }
 
 impl Global for Launcher {}
+
+struct ApplicationListDelegate {
+    apps: Vec<Application>,
+    index: Option<IndexPath>,
+}
+
+impl ListDelegate for ApplicationListDelegate {
+    type Item = ListItem;
+
+    fn items_count(&self, _section: usize, _cx: &App) -> usize {
+        self.apps.len()
+    }
+
+    fn render_item(
+        &mut self,
+        index: IndexPath,
+        _window: &mut Window,
+        _cx: &mut Context<gpui_component::list::ListState<Self>>,
+    ) -> Option<Self::Item> {
+        let app = self.apps.get(index.row)?;
+        let item = ListItem::new(index)
+            .child(app.name.clone())
+            .selected(self.index == Some(index));
+
+        Some(item)
+    }
+
+    fn set_selected_index(
+        &mut self,
+        index: Option<IndexPath>,
+        _window: &mut Window,
+        cx: &mut Context<gpui_component::list::ListState<Self>>,
+    ) {
+        self.index = index;
+        cx.notify();
+    }
+}
