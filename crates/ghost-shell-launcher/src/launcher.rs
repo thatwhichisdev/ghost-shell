@@ -1,10 +1,10 @@
-use std::rc::Rc;
-
 use anyhow::{Context as _, Result};
 use gpui::{
-    AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Pixels,
-    PlatformDisplay, Render, StyleRefinement, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
+    AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Render,
+    Window, WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind,
+    WindowOptions,
+    accesskit::Uuid,
+    div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
     px, rgb, size,
@@ -15,40 +15,45 @@ use gpui_component::{
     list::{List, ListDelegate, ListItem, ListState},
 };
 
-use crate::{Application, applications};
+use crate::{Application, Applications};
+use ghost_shell_niri::NiriState;
 
 pub struct Launcher {
-    window: Option<AnyWindowHandle>,
-}
-
-struct LauncherView {
-    list: Entity<ListState<ApplicationListDelegate>>,
-    query: Entity<InputState>,
+    handle: Option<AnyWindowHandle>,
 }
 
 impl Launcher {
     #[must_use]
     pub fn new() -> Self {
-        Self { window: None }
+        Self { handle: None }
     }
 
-    pub fn toggle(
-        &mut self,
-        cx: &mut App,
-        display: &Rc<dyn PlatformDisplay>,
-    ) -> Result<()> {
-        if self.window.is_some() {
+    pub fn toggle(&mut self, cx: &mut App) -> Result<()> {
+        if self.handle.is_some() {
             self.close(cx)
         } else {
-            self.open(cx, display)
+            self.open(cx)
         }
     }
 
-    pub fn open(
-        &mut self,
-        cx: &mut App,
-        display: &Rc<dyn PlatformDisplay>,
-    ) -> Result<()> {
+    pub fn open(&mut self, cx: &mut App) -> Result<()> {
+        let niri_state = cx.global::<NiriState>();
+        let id = niri_state
+            .clone()
+            .workspaces
+            .into_values()
+            .find(|workspace| workspace.is_focused == true)
+            .and_then(|workspace| workspace.output)
+            .map(|output| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
+            .unwrap(); // for now panic, but ideally we should toggle launcher on primary output if nothing is focused
+
+        let display = cx
+            .displays()
+            .iter()
+            .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
+            .cloned()
+            .unwrap(); // for now display should be always present in the config, will change later
+
         let bounds = Bounds::centered(
             Some(display.id()),
             size(px(540.0), px(450.0)),
@@ -83,13 +88,13 @@ impl Launcher {
             cx.new(|cx| Root::new(view, window, cx).bordered(false))
         })?;
 
-        self.window = Some(handle.into());
+        self.handle = Some(handle.into());
 
         Ok(())
     }
 
     pub fn close(&mut self, cx: &mut App) -> Result<()> {
-        let Some(handle) = self.window.take() else {
+        let Some(handle) = self.handle.take() else {
             return Ok(());
         };
 
@@ -99,24 +104,34 @@ impl Launcher {
             })
             .context("failed to close launcher window")?;
 
+        self.handle = None;
+
         Ok(())
     }
 }
 
+struct LauncherView {
+    list: Entity<ListState<ApplicationListDelegate>>,
+    query: Entity<InputState>,
+}
+
 impl LauncherView {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let apps = applications::load();
-
+        let apps = cx.global::<Applications>().clone();
         let list = cx.new(|cx| {
             ListState::new(
-                ApplicationListDelegate { apps, index: None },
+                ApplicationListDelegate {
+                    apps: apps.items,
+                    index: None,
+                },
                 window,
                 cx,
             )
         });
 
         let query = cx.new(|cx| {
-            InputState::new(window, cx).placeholder("Search applications...")
+            InputState::new(window, cx)
+                .placeholder("Search applications or files")
         });
 
         query.update(cx, |query, cx| {
@@ -135,6 +150,7 @@ impl Render for LauncherView {
     ) -> impl IntoElement {
         div()
             .id("launcher")
+            .key_context("launcher")
             .size_full()
             .rounded_lg()
             .flex()

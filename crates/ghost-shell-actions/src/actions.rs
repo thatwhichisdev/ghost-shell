@@ -1,1 +1,1 @@
-gpui::actions!(ghost_shell, [ToggleLauncher,]);
+gpui::actions!(ghost_shell, [OpenLauncher, CloseLauncher, ToggleLauncher,]);

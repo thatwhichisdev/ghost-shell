@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-#[derive(Debug)]
+use gpui::Global;
+
+#[derive(Debug, Clone)]
 pub struct Application {
     pub id: String,
     pub name: String,
@@ -9,10 +11,16 @@ pub struct Application {
     pub desc: Option<String>,
 }
 
-pub fn load() -> Vec<Application> {
-    let locales = freedesktop_desktop_entry::get_languages_from_env();
+#[derive(Clone)]
+pub struct Applications {
+    pub items: Vec<Application>,
+}
 
-    freedesktop_desktop_entry::desktop_entries(&locales)
+impl Global for Applications {}
+
+pub fn load() -> Applications {
+    let locales = freedesktop_desktop_entry::get_languages_from_env();
+    let apps = freedesktop_desktop_entry::desktop_entries(&locales)
         .into_iter()
         .map(|entry| {
             let id = entry.id().to_string();
@@ -22,7 +30,7 @@ pub fn load() -> Vec<Application> {
 
             let icon = entry
                 .icon()
-                .and_then(|i| freedesktop_icons::lookup(i).find());
+                .and_then(|i| freedesktop_icons::lookup(i).with_cache().find());
 
             Application {
                 id,
@@ -32,5 +40,7 @@ pub fn load() -> Vec<Application> {
                 desc,
             }
         })
-        .collect()
+        .collect();
+
+    Applications { items: apps }
 }
