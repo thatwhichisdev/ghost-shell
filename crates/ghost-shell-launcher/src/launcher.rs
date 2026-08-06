@@ -1,19 +1,22 @@
+use std::ops::DerefMut;
+
 use anyhow::{Context as _, Result};
 use gpui::{
     AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Render,
-    Window, WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind,
-    WindowOptions,
+    Subscription, Svg, Task, Window, WindowBackgroundAppearance, WindowBounds,
+    WindowHandle, WindowKind, WindowOptions,
     accesskit::Uuid,
-    div,
+    div, img,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
-    px, rgb, size,
+    px, rgb, size, svg,
 };
 use gpui_component::{
     ActiveTheme as _, IndexPath, Root, Sizable, StyledExt,
-    input::{Input, InputState},
+    input::{Input, InputEvent, InputState},
     list::{List, ListDelegate, ListItem, ListState},
 };
+use neo_frizbee::{Config, match_list_indices};
 
 use crate::{Application, Applications};
 use ghost_shell_niri::NiriState;
@@ -111,8 +114,9 @@ impl Launcher {
 }
 
 struct LauncherView {
+    input: Entity<InputState>,
+    _input_subscription: Subscription,
     list: Entity<ListState<ApplicationListDelegate>>,
-    query: Entity<InputState>,
 }
 
 impl LauncherView {
@@ -121,7 +125,8 @@ impl LauncherView {
         let list = cx.new(|cx| {
             ListState::new(
                 ApplicationListDelegate {
-                    apps: apps.items,
+                    all_items: apps.items.clone(),
+                    filtered_items: apps.items,
                     index: None,
                 },
                 window,
@@ -129,16 +134,66 @@ impl LauncherView {
             )
         });
 
-        let query = cx.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder("Search applications or files")
-        });
+        let input = cx.new(|cx| InputState::new(window, cx));
 
-        query.update(cx, |query, cx| {
+        let _input_subscription =
+            cx.subscribe_in(&input, window, Self::on_query_event);
+
+        input.update(cx, |query, cx| {
             query.focus(window, cx);
         });
 
-        Self { list, query }
+        Self {
+            input,
+            _input_subscription,
+            list,
+        }
+    }
+
+    fn on_query_event(
+        &mut self,
+        input: &Entity<InputState>,
+        event: &InputEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !matches!(event, InputEvent::Change) {
+            return;
+        }
+
+        let query = input.read(cx).value().to_string();
+
+        self.list.update(cx, |list, _cx| {
+            let query = query.trim();
+
+            if query.is_empty() {
+                let delegate_mut = list.delegate_mut();
+
+                delegate_mut
+                    .filtered_items
+                    .clone_from(&delegate_mut.all_items);
+            } else {
+                let app_names = list
+                    .delegate()
+                    .all_items
+                    .iter()
+                    .map(|app| app.name.as_str())
+                    .collect::<Vec<_>>();
+
+                let matches =
+                    match_list_indices(query, &app_names, &Config::default());
+
+                list.delegate_mut().filtered_items = matches
+                    .into_iter()
+                    .filter_map(|matched| {
+                        list.delegate()
+                            .all_items
+                            .get(matched.index as usize)
+                            .cloned()
+                    })
+                    .collect();
+            }
+        });
     }
 }
 
@@ -164,7 +219,7 @@ impl Render for LauncherView {
                     .w_full()
                     .p_3()
                     .border_b_1()
-                    .child(Input::new(&self.query).large().cleanable(true)),
+                    .child(Input::new(&self.input).large().cleanable(true)),
             )
             .child(
                 div()
@@ -181,7 +236,8 @@ impl Render for LauncherView {
 impl Global for Launcher {}
 
 struct ApplicationListDelegate {
-    apps: Vec<Application>,
+    all_items: Vec<Application>,
+    filtered_items: Vec<Application>,
     index: Option<IndexPath>,
 }
 
@@ -189,43 +245,104 @@ impl ListDelegate for ApplicationListDelegate {
     type Item = ListItem;
 
     fn items_count(&self, _section: usize, _cx: &App) -> usize {
-        self.apps.len()
+        self.filtered_items.len()
     }
 
     fn render_item(
         &mut self,
         index: IndexPath,
         _window: &mut Window,
-        _cx: &mut Context<gpui_component::list::ListState<Self>>,
+        cx: &mut Context<gpui_component::list::ListState<Self>>,
     ) -> Option<Self::Item> {
-        let app = self.apps.get(index.row)?;
-        let content = div()
-            .w_full()
-            .h_full()
+        const ICON_SIZE: f32 = 40.0;
+        const ROW_HEIGHT: f32 = 48.0;
+
+        let app = self.filtered_items.get(index.row)?;
+        let selected = self.index == Some(index);
+
+        let title_color = if selected {
+            cx.theme().accent_foreground
+        } else {
+            cx.theme().foreground
+        };
+
+        let description_color = if selected {
+            cx.theme().accent_foreground
+        } else {
+            cx.theme().muted_foreground
+        };
+
+        let description = app
+            .desc
+            .clone()
+            .filter(|description| !description.trim().is_empty());
+
+        let icon_column = div()
+            .w(px(ICON_SIZE))
+            .h(px(ICON_SIZE))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .when_some(app.icon.clone(), |this, icon_path| {
+                this.child(
+                    img(icon_path)
+                        .size(px(ICON_SIZE))
+                        .object_fit(gpui::ObjectFit::Contain),
+                )
+            });
+
+        let text_column = div()
+            .min_w_0()
+            .flex_1()
             .flex()
             .flex_col()
-            .justify_start()
-            .child(
-                div()
-                    .w_full()
-                    .font_bold()
-                    .truncate()
-                    .child(app.name.clone()),
-            )
+            .justify_center()
+            .overflow_hidden()
             .child(
                 div()
                     .w_full()
                     .min_w_0()
-                    .text_sm()
+                    .text_size(px(14.0))
+                    .font_bold()
+                    .text_color(title_color)
                     .truncate()
-                    .child(app.desc.clone().unwrap_or_default()),
-            );
+                    .child(app.name.clone()),
+            )
+            .when_some(description, |this, description| {
+                this.child(
+                    div()
+                        .w_full()
+                        .min_w_0()
+                        .text_size(px(13.0))
+                        .text_color(description_color)
+                        .when(selected, |this| this.opacity(0.7))
+                        .truncate()
+                        .child(description),
+                )
+            });
 
-        let item = ListItem::new(index)
-            .child(content)
-            .selected(self.index == Some(index));
+        let content = div()
+            .w_full()
+            .min_w_0()
+            .h_full()
+            .flex()
+            .items_center()
+            .gap_x_3()
+            .overflow_hidden()
+            .child(icon_column)
+            .child(text_column);
 
-        Some(item)
+        Some(
+            ListItem::new(index)
+                .h(px(ROW_HEIGHT))
+                // Override ListItem's default 12px horizontal padding.
+                .px_2()
+                .py_1()
+                .rounded_md()
+                .child(content)
+                .selected(selected),
+        )
     }
 
     fn set_selected_index(

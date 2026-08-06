@@ -28,9 +28,14 @@ pub fn load() -> Applications {
             let exec = entry.exec().unwrap().to_string();
             let desc = entry.comment(&locales).map(|d| d.to_string());
 
-            let icon = entry
-                .icon()
-                .and_then(|i| freedesktop_icons::lookup(i).with_cache().find());
+            let icon = entry.icon().and_then(|i| {
+                freedesktop_icons::lookup(i)
+                    .force_svg()
+                    .with_size(128)
+                    .with_scale(1)
+                    .with_cache()
+                    .find()
+            });
 
             Application {
                 id,
