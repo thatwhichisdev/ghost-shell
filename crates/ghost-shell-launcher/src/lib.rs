@@ -8,6 +8,8 @@ use gpui::{App, BorrowAppContext as _, KeyBinding};
 
 use ghost_shell_actions::{CloseLauncher, ToggleLauncher};
 
+gpui::actions!(launcher, [Enter]);
+
 pub fn init(cx: &mut App) {
     let apps = applications::load();
     cx.set_global(apps);
@@ -15,7 +17,10 @@ pub fn init(cx: &mut App) {
     let launcher = Launcher::new();
     cx.set_global(launcher);
 
-    cx.bind_keys([KeyBinding::new("escape", CloseLauncher, Some("launcher"))]);
+    cx.bind_keys([
+        KeyBinding::new("escape", CloseLauncher, Some("launcher")),
+        KeyBinding::new("enter", Enter, Some("launcher")),
+    ]);
 
     cx.on_action(|_: &CloseLauncher, cx| {
         cx.defer(|cx| {

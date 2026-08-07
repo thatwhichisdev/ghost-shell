@@ -11,6 +11,13 @@ pub struct Application {
     pub desc: Option<String>,
 }
 
+impl AsRef<str> for Application {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.name.as_str()
+    }
+}
+
 #[derive(Clone)]
 pub struct Applications {
     pub items: Vec<Application>,
@@ -28,13 +35,18 @@ pub fn load() -> Applications {
             let exec = entry.exec().unwrap().to_string();
             let desc = entry.comment(&locales).map(|d| d.to_string());
 
+            let theme = freedesktop_icons::default_theme_gtk();
             let icon = entry.icon().and_then(|i| {
-                freedesktop_icons::lookup(i)
-                    .force_svg()
-                    .with_size(128)
-                    .with_scale(1)
-                    .with_cache()
-                    .find()
+                let mut icon_builder = freedesktop_icons::lookup(i)
+                    .with_size(40)
+                    .with_scale(2)
+                    .with_cache();
+
+                if let Some(theme) = theme.as_deref() {
+                    icon_builder = icon_builder.with_theme(theme);
+                }
+
+                icon_builder.find()
             });
 
             Application {

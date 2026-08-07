@@ -1,25 +1,24 @@
-use std::ops::DerefMut;
-
 use anyhow::{Context as _, Result};
 use gpui::{
     AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Render,
-    Subscription, Svg, Task, Window, WindowBackgroundAppearance, WindowBounds,
-    WindowHandle, WindowKind, WindowOptions,
+    Subscription, Window, WindowBackgroundAppearance, WindowBounds, WindowKind,
+    WindowOptions,
     accesskit::Uuid,
     div, img,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     prelude::*,
-    px, rgb, size, svg,
+    px, rgb, size,
 };
 use gpui_component::{
     ActiveTheme as _, IndexPath, Root, Sizable, StyledExt,
-    input::{Input, InputEvent, InputState},
+    input::{Input, InputEvent, InputState, MoveDown, MoveUp},
     list::{List, ListDelegate, ListItem, ListState},
 };
-use neo_frizbee::{Config, match_list_indices};
+use neo_frizbee::Config;
 
-use crate::{Application, Applications};
 use ghost_shell_niri::NiriState;
+
+use crate::{Application, Applications, Enter};
 
 pub struct Launcher {
     handle: Option<AnyWindowHandle>,
@@ -114,38 +113,51 @@ impl Launcher {
 }
 
 struct LauncherView {
+    /// A strong well-typed reference to launcher's input
     input: Entity<InputState>,
-    _input_subscription: Subscription,
+
+    /// A handle to a input's subscription.
+    /// When dropped, the subscription is cancelled and the callback will no longer be invoked.
+    #[allow(unused)]
+    input_subscription: Subscription,
+
+    /// A strong well-typed reference to launcher's list of applications and files
     list: Entity<ListState<ApplicationListDelegate>>,
 }
 
 impl LauncherView {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let apps = cx.global::<Applications>().clone();
+
+        // Initialize list of applications and select first item
         let list = cx.new(|cx| {
-            ListState::new(
-                ApplicationListDelegate {
-                    all_items: apps.items.clone(),
-                    filtered_items: apps.items,
-                    index: None,
-                },
-                window,
-                cx,
-            )
+            let all_indices = (0..apps.items.len()).collect();
+            let delegate = ApplicationListDelegate {
+                all_items: apps.items,
+                filtered_indices: all_indices,
+                selected_index: None,
+            };
+            let mut list = ListState::new(delegate, window, cx);
+
+            list.set_selected_index(Some(IndexPath::new(0)), window, cx);
+            list
         });
 
-        let input = cx.new(|cx| InputState::new(window, cx));
+        // Initialiaze input and focus it
+        let input = cx.new(|cx| {
+            let input = InputState::new(window, cx);
 
-        let _input_subscription =
+            input.focus(window, cx);
+            input
+        });
+
+        // Subscirbe to input's events and keep the handle
+        let input_subscription =
             cx.subscribe_in(&input, window, Self::on_query_event);
-
-        input.update(cx, |query, cx| {
-            query.focus(window, cx);
-        });
 
         Self {
             input,
-            _input_subscription,
+            input_subscription,
             list,
         }
     }
@@ -154,46 +166,98 @@ impl LauncherView {
         &mut self,
         input: &Entity<InputState>,
         event: &InputEvent,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !matches!(event, InputEvent::Change) {
             return;
         }
 
-        let query = input.read(cx).value().to_string();
+        let query = input.read(cx).value();
+        let query = query.trim();
 
-        self.list.update(cx, |list, _cx| {
-            let query = query.trim();
+        self.list.update(cx, |list, cx| {
+            let has_items = {
+                let delegate = list.delegate_mut();
+                delegate.filter(query);
+                !delegate.filtered_indices.is_empty()
+            };
 
-            if query.is_empty() {
-                let delegate_mut = list.delegate_mut();
+            let selected = has_items.then_some(IndexPath::new(0));
 
-                delegate_mut
-                    .filtered_items
-                    .clone_from(&delegate_mut.all_items);
-            } else {
-                let app_names = list
-                    .delegate()
-                    .all_items
-                    .iter()
-                    .map(|app| app.name.as_str())
-                    .collect::<Vec<_>>();
+            list.set_selected_index(selected, window, cx);
+            cx.notify();
+        });
+    }
 
-                let matches =
-                    match_list_indices(query, &app_names, &Config::default());
+    fn select_next_item(
+        &mut self,
+        _: &MoveDown,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.list.update(cx, |list, cx| {
+            let items_count = list.delegate().filtered_indices.len();
+            let next_index = match (items_count, list.selected_index()) {
+                (0, _) => None,
+                (_, None) => Some(IndexPath::new(0)),
+                (items_count, Some(current)) => {
+                    let next_row = if current.row + 1 >= items_count {
+                        0
+                    } else {
+                        current.row + 1
+                    };
 
-                list.delegate_mut().filtered_items = matches
-                    .into_iter()
-                    .filter_map(|matched| {
-                        list.delegate()
-                            .all_items
-                            .get(matched.index as usize)
-                            .cloned()
-                    })
-                    .collect();
+                    Some(IndexPath::new(next_row))
+                }
+            };
+
+            if next_index.is_some() {
+                list.set_selected_index(next_index, window, cx);
+                list.scroll_to_selected_item(window, cx);
             }
         });
+    }
+
+    fn select_previous_item(
+        &mut self,
+        _: &MoveUp,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.list.update(cx, |list, cx| {
+            let items_count = list.delegate().filtered_indices.len();
+            let previous_index = match (items_count, list.selected_index()) {
+                (0, _) => None,
+                (items_count, None) => Some(IndexPath::new(items_count - 1)),
+                (items_count, Some(current)) => {
+                    let previous_row =
+                        if current.row == 0 || current.row >= items_count {
+                            items_count - 1
+                        } else {
+                            current.row - 1
+                        };
+
+                    Some(IndexPath::new(previous_row))
+                }
+            };
+
+            if previous_index.is_some() {
+                list.set_selected_index(previous_index, window, cx);
+                list.scroll_to_selected_item(window, cx);
+            }
+        });
+    }
+
+    fn run_selected_item(
+        &mut self,
+        _: &Enter,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(selected) = self.list.read(cx).delegate().selected_item() {
+            println!("{selected:#?}");
+        }
     }
 }
 
@@ -206,6 +270,9 @@ impl Render for LauncherView {
         div()
             .id("launcher")
             .key_context("launcher")
+            .on_action(cx.listener(Self::select_previous_item))
+            .on_action(cx.listener(Self::select_next_item))
+            .on_action(cx.listener(Self::run_selected_item))
             .size_full()
             .rounded_lg()
             .flex()
@@ -237,28 +304,56 @@ impl Global for Launcher {}
 
 struct ApplicationListDelegate {
     all_items: Vec<Application>,
-    filtered_items: Vec<Application>,
-    index: Option<IndexPath>,
+    filtered_indices: Vec<usize>,
+    selected_index: Option<IndexPath>,
+}
+
+impl ApplicationListDelegate {
+    fn item(&self, row: usize) -> Option<&Application> {
+        let item_index = *self.filtered_indices.get(row)?;
+        self.all_items.get(item_index)
+    }
+
+    fn selected_item(&self) -> Option<&Application> {
+        let selected = self.selected_index?;
+        self.item(selected.row)
+    }
+
+    fn filter(&mut self, query: &str) {
+        self.filtered_indices.clear();
+
+        if query.is_empty() {
+            self.filtered_indices.extend(0..self.all_items.len());
+            return;
+        }
+
+        let matches =
+            neo_frizbee::match_list(query, &self.all_items, &Config::default());
+
+        self.filtered_indices.reserve(matches.len());
+        self.filtered_indices
+            .extend(matches.into_iter().map(|matched| matched.index as usize));
+    }
 }
 
 impl ListDelegate for ApplicationListDelegate {
     type Item = ListItem;
 
     fn items_count(&self, _section: usize, _cx: &App) -> usize {
-        self.filtered_items.len()
+        self.filtered_indices.len()
     }
 
     fn render_item(
         &mut self,
         index: IndexPath,
         _window: &mut Window,
-        cx: &mut Context<gpui_component::list::ListState<Self>>,
+        cx: &mut Context<ListState<Self>>,
     ) -> Option<Self::Item> {
         const ICON_SIZE: f32 = 40.0;
         const ROW_HEIGHT: f32 = 48.0;
 
-        let app = self.filtered_items.get(index.row)?;
-        let selected = self.index == Some(index);
+        let app = self.item(index.row)?;
+        let selected = self.selected_index == Some(index);
 
         let title_color = if selected {
             cx.theme().accent_foreground
@@ -349,9 +444,9 @@ impl ListDelegate for ApplicationListDelegate {
         &mut self,
         index: Option<IndexPath>,
         _window: &mut Window,
-        cx: &mut Context<gpui_component::list::ListState<Self>>,
+        cx: &mut Context<ListState<Self>>,
     ) {
-        self.index = index;
+        self.selected_index = index;
         cx.notify();
     }
 }
