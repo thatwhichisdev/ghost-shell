@@ -8,6 +8,7 @@ members = [
   "crates/ghost-shell-cli",
   "crates/ghost-shell-config",
   "crates/ghost-shell-daemon",
+  "crates/ghost-shell-finder",
   "crates/ghost-shell-ipc",
   "crates/ghost-shell-launcher",
   "crates/ghost-shell-lockscreen",
@@ -37,6 +38,7 @@ ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-assets = { path = "crates/ghost-shell-assets" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
+ghost-shell-finder = { path = "crates/ghost-shell-finder" }
 ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }

@@ -2563,6 +2563,7 @@ dependencies = [
  "ghost-shell-app",
  "ghost-shell-assets",
  "ghost-shell-config",
+ "ghost-shell-finder",
  "ghost-shell-ipc",
  "ghost-shell-launcher",
  "ghost-shell-niri",
@@ -2571,6 +2572,19 @@ dependencies = [
  "gpui-component",
  "gpui_platform",
  "gpui_tokio",
+]
+
+[[package]]
+name = "ghost-shell-finder"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fff-search",
+ "ghost-shell-actions",
+ "ghost-shell-ipc",
+ "ghost-shell-niri",
+ "gpui",
+ "gpui-component",
 ]
 
 [[package]]
@@ -2591,7 +2605,6 @@ name = "ghost-shell-launcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "fff-search",
  "freedesktop-desktop-entry",
  "freedesktop-icons",
  "ghost-shell-actions",
@@ -2599,7 +2612,9 @@ dependencies = [
  "ghost-shell-niri",
  "gpui",
  "gpui-component",
+ "gpui_tokio",
  "neo_frizbee",
+ "tokio",
 ]
 
 [[package]]
@@ -7670,6 +7685,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

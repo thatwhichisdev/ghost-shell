@@ -18,7 +18,7 @@ use neo_frizbee::Config;
 
 use ghost_shell_niri::NiriState;
 
-use crate::{Application, Applications, Enter};
+use crate::{Application, Applications, Launch};
 
 pub struct Launcher {
     handle: Option<AnyWindowHandle>,
@@ -249,14 +249,18 @@ impl LauncherView {
         });
     }
 
-    fn run_selected_item(
+    fn launch_selected_item(
         &mut self,
-        _: &Enter,
+        _: &Launch,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(selected) = self.list.read(cx).delegate().selected_item() {
-            println!("{selected:#?}");
+        // todo: implement app launching logic,
+        // will need to figure out how to spawn a detached proccess using systemd,
+        // or if not available just spawn a child process
+        if let Some(application) = self.list.read(cx).delegate().selected_item()
+        {
+            println!("Selected application: {application:?}");
         }
     }
 }
@@ -272,7 +276,7 @@ impl Render for LauncherView {
             .key_context("launcher")
             .on_action(cx.listener(Self::select_previous_item))
             .on_action(cx.listener(Self::select_next_item))
-            .on_action(cx.listener(Self::run_selected_item))
+            .on_action(cx.listener(Self::launch_selected_item))
             .size_full()
             .rounded_lg()
             .flex()
@@ -368,7 +372,7 @@ impl ListDelegate for ApplicationListDelegate {
         };
 
         let description = app
-            .desc
+            .description
             .clone()
             .filter(|description| !description.trim().is_empty());
 

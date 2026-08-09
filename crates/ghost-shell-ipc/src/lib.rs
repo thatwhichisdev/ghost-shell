@@ -11,7 +11,10 @@ use std::{env, path::PathBuf};
 use gpui::App;
 use tokio::sync::mpsc::{self};
 
-use ghost_shell_actions::ToggleLauncher;
+use ghost_shell_actions::{
+    FinderClose, FinderOpen, FinderToggle, LauncherClose, LauncherOpen,
+    LauncherToggle,
+};
 
 pub fn init(cx: &mut App) {
     let (sender, mut receiver) = mpsc::channel::<AsyncRequest>(256);
@@ -31,13 +34,19 @@ pub fn init(cx: &mut App) {
         while let Some(request) = receiver.recv().await {
             let AsyncRequest { request, reply } = request;
 
-            cx.update(|cx| {
-                let action = match request {
-                    Request::Launcher {
-                        action: LauncherAction::Toggle,
-                    } => ToggleLauncher,
-                };
-                cx.dispatch_action(&action);
+            cx.update(|cx| match request {
+                Request::Launcher { action } => match action {
+                    LauncherAction::Open => cx.dispatch_action(&LauncherOpen),
+                    LauncherAction::Close => cx.dispatch_action(&LauncherClose),
+                    LauncherAction::Toggle => {
+                        cx.dispatch_action(&LauncherToggle)
+                    }
+                },
+                Request::Finder { action } => match action {
+                    FinderAction::Open => cx.dispatch_action(&FinderOpen),
+                    FinderAction::Close => cx.dispatch_action(&FinderClose),
+                    FinderAction::Toggle => cx.dispatch_action(&FinderToggle),
+                },
             });
 
             let _ = reply.send(Ok(Response::Handled));

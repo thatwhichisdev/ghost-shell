@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::{env, path::PathBuf};
 
 use ghost_shell_ipc::{
+    FinderAction,
     client::Client,
     protocol::{LauncherAction, Request},
 };
@@ -28,10 +29,19 @@ pub enum MsgCommand {
         #[arg(value_enum)]
         action: LauncherCommand,
     },
+    Finder {
+        #[arg(value_enum)]
+        action: FinderCommand,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum LauncherCommand {
+    Toggle,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum FinderCommand {
     Toggle,
 }
 
@@ -42,6 +52,10 @@ pub enum LauncherCommand {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+    let socket_path =
+        env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap();
+    let mut client =
+        Client::connect(socket_path.join("ghost-shell-daemon")).await?;
 
     let request = match cli.command {
         Command::Msg { command } => match command {
@@ -50,13 +64,13 @@ async fn main() -> Result<()> {
                     action: LauncherAction::Toggle,
                 },
             },
+            MsgCommand::Finder { action } => match action {
+                FinderCommand::Toggle => Request::Finder {
+                    action: FinderAction::Toggle,
+                },
+            },
         },
     };
-
-    let ipc_socket_path =
-        env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap();
-    let mut client =
-        Client::connect(ipc_socket_path.join("ghost-shell-daemon")).await?;
 
     client.write(request).await?;
     let reply = client.read().await?;

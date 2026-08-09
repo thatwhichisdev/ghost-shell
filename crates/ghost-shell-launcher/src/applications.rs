@@ -6,9 +6,9 @@ use gpui::Global;
 pub struct Application {
     pub id: String,
     pub name: String,
-    pub exec: String,
+    pub command: Vec<String>,
     pub icon: Option<PathBuf>,
-    pub desc: Option<String>,
+    pub description: Option<String>,
 }
 
 impl AsRef<str> for Application {
@@ -27,15 +27,15 @@ impl Global for Applications {}
 
 pub fn load() -> Applications {
     let locales = freedesktop_desktop_entry::get_languages_from_env();
+    let theme = freedesktop_icons::default_theme_gtk();
+
     let apps = freedesktop_desktop_entry::desktop_entries(&locales)
         .into_iter()
         .map(|entry| {
             let id = entry.id().to_string();
             let name = entry.name(&locales).unwrap().into_owned();
-            let exec = entry.exec().unwrap().to_string();
-            let desc = entry.comment(&locales).map(|d| d.to_string());
-
-            let theme = freedesktop_icons::default_theme_gtk();
+            let command = entry.parse_exec_with_uris(&[], &locales).unwrap();
+            let description = entry.comment(&locales).map(|d| d.to_string());
             let icon = entry.icon().and_then(|i| {
                 let mut icon_builder = freedesktop_icons::lookup(i)
                     .with_size(40)
@@ -52,9 +52,9 @@ pub fn load() -> Applications {
             Application {
                 id,
                 name,
-                exec,
+                command,
                 icon,
-                desc,
+                description,
             }
         })
         .collect();

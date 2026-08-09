@@ -1,5 +1,5 @@
 [package]
-name = "ghost-shell-launcher"
+name = "ghost-shell-finder"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,14 +9,10 @@ publish.workspace = true
 [dependencies]
 gpui.workspace = true
 gpui-component.workspace = true
-gpui_tokio.workspace = true
 
 ghost-shell-actions.workspace = true
 ghost-shell-ipc.workspace = true
 ghost-shell-niri.workspace = true
 
 anyhow.workspace = true
-freedesktop-desktop-entry.workspace = true
-freedesktop-icons.workspace = true
-neo_frizbee.workspace = true
-tokio = { workspace = true, features = ["process"] }
+fff-search.workspace = true
