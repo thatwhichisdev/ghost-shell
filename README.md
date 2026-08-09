@@ -27,8 +27,8 @@ The current goal is to implement the following basic functionality:
 
 - [ ] Bar
   - [ ] Widget: System Menu
-  - [ ] Widget: Niri Workspaces
-  - [ ] Widget: Focused Window
+  - [x] Widget: Niri Workspaces
+  - [x] Widget: Focused Window
   - [ ] Widget: Tray
   - [ ] Widget: Notifications
   - [ ] Widget: Camera
@@ -36,13 +36,12 @@ The current goal is to implement the following basic functionality:
   - [ ] Widget: Bluetooth Control
   - [ ] Widget: Network Control (Wifi/Ethernet)
   - [ ] Widget: Power Control (Battery/CPU modes)
-  - [ ] Widget: Clock
+  - [x] Widget: Clock
   - [ ] Widget: Screenshot & Screen recording
   - [ ] Widget: Theme Polarity Changer
   - [ ] Widget: Weather
-- [ ] App Launcher
-  - [ ] App Search
-  - [ ] File Search
+- [ ] Launcher
+- [ ] Finder
 - [ ] Lock Screen
 - [ ] Clipboard
 - [ ] Wallpapers
