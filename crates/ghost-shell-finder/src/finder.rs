@@ -29,10 +29,10 @@ impl Finder {
     }
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        let output = cx
-            .global::<GhostShell>()
+        let ghost_shell = cx.global::<GhostShell>();
+        let output = ghost_shell
             .get_focused_output()
-            .unwrap_or(cx.global::<GhostShell>().get_primary_output());
+            .unwrap_or(ghost_shell.get_primary_output());
 
         let window_bounds = WindowBounds::Windowed(Bounds::centered(
             Some(output.display.id()),
@@ -58,13 +58,13 @@ impl Finder {
             is_resizable: false,
             is_minimizable: false,
             display_id: Some(output.display.id()),
-            window_background: WindowBackgroundAppearance::Transparent,
+            window_background: WindowBackgroundAppearance::Blurred,
             app_id: Some("ghost-shell-finder".to_owned()),
             ..Default::default()
         };
 
         let handle = cx.open_window(window_options, |window, cx| {
-            let view = cx.new(|_cx| View {});
+            let view = cx.new(|cx| View::new(window, cx));
             cx.new(|cx| Root::new(view, window, cx).bordered(false))
         })?;
 

@@ -9,8 +9,7 @@ use gpui::{App, BorrowAppContext};
 pub fn init(cx: &mut App) {
     let output_focused = cx.global::<NiriState>().focused_output();
     let output_primary = cx.global::<AppConfig>().get_primary_output();
-
-    let displays: Vec<GhostShellOutput> = cx
+    let outputs: Vec<GhostShellOutput> = cx
         .displays()
         .iter()
         .map(|display| {
@@ -26,7 +25,7 @@ pub fn init(cx: &mut App) {
         })
         .collect();
 
-    let ghost_shell = GhostShell { displays };
+    let ghost_shell = GhostShell { outputs };
 
     cx.set_global(ghost_shell);
 
