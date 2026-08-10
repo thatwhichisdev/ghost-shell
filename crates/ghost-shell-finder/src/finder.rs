@@ -1,14 +1,12 @@
 use anyhow::{Context as _, Result};
+use ghost_shell_app::GhostShell;
 use gpui::{
     App, AppContext, Bounds, Global, WindowBackgroundAppearance, WindowBounds,
     WindowHandle, WindowKind, WindowOptions,
-    accesskit::Uuid,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     px, size,
 };
 use gpui_component::Root;
-
-use ghost_shell_niri::NiriState;
 
 use crate::view::View;
 
@@ -31,28 +29,13 @@ impl Finder {
     }
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        let niri_state = cx.global::<NiriState>();
-
-        // get niri display id of the focused display
-        let id = niri_state
-            .clone()
-            .workspaces
-            .into_values()
-            .find(|workspace| workspace.is_focused == true)
-            .and_then(|workspace| workspace.output)
-            .map(|output| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
-            .unwrap(); // for now panic, but ideally we should toggle launcher on primary output if nothing is focused
-
-        // convert niri id into gpui id
-        let display = cx
-            .displays()
-            .iter()
-            .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
-            .cloned()
-            .unwrap(); // for now display should be always present in the config, will change later
+        let output = cx
+            .global::<GhostShell>()
+            .get_focused_output()
+            .unwrap_or(cx.global::<GhostShell>().get_primary_output());
 
         let window_bounds = WindowBounds::Windowed(Bounds::centered(
-            Some(display.id()),
+            Some(output.display.id()),
             size(px(700.0), px(500.0)),
             cx,
         ));
@@ -74,7 +57,7 @@ impl Finder {
             is_movable: false,
             is_resizable: false,
             is_minimizable: false,
-            display_id: Some(display.id()),
+            display_id: Some(output.display.id()),
             window_background: WindowBackgroundAppearance::Transparent,
             app_id: Some("ghost-shell-finder".to_owned()),
             ..Default::default()

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use gpui::Global;
+use gpui::{Global, accesskit::Uuid};
 use serde::Deserialize;
 
 #[derive(Default, Debug, Clone, Deserialize)]
@@ -14,6 +14,18 @@ pub struct AppConfig {
     pub bars: HashMap<String, BarConfig>,
 
     pub clock: ClockConfig,
+}
+
+impl AppConfig {
+    pub fn get_primary_output(&self) -> Uuid {
+        self.bars
+            .iter()
+            .find(|(_output, bar)| bar.primary == true)
+            .map(|(output, _bar)| {
+                Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
+            })
+            .expect("primary output was not set")
+    }
 }
 
 impl Global for AppConfig {}

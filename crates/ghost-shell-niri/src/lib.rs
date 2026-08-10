@@ -10,19 +10,60 @@ use gpui::App;
 use tokio::sync::mpsc;
 
 pub fn init(cx: &mut App) {
-    let niri_client = gpui_tokio::Tokio::handle(cx)
-        .block_on(NiriClient::try_new())
-        .unwrap();
+    let tokio = gpui_tokio::Tokio::handle(cx);
 
-    let mut niri_stream = gpui_tokio::Tokio::handle(cx)
-        .block_on(NiriStream::try_new())
-        .unwrap();
+    let mut niri_client = tokio.block_on(NiriClient::try_new()).unwrap();
+    let mut niri_stream = tokio.block_on(NiriStream::try_new()).unwrap();
+    let mut niri_state = NiriState::default();
 
-    let niri_state = NiriState::default();
+    // Fetch niri workspaces using niri client
+    let niri_workspaces = {
+        let response = tokio
+            .block_on(niri_client.send(Request::Workspaces))
+            .unwrap()
+            .unwrap();
+
+        let workspaces = match response {
+            Response::Workspaces(workspaces) => workspaces,
+            response => {
+                panic!("unexpected Niri response: {response:?}");
+            }
+        };
+
+        workspaces
+    };
+
+    // Fetch niri windows using niri client
+    let niri_windows = {
+        let response = tokio
+            .block_on(niri_client.send(Request::Windows))
+            .unwrap()
+            .unwrap();
+
+        let windows = match response {
+            Response::Windows(windows) => windows,
+            response => {
+                panic!("unexpected Niri response: {response:?}");
+            }
+        };
+
+        windows
+    };
+
+    // Update niri state with workspaces
+    niri_state.update(Event::WorkspacesChanged {
+        workspaces: niri_workspaces,
+    });
+
+    // Update niri state with windows
+    niri_state.update(Event::WindowsChanged {
+        windows: niri_windows,
+    });
 
     cx.set_global(niri_client);
     cx.set_global(niri_state);
 
+    // Async primitive to brigde together niri_stream and niri_state
     let (event_sender, mut event_receiver) = mpsc::channel(256);
 
     // Spawn niri stream reader task on tokio runtime

@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 ghost-shell-app.workspace = true
 ghost-shell-assets.workspace = true
+ghost-shell-bar.workspace = true
 ghost-shell-config.workspace = true
 ghost-shell-finder.workspace = true
 ghost-shell-ipc.workspace = true

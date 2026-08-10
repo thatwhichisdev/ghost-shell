@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use gpui::Global;
+use gpui::{Global, accesskit::Uuid};
 use serde::{Deserialize, Serialize};
 
 pub type Reply = std::result::Result<Response, String>;
@@ -144,6 +144,14 @@ impl NiriState {
                 }
             }
         }
+    }
+
+    pub fn focused_output(&self) -> Option<Uuid> {
+        self.workspaces
+            .iter()
+            .find(|(_id, workspace)| workspace.is_focused)
+            .and_then(|(_id, workspace)| workspace.output.as_deref())
+            .map(|output| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
     }
 }
 

@@ -2,63 +2,41 @@ pub mod app;
 
 pub use app::*;
 
-use std::collections::HashMap;
-
-use gpui::{App, Entity, accesskit::Uuid, prelude::*};
-
-use ghost_shell_bar::{Bar, Widgets};
 use ghost_shell_config::AppConfig;
-use ghost_shell_widget_clock::ClockWidget;
-use ghost_shell_widget_focus::FocusWidget;
-use ghost_shell_widget_menu::MenuWidget;
-use ghost_shell_widget_power::PowerWidget;
-use ghost_shell_widget_workspaces::WorkspacesWidget;
+use ghost_shell_niri::NiriState;
+use gpui::{App, BorrowAppContext};
 
-/// Loads app configuration and opens bars on available displays.
-///
-/// # Panics
-/// Panics when app initialization fails.
-///
 pub fn init(cx: &mut App) {
-    let config = cx.global::<AppConfig>().clone();
+    let output_focused = cx.global::<NiriState>().focused_output();
+    let output_primary = cx.global::<AppConfig>().get_primary_output();
 
-    let menu = cx.new(|_cx| MenuWidget {});
-    let power = cx.new(|_cx| PowerWidget {});
-    let clock = cx.new(ClockWidget::new);
-    let focus = cx.new(FocusWidget::new);
+    let displays: Vec<GhostShellOutput> = cx
+        .displays()
+        .iter()
+        .map(|display| {
+            let is_focused = output_focused
+                .is_some_and(|output| output == display.uuid().unwrap());
+            let is_primary = output_primary == display.uuid().unwrap();
 
-    let bars: HashMap<Uuid, Entity<Bar>> = config
-        .bars
-        .into_iter()
-        .map(|(output, bar_config)| {
-            let id = Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes());
-            let display = cx
-                .displays()
-                .iter()
-                .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
-                .cloned()
-                .unwrap(); // for now display should be always present in the config, will change later
-
-            let workspaces = cx.new(|cx| WorkspacesWidget::new(cx, id));
-            let widgets = Widgets {
-                menu: menu.clone(),
-                workspaces,
-                focus: focus.clone(),
-                power: power.clone(),
-                clock: clock.clone(),
-            };
-
-            let bar = Bar::new(cx, bar_config, widgets, display.clone());
-
-            bar.update(cx, |bar, cx| {
-                bar.open(cx);
-            });
-
-            (display.uuid().unwrap(), bar)
+            GhostShellOutput {
+                display: display.clone(),
+                is_primary,
+                is_focused,
+            }
         })
         .collect();
 
-    let shell = GhostShell::new(bars);
-    cx.set_global(shell);
-    cx.activate(true);
+    let ghost_shell = GhostShell { displays };
+
+    cx.set_global(ghost_shell);
+
+    // observable that will update focused display whenever it changes
+    cx.observe_global::<NiriState>(|cx| {
+        if let Some(uuid) = cx.global::<NiriState>().focused_output() {
+            cx.update_global::<GhostShell, _>(|shell, _cx| {
+                shell.set_focused_output(uuid);
+            });
+        };
+    })
+    .detach();
 }
