@@ -1,18 +1,19 @@
 use anyhow::{Context as _, Result};
-use ghost_shell_niri::NiriState;
 use gpui::{
-    AnyWindowHandle, App, Bounds, Context, IntoElement, Render, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions,
+    App, AppContext, Bounds, Global, WindowBackgroundAppearance, WindowBounds,
+    WindowHandle, WindowKind, WindowOptions,
     accesskit::Uuid,
-    div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
-    prelude::*,
     px, size,
 };
 use gpui_component::Root;
 
+use ghost_shell_niri::NiriState;
+
+use crate::view::View;
+
 pub struct Finder {
-    handle: Option<AnyWindowHandle>,
+    handle: Option<WindowHandle<Root>>,
 }
 
 impl Finder {
@@ -31,6 +32,8 @@ impl Finder {
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
         let niri_state = cx.global::<NiriState>();
+
+        // get niri display id of the focused display
         let id = niri_state
             .clone()
             .workspaces
@@ -40,6 +43,7 @@ impl Finder {
             .map(|output| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
             .unwrap(); // for now panic, but ideally we should toggle launcher on primary output if nothing is focused
 
+        // convert niri id into gpui id
         let display = cx
             .displays()
             .iter()
@@ -47,32 +51,32 @@ impl Finder {
             .cloned()
             .unwrap(); // for now display should be always present in the config, will change later
 
-        let bounds = Bounds::centered(
+        let window_bounds = WindowBounds::Windowed(Bounds::centered(
             Some(display.id()),
-            size(px(540.0), px(450.0)),
+            size(px(700.0), px(500.0)),
             cx,
-        );
+        ));
+
+        let window_kind = WindowKind::LayerShell(LayerShellOptions {
+            namespace: "ghost-shell-finder".to_owned(),
+            layer: Layer::Overlay,
+            anchor: Anchor::empty(),
+            exclusive_zone: None,
+            exclusive_edge: None,
+            margin: None,
+            keyboard_interactivity: KeyboardInteractivity::OnDemand,
+        });
 
         let window_options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            window_bounds: Some(window_bounds),
             titlebar: None,
-            focus: true,
-            show: true,
-            kind: WindowKind::LayerShell(LayerShellOptions {
-                namespace: "ghost-shell-launcher".to_owned(),
-                layer: Layer::Overlay,
-                anchor: Anchor::empty(),
-                exclusive_zone: None,
-                exclusive_edge: None,
-                margin: None,
-                keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            }),
+            kind: window_kind,
             is_movable: false,
             is_resizable: false,
             is_minimizable: false,
             display_id: Some(display.id()),
             window_background: WindowBackgroundAppearance::Transparent,
-            app_id: Some("ghost-shell-launcher".to_owned()),
+            app_id: Some("ghost-shell-finder".to_owned()),
             ..Default::default()
         };
 
@@ -81,36 +85,25 @@ impl Finder {
             cx.new(|cx| Root::new(view, window, cx).bordered(false))
         })?;
 
-        self.handle = Some(handle.into());
+        self.handle = Some(handle);
 
         Ok(())
     }
 
     pub fn close(&mut self, cx: &mut App) -> Result<()> {
-        let Some(handle) = self.handle.take() else {
-            return Ok(());
-        };
+        match self.handle.take() {
+            Some(handle) => {
+                handle
+                    .update(cx, |_view, window, _cx| window.remove_window())
+                    .context("failed to close launcher window")?;
 
-        handle
-            .update(cx, |_view, window, _cx| {
-                window.remove_window();
-            })
-            .context("failed to close launcher window")?;
+                self.handle = None;
 
-        self.handle = None;
-
-        Ok(())
+                Ok(())
+            }
+            None => Ok(()),
+        }
     }
 }
 
-struct View;
-
-impl Render for View {
-    fn render(
-        &mut self,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div().id("finder").key_context("finder")
-    }
-}
+impl Global for Finder {}
