@@ -84,6 +84,11 @@ gpui-component = {
   rev = "12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
 }
 
+gpui-component-assets = {
+  git = "https://github.com/thatwhichisdev/gpui-component",
+  rev = "12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
+}
+
 tokio = {
   version = "1.53.1",
   features = [

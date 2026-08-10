@@ -2559,6 +2559,7 @@ dependencies = [
  "ghost-shell-theme",
  "gpui",
  "gpui-component",
+ "gpui-component-assets",
  "gpui_platform",
  "gpui_tokio",
 ]
@@ -2688,6 +2689,7 @@ dependencies = [
  "anyhow",
  "ghost-shell-niri",
  "gpui",
+ "gpui-component",
  "gpui_tokio",
  "tokio",
 ]

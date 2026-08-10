@@ -10,6 +10,7 @@ publish.workspace = true
 ghost-shell-niri.workspace = true
 
 gpui.workspace = true
+gpui-component.workspace = true
 gpui_tokio.workspace = true
 
 anyhow.workspace = true

@@ -1,8 +1,9 @@
 use ghost_shell_niri::NiriState;
 use gpui::{
-    Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, rgba,
-    svg,
+    Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, svg,
 };
+
+use gpui_component::ActiveTheme as _;
 
 pub struct WorkspacesWidget {
     display_uuid: Uuid,
@@ -60,7 +61,7 @@ impl Render for WorkspacesWidget {
     fn render(
         &mut self,
         _window: &mut Window,
-        _cx: &mut Context<Self>,
+        cx: &mut Context<Self>,
     ) -> impl IntoElement {
         div()
             .id("workspaces")
@@ -71,14 +72,14 @@ impl Render for WorkspacesWidget {
             .children(self.state.iter().map(|workspace| {
                 if workspace.is_active {
                     svg()
-                        .path("circle-filled.svg")
+                        .path("icons/circle-filled.svg")
                         .size(px(18.0))
-                        .text_color(rgba(0xffff_ffff))
+                        .text_color(cx.theme().colors.foreground)
                 } else {
                     svg()
-                        .path("circle.svg")
+                        .path("icons/circle.svg")
                         .size(px(18.0))
-                        .text_color(rgba(0xffff_ffff))
+                        .text_color(cx.theme().colors.foreground)
                 }
             }))
     }

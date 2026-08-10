@@ -15,8 +15,8 @@
 /// Initializes shell application itself, which loads bars and initializes all widgets.
 ///
 fn main() {
-    let app = gpui_platform::application()
-        .with_assets(ghost_shell_assets::GhostShellAssets);
+    let app =
+        gpui_platform::application().with_assets(ghost_shell_assets::Assets);
 
     app.run(|cx: &mut gpui::App| {
         gpui_tokio::init(cx);

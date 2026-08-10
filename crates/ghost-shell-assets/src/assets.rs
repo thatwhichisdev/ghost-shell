@@ -4,23 +4,23 @@ use std::borrow::Cow;
 
 #[derive(rust_embed::RustEmbed)]
 #[folder = "assets"]
-#[include = "*.svg"]
-pub struct GhostShellAssets;
+#[include = "**/*.svg"]
+pub struct Assets;
 
-impl GhostShellAssets {
+impl Assets {
     #[must_use]
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Default for GhostShellAssets {
+impl Default for Assets {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AssetSource for GhostShellAssets {
+impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
         if path.is_empty() {
             return Ok(None);

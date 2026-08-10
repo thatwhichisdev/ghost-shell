@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use fff_search::{
@@ -93,7 +93,6 @@ impl Search {
                         ),
                         SearchItemKind::File,
                     ),
-
                     MixedItemRef::Dir(dir) => (
                         dir.absolute_path(
                             &self.picker,
@@ -110,5 +109,9 @@ impl Search {
                 }
             })
             .collect()
+    }
+
+    pub fn base_path(&self) -> &Path {
+        self.picker.base_path()
     }
 }
