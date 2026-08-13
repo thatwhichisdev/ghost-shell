@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <g stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="2.75" y="6.75" width="17" height="10.5" rx="2.75"/>
-    <path d="M21 10v4"/>
-  </g>
-  <rect x="5" y="9" width="2.5" height="6" rx="1.1" fill="currentColor"/>
-</svg>
+<svg id="Layer_1" height="512" viewBox="0 0 100 100" width="512" xmlns="http://www.w3.org/2000/svg"><path d="m90 43.333-6.667-3.333v-6.667c0-3.665-3.001-6.666-6.666-6.666h-31.928l26.947 46.666h4.98c3.665 0 6.666-3.001 6.666-6.666v-6.667l6.668-3.333z"/><path d="m67.835 80-36.565-63.333-5.775 3.333 3.851 6.667h-12.679c-3.666 0-6.667 3.001-6.667 6.666v33.334c0 3.665 3.001 6.666 6.667 6.666h39.619l5.774 10z"/></svg>
