@@ -2576,6 +2576,8 @@ dependencies = [
  "ghost-shell-niri",
  "gpui",
  "gpui-component",
+ "neo_frizbee",
+ "regex",
 ]
 
 [[package]]

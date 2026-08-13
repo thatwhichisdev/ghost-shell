@@ -1,14 +1,18 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use fff_search::{
     FilePicker, FilePickerOptions, FuzzySearchOptions, MixedItemRef,
-    MixedSearchConfig, PaginationArgs, QueryParser,
+    MixedSearchConfig, PaginationArgs, QueryParser, ScanProgress,
+    SharedFilePicker, SharedFrecency,
 };
 
+#[derive(Clone)]
 pub struct Search {
-    picker: FilePicker,
-    parser: QueryParser<MixedSearchConfig>,
+    picker: SharedFilePicker,
+
+    #[allow(unused)]
+    frecency: SharedFrecency,
 }
 
 pub struct SearchOptions {
@@ -25,6 +29,16 @@ impl Default for SearchOptions {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SearchResult {
+    pub items: Vec<SearchItem>,
+    pub matched: usize,
+    pub indexed_files: usize,
+    pub indexed_dirs: usize,
+}
+
+pub struct NeoSearchResult;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchItemKind {
     File,
@@ -33,6 +47,7 @@ pub enum SearchItemKind {
 
 #[derive(Debug, Clone)]
 pub struct SearchItem {
+    pub name: String,
     pub path: PathBuf,
     pub kind: SearchItemKind,
     pub score: i32,
@@ -51,26 +66,44 @@ impl Search {
             ..Default::default()
         };
 
-        let picker = FilePicker::new(options)?;
-        let parser = QueryParser::new(MixedSearchConfig);
+        let picker = SharedFilePicker::default();
+        let frecency = SharedFrecency::default();
 
-        Ok(Self { picker, parser })
+        FilePicker::new_with_shared_state(
+            picker.clone(),
+            frecency.clone(),
+            options,
+        )?;
+
+        Ok(Self { picker, frecency })
     }
 
-    pub fn index(&mut self) -> Result<()> {
-        self.picker.collect_files().map_err(|e| e.into())
+    pub fn get_scan_progress(&self) -> Result<ScanProgress> {
+        let guard = self.picker.read()?;
+        let picker = guard.as_ref().unwrap();
+
+        Ok(picker.get_scan_progress())
     }
 
-    pub fn search(&self, needle: &str, limit: usize) -> Vec<SearchItem> {
+    pub fn search(&self, needle: &str, limit: usize) -> Result<SearchResult> {
         let needle = needle.trim();
 
         if needle.is_empty() {
-            return Vec::new();
+            return Ok(SearchResult {
+                items: Vec::new(),
+                matched: 0,
+                indexed_files: 0,
+                indexed_dirs: 0,
+            });
         }
 
-        let query = self.parser.parse(needle);
+        let picker_guard = self.picker.read()?;
+        let picker = picker_guard.as_ref().unwrap();
 
-        let results = self.picker.fuzzy_search_mixed(
+        let query_parser = QueryParser::new(MixedSearchConfig);
+        let query = query_parser.parse(needle);
+
+        let results = picker.fuzzy_search_mixed(
             &query,
             None,
             FuzzySearchOptions {
@@ -80,38 +113,38 @@ impl Search {
             },
         );
 
-        results
+        let items = results
             .items
             .into_iter()
             .zip(results.scores)
             .map(|(item, score)| {
-                let (path, kind) = match item {
+                let (name, path, kind) = match item {
                     MixedItemRef::File(file) => (
-                        file.absolute_path(
-                            &self.picker,
-                            self.picker.base_path(),
-                        ),
+                        file.file_name(picker),
+                        file.absolute_path(picker, picker.base_path()),
                         SearchItemKind::File,
                     ),
                     MixedItemRef::Dir(dir) => (
-                        dir.absolute_path(
-                            &self.picker,
-                            self.picker.base_path(),
-                        ),
+                        dir.dir_name(picker),
+                        dir.absolute_path(picker, picker.base_path()),
                         SearchItemKind::Directory,
                     ),
                 };
 
                 SearchItem {
+                    name,
                     path,
                     kind,
                     score: score.total,
                 }
             })
-            .collect()
-    }
+            .collect();
 
-    pub fn base_path(&self) -> &Path {
-        self.picker.base_path()
+        Ok(SearchResult {
+            items,
+            matched: results.total_matched,
+            indexed_files: results.total_files,
+            indexed_dirs: results.total_dirs,
+        })
     }
 }

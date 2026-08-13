@@ -1,8 +1,8 @@
 use anyhow::{Context as _, Result};
 use ghost_shell_app::GhostShell;
 use gpui::{
-    App, AppContext, Bounds, Global, WindowBackgroundAppearance, WindowBounds,
-    WindowHandle, WindowKind, WindowOptions,
+    App, AppContext, Bounds, Global, Styled, WindowBackgroundAppearance,
+    WindowBounds, WindowHandle, WindowKind, WindowOptions,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     px, size,
 };
@@ -36,7 +36,7 @@ impl Finder {
 
         let window_bounds = WindowBounds::Windowed(Bounds::centered(
             Some(output.display.id()),
-            size(px(700.0), px(500.0)),
+            size(px(900.0), px(700.0)),
             cx,
         ));
 
@@ -65,7 +65,9 @@ impl Finder {
 
         let handle = cx.open_window(window_options, |window, cx| {
             let view = cx.new(|cx| View::new(window, cx));
-            cx.new(|cx| Root::new(view, window, cx).bordered(false))
+            cx.new(|cx| {
+                Root::new(view, window, cx).bordered(false).rounded_lg()
+            })
         })?;
 
         self.handle = Some(handle);

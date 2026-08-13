@@ -17,3 +17,5 @@ gpui-component.workspace = true
 
 anyhow.workspace = true
 fff-search.workspace = true
+neo_frizbee.workspace = true
+regex.workspace = true

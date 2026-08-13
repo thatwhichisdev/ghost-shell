@@ -1,189 +1,139 @@
+use std::{rc::Rc, time::Duration};
+
 use gpui::{
-    Context, Entity, IntoElement, Render, Task, Window, div, prelude::*,
+    Context, Entity, IntoElement, Pixels, Render, SharedString, Size, Window,
+    div, prelude::*, px, size,
 };
 use gpui_component::{
-    ActiveTheme as _, IconName, IndexPath, Sizable,
+    ActiveTheme as _, IconName, Sizable, VirtualListScrollHandle,
     form::field,
     input::{Input, InputEvent, InputState},
-    list::{List, ListItem, ListState},
     spinner::Spinner,
+    v_virtual_list,
 };
 
 use crate::search::{Search, SearchItem, SearchOptions};
 
 pub(crate) struct View {
-    input_path: Entity<InputState>,
+    search: Search,
+
     input_query: Entity<InputState>,
-    list: Entity<ListState<ListDelegate>>,
 
-    search: Option<Search>,
-    searching: bool,
-    search_task: Task<()>,
-}
-
-pub(crate) struct ListDelegate {
     items: Vec<SearchItem>,
-    index: Option<IndexPath>,
-    is_loading: bool,
+    item_sizes: Rc<Vec<Size<Pixels>>>,
+    item_selected: Option<usize>,
+    scroll_handle: VirtualListScrollHandle,
+
+    search_result: SharedString,
+
+    is_scanning: bool,
 }
 
 impl View {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input_path =
-            cx.new(|cx| InputState::new(window, cx).default_value("/"));
+        let search = Search::try_new(SearchOptions::default()).unwrap();
+        let input_query = cx.new(|cx| InputState::new(window, cx));
 
-        let input_query = cx.new(|cx| {
-            let input = InputState::new(window, cx);
-
-            input.focus(window, cx);
-            input
-        });
-
-        let list = cx.new(|cx| {
-            let delegate = ListDelegate {
-                items: vec![],
-                index: None,
-                is_loading: false,
-            };
-
-            ListState::new(delegate, window, cx)
-        });
-
-        cx.subscribe_in(&input_query, window, Self::on_query_event)
+        cx.subscribe_in(&input_query, window, Self::on_input_query_event)
             .detach();
 
+        let executor = cx.background_executor().clone();
+
+        cx.spawn_in(window, async move |view, cx| {
+            loop {
+                executor.timer(Duration::from_millis(100)).await;
+
+                let is_scanning = view
+                    .update(cx, |view, cx| {
+                        let scan_progress =
+                            view.search.get_scan_progress().unwrap();
+                        let is_scanning = scan_progress.is_scanning;
+                        let files_count = scan_progress.scanned_files_count;
+
+                        view.is_scanning = is_scanning;
+                        view.search_result =
+                            format!("{} files indexed", files_count,).into();
+
+                        cx.notify();
+
+                        is_scanning
+                    })
+                    .unwrap();
+
+                if is_scanning {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+        })
+        .detach();
+
         Self {
-            input_path,
+            search: search,
             input_query,
-            list,
-            search: None,
-            searching: false,
-            search_task: Task::ready(()),
+            items: vec![],
+            item_sizes: Rc::new(vec![]),
+            item_selected: None,
+            scroll_handle: VirtualListScrollHandle::new(),
+            search_result: SharedString::default(),
+            is_scanning: true,
         }
     }
 
-    fn on_query_event(
+    fn on_input_query_event(
         &mut self,
         input: &Entity<InputState>,
         event: &InputEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let InputEvent::PressEnter {
-            secondary: false,
-            shift: false,
-        } = event
-        else {
-            return;
-        };
-
-        self.start_search(input, window, cx);
+        match event {
+            InputEvent::PressEnter {
+                secondary: _,
+                shift: _,
+            } => {
+                let needle = input.read(cx).value().trim().to_owned();
+                self.search(needle, window, cx);
+            }
+            InputEvent::Change => {}
+            InputEvent::Focus => {}
+            InputEvent::Blur => {}
+        }
     }
 
-    fn start_search(
+    fn search(
         &mut self,
-        input: &Entity<InputState>,
+        needle: String,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.searching {
-            return;
-        }
+        cx.spawn_in(window, async move |this, cx| {
+            this.update(cx, |view, _cx| {
+                let search_result = view.search.search(&needle, 1000).unwrap();
+                let indexed_files = search_result.indexed_files;
+                let indexed_dirs = search_result.indexed_dirs;
+                let matched = search_result.matched;
 
-        let path_value = self.input_path.read(cx).value();
-        let base_path = path_value.trim().to_owned();
+                view.search_result = format!(
+                    "{} files indexed • {} dirs indexed • {} matched",
+                    indexed_files, indexed_dirs, matched,
+                )
+                .into();
 
-        let query_value = input.read(cx).value();
-        let needle = query_value.trim().to_owned();
+                view.item_selected = if search_result.items.is_empty() {
+                    None
+                } else {
+                    Some(0)
+                };
 
-        if base_path.is_empty() || needle.is_empty() {
-            return;
-        }
-
-        let needs_index = self.search.as_ref().is_none_or(|search| {
-            search.base_path() != std::path::Path::new(&base_path)
-        });
-
-        self.searching = true;
-
-        self.list.update(cx, |list, cx| {
-            list.delegate_mut().is_loading = true;
-            cx.notify();
-        });
-
-        // Results from another root are no longer valid, so clear them while
-        // the new root is being indexed.
-        if needs_index {
-            self.list.update(cx, |list, cx| {
-                list.delegate_mut().items.clear();
-                list.set_selected_index(None, window, cx);
-                cx.notify();
-            });
-        }
-
-        // Transfer ownership to the background operation. It will be returned
-        // to View when the operation completes.
-        let existing_search = self.search.take();
-
-        let background_task = cx.background_spawn(async move {
-            let search = match existing_search {
-                Some(search)
-                    if search.base_path()
-                        == std::path::Path::new(&base_path) =>
-                {
-                    search
-                }
-
-                _ => {
-                    let mut search = Search::try_new(SearchOptions {
-                        base_path,
-                        enable_content_indexing: false,
-                    })?;
-
-                    search.index()?;
-
-                    search
-                }
-            };
-
-            let items = search.search(&needle, 100);
-
-            anyhow::Ok((search, items))
-        });
-
-        self.search_task = cx.spawn_in(window, async move |this, cx| {
-            let result = background_task.await;
-
-            let _ = this.update_in(cx, |this, window, cx| {
-                this.searching = false;
-
-                this.input_query.update(cx, |input, cx| {
-                    input.set_loading(false, window, cx);
-                });
-
-                match result {
-                    Ok((search, items)) => {
-                        this.search = Some(search);
-
-                        this.list.update(cx, |list, cx| {
-                            let first_item = (!items.is_empty())
-                                .then_some(IndexPath::default());
-
-                            list.delegate_mut().items = items;
-                            list.delegate_mut().is_loading = false;
-
-                            list.set_selected_index(first_item, window, cx);
-
-                            cx.notify();
-                        });
-                    }
-
-                    Err(error) => {
-                        eprintln!("Failed to perform finder search: {error:#}");
-                    }
-                }
-            });
-        });
+                view.items = search_result.items;
+                view.item_sizes =
+                    Rc::new(vec![size(px(900.0), px(19.0)); view.items.len()]);
+            })
+            .unwrap();
+        })
+        .detach();
     }
 }
 
@@ -197,84 +147,100 @@ impl Render for View {
             .id("finder")
             .key_context("finder")
             .size_full()
-            .overflow_hidden()
             .flex()
             .flex_col()
             .bg(cx.theme().colors.background)
             .text_color(cx.theme().colors.foreground)
-            .child(div().id("finder-input-path").p_3().border_b_1().child(
-                field().label("Base path").child(
-                    Input::new(&self.input_path).large().cleanable(true),
+            .overflow_hidden()
+            .child(
+                div().id("finder-input-query").p_3().border_b_1().child(
+                    field().child(
+                        Input::new(&self.input_query)
+                            .disabled(self.is_scanning)
+                            .large(),
+                    ),
                 ),
-            ))
-            .child(div().id("finder-input-query").p_3().border_b_1().child(
-                field().label("Search query").child(
-                    Input::new(&self.input_query).large().cleanable(true),
-                ),
-            ))
+            )
+            .when(self.is_scanning, |this| {
+                this.child(
+                    div()
+                        .id("finder-loading")
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            Spinner::new()
+                                .icon(IconName::LoaderCircle)
+                                .large()
+                                .color(cx.theme().colors.foreground),
+                        ),
+                )
+            })
+            .when(!self.is_scanning, |this| {
+                this.child(
+                    div()
+                        .id("finder-list")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_hidden()
+                        .child(
+                            v_virtual_list(
+                                cx.entity().clone(),
+                                "my-list",
+                                self.item_sizes.clone(),
+                                |view, visible_range, _, cx| {
+                                    visible_range
+                                        .filter_map(|index| {
+                                            let item = view.items.get(index)?;
+                                            let selected = view.item_selected
+                                                == Some(index);
+
+                                            Some(
+                                                div()
+                                                    .id((
+                                                        "finder-result",
+                                                        index,
+                                                    ))
+                                                    .h(px(18.0))
+                                                    .w_full()
+                                                    .px_3()
+                                                    .flex()
+                                                    .items_center()
+                                                    .when(selected, |view| {
+                                                        view.bg(cx
+                                                            .theme()
+                                                            .colors
+                                                            .list_active)
+                                                    })
+                                                    .child(
+                                                        item.clone()
+                                                            .path
+                                                            .to_string_lossy()
+                                                            .to_string(),
+                                                    ),
+                                            )
+                                        })
+                                        .collect()
+                                },
+                            )
+                            .track_scroll(&self.scroll_handle),
+                        ),
+                )
+            })
             .child(
                 div()
-                    .id("finder-list")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_hidden()
-                    .child(List::new(&self.list).size_full()),
+                    .id("finder-status")
+                    .w_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .py_2()
+                    .border_t_1()
+                    .text_sm()
+                    .text_color(cx.theme().colors.muted_foreground)
+                    .child(self.search_result.clone()),
             )
-    }
-}
-
-impl gpui_component::list::ListDelegate for ListDelegate {
-    type Item = ListItem;
-
-    fn items_count(&self, _section: usize, _cx: &gpui::App) -> usize {
-        self.items.len()
-    }
-
-    fn loading(&self, _cx: &gpui::App) -> bool {
-        self.is_loading
-    }
-
-    fn render_loading(
-        &mut self,
-        _window: &mut Window,
-        cx: &mut Context<ListState<Self>>,
-    ) -> impl IntoElement {
-        div()
-            .flex()
-            .items_center()
-            .justify_center()
-            .h_full()
-            .w_full()
-            .child(
-                Spinner::new()
-                    .large()
-                    .icon(IconName::LoaderCircle)
-                    .color(cx.theme().colors.foreground),
-            )
-    }
-
-    fn render_item(
-        &mut self,
-        index: IndexPath,
-        _window: &mut Window,
-        _cx: &mut Context<ListState<Self>>,
-    ) -> Option<Self::Item> {
-        self.items.get(index.row).map(|item| {
-            ListItem::new(index)
-                .truncate()
-                .text_sm()
-                .child(item.clone().path.to_string_lossy().to_string())
-                .selected(Some(index) == self.index)
-        })
-    }
-
-    fn set_selected_index(
-        &mut self,
-        index: Option<IndexPath>,
-        _window: &mut Window,
-        cx: &mut Context<ListState<Self>>,
-    ) {
-        self.index = index;
-        cx.notify();
     }
 }
