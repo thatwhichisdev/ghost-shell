@@ -12,6 +12,7 @@ gpui-component.workspace = true
 gpui_tokio.workspace = true
 
 ghost-shell-actions.workspace = true
+ghost-shell-app.workspace = true
 ghost-shell-ipc.workspace = true
 ghost-shell-niri.workspace = true
 

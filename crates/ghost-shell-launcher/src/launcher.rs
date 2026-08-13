@@ -1,13 +1,9 @@
 use anyhow::{Context as _, Result};
+use ghost_shell_app::GhostShell;
 use gpui::{
     AnyWindowHandle, App, Bounds, Context, Entity, Global, IntoElement, Render,
     Subscription, Window, WindowBackgroundAppearance, WindowBounds, WindowKind,
-    WindowOptions,
-    accesskit::Uuid,
-    div, img,
-    layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
-    prelude::*,
-    px, rgb, size,
+    WindowOptions, div, img, prelude::*, px, size,
 };
 use gpui_component::{
     ActiveTheme as _, IndexPath, Root, Sizable, StyledExt,
@@ -15,8 +11,6 @@ use gpui_component::{
     list::{List, ListDelegate, ListItem, ListState},
 };
 use neo_frizbee::Config;
-
-use ghost_shell_niri::NiriState;
 
 use crate::{Application, Applications, Launch};
 
@@ -39,47 +33,28 @@ impl Launcher {
     }
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        let niri_state = cx.global::<NiriState>();
-        let id = niri_state
-            .clone()
-            .workspaces
-            .into_values()
-            .find(|workspace| workspace.is_focused == true)
-            .and_then(|workspace| workspace.output)
-            .map(|output| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
-            .unwrap(); // for now panic, but ideally we should toggle launcher on primary output if nothing is focused
+        let ghost_shell = cx.global::<GhostShell>();
 
-        let display = cx
-            .displays()
-            .iter()
-            .find(|display| display.uuid().is_ok_and(|uuid| uuid == id))
-            .cloned()
-            .unwrap(); // for now display should be always present in the config, will change later
+        let output = ghost_shell
+            .get_focused_output()
+            .unwrap_or(ghost_shell.get_primary_output());
 
-        let bounds = Bounds::centered(
-            Some(display.id()),
+        let window_bounds = Bounds::centered(
+            Some(output.display.id()),
             size(px(540.0), px(450.0)),
             cx,
         );
 
         let window_options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: None,
             focus: true,
             show: true,
-            kind: WindowKind::LayerShell(LayerShellOptions {
-                namespace: "ghost-shell-launcher".to_owned(),
-                layer: Layer::Overlay,
-                anchor: Anchor::empty(),
-                exclusive_zone: None,
-                exclusive_edge: None,
-                margin: None,
-                keyboard_interactivity: KeyboardInteractivity::OnDemand,
-            }),
+            kind: WindowKind::Normal,
             is_movable: false,
             is_resizable: false,
             is_minimizable: false,
-            display_id: Some(display.id()),
+            display_id: Some(output.display.id()),
             window_background: WindowBackgroundAppearance::Transparent,
             app_id: Some("ghost-shell-launcher".to_owned()),
             ..Default::default()
@@ -274,16 +249,15 @@ impl Render for LauncherView {
         div()
             .id("launcher")
             .key_context("launcher")
+            .size_full()
             .on_action(cx.listener(Self::select_previous_item))
             .on_action(cx.listener(Self::select_next_item))
             .on_action(cx.listener(Self::launch_selected_item))
-            .size_full()
-            .rounded_lg()
             .flex()
             .flex_col()
-            .bg(rgb(0x00_0000))
-            .overflow_hidden()
+            .bg(cx.theme().colors.background)
             .text_color(cx.theme().colors.foreground)
+            .overflow_hidden()
             .child(
                 div()
                     .id("launcher-input")

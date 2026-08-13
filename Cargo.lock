@@ -2600,6 +2600,7 @@ dependencies = [
  "freedesktop-desktop-entry",
  "freedesktop-icons",
  "ghost-shell-actions",
+ "ghost-shell-app",
  "ghost-shell-ipc",
  "ghost-shell-niri",
  "gpui",

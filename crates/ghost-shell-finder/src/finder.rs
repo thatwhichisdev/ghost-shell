@@ -1,12 +1,10 @@
 use anyhow::{Context as _, Result};
 use ghost_shell_app::GhostShell;
 use gpui::{
-    App, AppContext, Bounds, Global, Styled, WindowBackgroundAppearance,
-    WindowBounds, WindowHandle, WindowKind, WindowOptions,
-    layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
-    px, rgba, size,
+    App, AppContext, Bounds, Global, WindowBackgroundAppearance, WindowBounds,
+    WindowHandle, WindowKind, WindowOptions, px, size,
 };
-use gpui_component::{ActiveTheme as _, Root};
+use gpui_component::Root;
 
 use crate::view::View;
 
