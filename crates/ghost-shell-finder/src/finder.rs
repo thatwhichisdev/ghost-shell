@@ -4,9 +4,9 @@ use gpui::{
     App, AppContext, Bounds, Global, Styled, WindowBackgroundAppearance,
     WindowBounds, WindowHandle, WindowKind, WindowOptions,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
-    px, size,
+    px, rgba, size,
 };
-use gpui_component::Root;
+use gpui_component::{ActiveTheme as _, Root};
 
 use crate::view::View;
 
@@ -30,6 +30,7 @@ impl Finder {
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
         let ghost_shell = cx.global::<GhostShell>();
+
         let output = ghost_shell
             .get_focused_output()
             .unwrap_or(ghost_shell.get_primary_output());
@@ -40,34 +41,22 @@ impl Finder {
             cx,
         ));
 
-        let window_kind = WindowKind::LayerShell(LayerShellOptions {
-            namespace: "ghost-shell-finder".to_owned(),
-            layer: Layer::Overlay,
-            anchor: Anchor::empty(),
-            exclusive_zone: None,
-            exclusive_edge: None,
-            margin: None,
-            keyboard_interactivity: KeyboardInteractivity::OnDemand,
-        });
-
         let window_options = WindowOptions {
             window_bounds: Some(window_bounds),
             titlebar: None,
-            kind: window_kind,
+            kind: WindowKind::Normal,
             is_movable: false,
             is_resizable: false,
             is_minimizable: false,
             display_id: Some(output.display.id()),
-            window_background: WindowBackgroundAppearance::Blurred,
+            window_background: WindowBackgroundAppearance::Transparent,
             app_id: Some("ghost-shell-finder".to_owned()),
             ..Default::default()
         };
 
         let handle = cx.open_window(window_options, |window, cx| {
             let view = cx.new(|cx| View::new(window, cx));
-            cx.new(|cx| {
-                Root::new(view, window, cx).bordered(false).rounded_lg()
-            })
+            cx.new(|cx| Root::new(view, window, cx).bordered(false))
         })?;
 
         self.handle = Some(handle);
