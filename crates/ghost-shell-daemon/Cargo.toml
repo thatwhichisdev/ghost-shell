@@ -23,7 +23,6 @@ ghost-shell-theme.workspace = true
 
 gpui.workspace = true
 gpui-component.workspace = true
-gpui-component-assets.workspace = true
 gpui_platform.workspace = true
 gpui_tokio.workspace = true
 

@@ -15,7 +15,7 @@ pub fn init(cx: &mut App) {
     let config = cx.global::<AppConfig>().clone();
 
     let menu = cx.new(|_cx| MenuWidget {});
-    let power = cx.new(|_cx| PowerWidget {});
+    let power = cx.new(|_cx| PowerWidget::try_new().unwrap());
     let clock = cx.new(ClockWidget::new);
     let focus = cx.new(FocusWidget::new);
 
