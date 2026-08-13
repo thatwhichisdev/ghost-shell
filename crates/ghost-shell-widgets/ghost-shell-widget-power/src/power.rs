@@ -22,9 +22,9 @@ impl PowerWidget {
 
     fn battery_icon(&self) -> &'static str {
         match self.battery.state() {
-            State::Unknown => "icons/battery-absent.svg",
+            State::Unknown => "icons/battery-unknown.svg",
             State::Charging => "icons/battery-charging.svg",
-            State::Discharging => "icons/battery-charging.svg",
+            State::Discharging => "icons/battery-discharging.svg",
             State::Empty => "icons/battery-empty.svg",
             State::Full => "icons/battery-full.svg",
         }
@@ -38,6 +38,7 @@ impl Render for PowerWidget {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let icon = self.battery_icon();
+        println!("Battery icon: {icon}");
 
         div().id("power").flex().items_center().child(
             Icon::empty()
