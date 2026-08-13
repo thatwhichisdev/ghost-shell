@@ -88,7 +88,7 @@ impl Bar {
                 is_resizable: false,
                 is_minimizable: false,
                 display_id: Some(self.display.id()),
-                window_background: WindowBackgroundAppearance::Blurred,
+                window_background: WindowBackgroundAppearance::Transparent,
                 app_id: Some(app_id),
                 window_min_size: None,
                 window_decorations: None,
@@ -116,15 +116,12 @@ impl Render for BarView {
         _cx: &mut gpui::Context<Self>,
     ) -> impl IntoElement {
         div()
-            // .font_family(self.config.font_family.clone())
             .size_full()
             .flex()
             .items_center()
             .justify_center()
             // .bg(rgba(self.config.bg))
-            // .text_color(rgba(self.config.fg))
             .px(px(4.0))
-            // .text_size(px(self.config.font_size))
             .child({
                 div()
                     .flex()
