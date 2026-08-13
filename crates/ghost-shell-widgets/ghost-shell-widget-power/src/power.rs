@@ -38,7 +38,6 @@ impl Render for PowerWidget {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let icon = self.battery_icon();
-        println!("Battery icon: {icon}");
 
         div().id("power").flex().items_center().child(
             Icon::empty()

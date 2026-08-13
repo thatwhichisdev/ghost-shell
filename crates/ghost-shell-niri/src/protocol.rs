@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Entry};
 
 use gpui::{Global, accesskit::Uuid};
 use serde::{Deserialize, Serialize};
@@ -21,10 +21,68 @@ pub enum Response {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Event {
-    WorkspacesChanged { workspaces: Vec<Workspace> },
-    WorkspaceActivated { id: u64, focused: bool },
-    WindowsChanged { windows: Vec<Window> },
-    WindowFocusChanged { id: Option<u64> },
+    WorkspacesChanged {
+        workspaces: Vec<Workspace>,
+    },
+    WorkspaceUrgencyChanged {
+        id: u64,
+        urgent: bool,
+    },
+    WorkspaceActivated {
+        id: u64,
+        focused: bool,
+    },
+    WorkspaceActiveWindowChanged {
+        workspace_id: u64,
+        active_window_id: Option<u64>,
+    },
+    WindowsChanged {
+        windows: Vec<Window>,
+    },
+    WindowOpenedOrChanged {
+        window: Window,
+    },
+    WindowClosed {
+        id: u64,
+    },
+    WindowFocusChanged {
+        id: Option<u64>,
+    },
+    WindowFocusTimestampChanged {
+        id: u64,
+        focus_timestamp: Option<Timestamp>,
+    },
+    WindowUrgencyChanged {
+        id: u64,
+        urgent: bool,
+    },
+    WindowLayoutsChanged {
+        changes: Vec<(u64, WindowLayout)>,
+    },
+    KeyboardLayoutsChanged {
+        keyboard_layouts: KeyboardLayouts,
+    },
+    KeyboardLayoutSwitched {
+        idx: u8,
+    },
+    OverviewOpenedOrClosed {
+        is_open: bool,
+    },
+    ConfigLoaded {
+        failed: bool,
+    },
+    ScreenshotCaptured {
+        path: Option<String>,
+    },
+    CastsChanged {
+        casts: Vec<Cast>,
+    },
+    CastStartedOrChanged {
+        cast: Cast,
+    },
+    CastStopped {
+        stream_id: u64,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -116,6 +174,13 @@ impl NiriState {
                 self.workspaces =
                     workspaces.into_iter().map(|ws| (ws.id, ws)).collect();
             }
+            Event::WorkspaceUrgencyChanged { id, urgent } => {
+                for ws in self.workspaces.values_mut() {
+                    if ws.id == id {
+                        ws.is_urgent = urgent;
+                    }
+                }
+            }
             Event::WorkspaceActivated { id, focused } => {
                 let workspace = self
                     .workspaces
@@ -134,15 +199,102 @@ impl NiriState {
                     }
                 }
             }
+            Event::WorkspaceActiveWindowChanged {
+                workspace_id,
+                active_window_id,
+            } => {
+                let ws = self.workspaces.get_mut(&workspace_id);
+                let ws =
+                    ws.expect("changed workspace was missing from the map");
+                ws.active_window_id = active_window_id;
+            }
             Event::WindowsChanged { windows } => {
                 self.windows =
                     windows.into_iter().map(|win| (win.id, win)).collect();
+            }
+            Event::WindowOpenedOrChanged { window } => {
+                let (id, is_focused) = match self.windows.entry(window.id) {
+                    Entry::Occupied(mut entry) => {
+                        let entry = entry.get_mut();
+                        *entry = window;
+                        (entry.id, entry.is_focused)
+                    }
+                    Entry::Vacant(entry) => {
+                        let entry = entry.insert(window);
+                        (entry.id, entry.is_focused)
+                    }
+                };
+
+                if is_focused {
+                    for win in self.windows.values_mut() {
+                        if win.id != id {
+                            win.is_focused = false;
+                        }
+                    }
+                }
+            }
+            Event::WindowClosed { id } => {
+                let win = self.windows.remove(&id);
+                win.expect("closed window was missing from the map");
             }
             Event::WindowFocusChanged { id } => {
                 for win in self.windows.values_mut() {
                     win.is_focused = Some(win.id) == id;
                 }
             }
+            Event::WindowFocusTimestampChanged {
+                id,
+                focus_timestamp,
+            } => {
+                for win in self.windows.values_mut() {
+                    if win.id == id {
+                        win.focus_timestamp = focus_timestamp;
+                        break;
+                    }
+                }
+            }
+            Event::WindowUrgencyChanged { id, urgent } => {
+                for win in self.windows.values_mut() {
+                    if win.id == id {
+                        win.is_urgent = urgent;
+                        break;
+                    }
+                }
+            }
+            Event::WindowLayoutsChanged { changes } => {
+                for (id, update) in changes {
+                    let win = self.windows.get_mut(&id);
+                    let win =
+                        win.expect("changed window was missing from the map");
+                    win.layout = update;
+                }
+            }
+            Event::KeyboardLayoutsChanged { keyboard_layouts } => {
+                self.keyboard_layouts = Some(keyboard_layouts);
+            }
+            Event::KeyboardLayoutSwitched { idx } => {
+                let kb = self.keyboard_layouts.as_mut();
+                let kb = kb.expect("keyboard layouts must be set before a layout can be switched");
+                kb.current_idx = idx;
+            }
+            Event::OverviewOpenedOrClosed { is_open } => {
+                self.is_open = is_open;
+            }
+            Event::ConfigLoaded { failed } => {
+                self.failed = failed;
+            }
+            Event::CastsChanged { casts } => {
+                self.casts =
+                    casts.into_iter().map(|c| (c.stream_id, c)).collect();
+            }
+            Event::CastStartedOrChanged { cast } => {
+                self.casts.insert(cast.stream_id, cast);
+            }
+            Event::CastStopped { stream_id } => {
+                let cast = self.casts.remove(&stream_id);
+                cast.expect("stopped cast was missing from the map");
+            }
+            _ => {}
         }
     }
 
