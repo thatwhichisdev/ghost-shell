@@ -1,11 +1,14 @@
+use std::rc::Rc;
+
 use gpui::{
-    App, Context, Entity, IntoElement, Render, Subscription, Window, div, img,
-    prelude::*, px,
+    Context, Entity, IntoElement, ObjectFit, Pixels, Render, ScrollStrategy,
+    Size, Subscription, Window, div, img, prelude::*, px, size,
 };
 use gpui_component::{
-    ActiveTheme as _, IndexPath, Sizable, StyledExt,
+    ActiveTheme as _, Sizable, StyledExt, VirtualListScrollHandle,
     input::{Input, InputEvent, InputState, MoveDown, MoveUp},
-    list::{List, ListDelegate, ListItem, ListState},
+    list::ListItem,
+    v_virtual_list,
 };
 use neo_frizbee::Config;
 
@@ -24,31 +27,19 @@ pub(crate) struct View {
 
     /// A handle to a input's subscription.
     /// When dropped, the subscription is cancelled and the callback will no longer be invoked.
-    #[allow(unused)]
-    input_subscription: Subscription,
+    _input_subscription: Subscription,
 
-    /// A strong well-typed reference to launcher's list of applications and files
-    list: Entity<ListState<ApplicationListDelegate>>,
+    entries: Vec<DesktopEntry>,
+    entries_sizes: Rc<Vec<Size<Pixels>>>,
+
+    entries_filtered: Vec<usize>,
+    entry_selected: Option<usize>,
+
+    scroll_handle: VirtualListScrollHandle,
 }
 
 impl View {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let entries = cx.global::<DesktopEntries>().clone();
-
-        // Initialize list of applications and select first item
-        let list = cx.new(|cx| {
-            let all_indices = (0..entries.items.len()).collect();
-            let delegate = ApplicationListDelegate {
-                entries: entries.items,
-                entries_filtered: all_indices,
-                entry_selected: None,
-            };
-            let mut list = ListState::new(delegate, window, cx);
-
-            list.set_selected_index(Some(IndexPath::new(0)), window, cx);
-            list
-        });
-
         // Initialiaze input and focus it
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx);
@@ -58,13 +49,22 @@ impl View {
         });
 
         // Subscirbe to input's events and keep the handle
-        let input_subscription =
+        let _input_subscription =
             cx.subscribe_in(&input, window, Self::on_query_event);
+
+        let entries = cx.global::<DesktopEntries>().clone();
+        let entries_len = entries.items.len();
+        let entries_filtered = (0..entries_len).collect();
+        let entries_sizes = Rc::new(vec![size(px(0.0), px(48.0)); entries_len]);
 
         Self {
             input,
-            input_subscription,
-            list,
+            _input_subscription,
+            entries: entries.items,
+            entries_sizes,
+            entries_filtered,
+            entry_selected: (entries_len > 0).then_some(0),
+            scroll_handle: VirtualListScrollHandle::new(),
         }
     }
 
@@ -72,7 +72,7 @@ impl View {
         &mut self,
         input: &Entity<InputState>,
         event: &InputEvent,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !matches!(event, InputEvent::Change) {
@@ -80,79 +80,79 @@ impl View {
         }
 
         let query = input.read(cx).value();
-        let query = query.trim();
 
-        self.list.update(cx, |list, cx| {
-            let has_items = {
-                let delegate = list.delegate_mut();
-                delegate.filter(query);
-                !delegate.entries_filtered.is_empty()
-            };
+        let matched: Vec<usize> = {
+            if query.is_empty() {
+                (0..self.entries.len()).collect()
+            } else {
+                neo_frizbee::match_list(
+                    query.trim(),
+                    &self.entries,
+                    &Config::default(),
+                )
+                .into_iter()
+                .map(|matched| matched.index as usize)
+                .collect()
+            }
+        };
 
-            let selected = has_items.then_some(IndexPath::new(0));
+        self.entry_selected = (!matched.is_empty()).then_some(0);
+        self.entries_sizes =
+            Rc::new(vec![size(px(0.0), px(48.0)); matched.len()]);
+        self.entries_filtered = matched;
 
-            list.set_selected_index(selected, window, cx);
-            cx.notify();
-        });
+        if self.entry_selected.is_some() {
+            self.scroll_handle.scroll_to_item(0, ScrollStrategy::Top);
+        }
+
+        cx.notify();
     }
 
     fn on_entry_select_next(
         &mut self,
         _: &MoveDown,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.list.update(cx, |list, cx| {
-            let items_count = list.delegate().entries_filtered.len();
-            let next_index = match (items_count, list.selected_index()) {
-                (0, _) => None,
-                (_, None) => Some(IndexPath::new(0)),
-                (items_count, Some(current)) => {
-                    let next_row = if current.row + 1 >= items_count {
-                        0
-                    } else {
-                        current.row + 1
-                    };
+        let len = self.entries_filtered.len();
 
-                    Some(IndexPath::new(next_row))
-                }
-            };
+        let Some(ix) = (len > 0).then(|| {
+            self.entry_selected
+                .filter(|&ix| ix < len)
+                .map_or(0, |ix| (ix + 1) % len)
+        }) else {
+            self.entry_selected = None;
+            return;
+        };
 
-            if next_index.is_some() {
-                list.set_selected_index(next_index, window, cx);
-                list.scroll_to_selected_item(window, cx);
-            }
-        });
+        self.entry_selected = Some(ix);
+        self.scroll_handle.scroll_to_item(ix, ScrollStrategy::Top);
+
+        cx.notify();
     }
 
     fn on_entry_select_previous(
         &mut self,
         _: &MoveUp,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.list.update(cx, |list, cx| {
-            let items_count = list.delegate().entries_filtered.len();
-            let previous_index = match (items_count, list.selected_index()) {
-                (0, _) => None,
-                (items_count, None) => Some(IndexPath::new(items_count - 1)),
-                (items_count, Some(current)) => {
-                    let previous_row =
-                        if current.row == 0 || current.row >= items_count {
-                            items_count - 1
-                        } else {
-                            current.row - 1
-                        };
+        let len = self.entries_filtered.len();
 
-                    Some(IndexPath::new(previous_row))
-                }
-            };
+        let Some(ix) = (len > 0).then(|| {
+            self.entry_selected
+                .filter(|&ix| ix < len)
+                .and_then(|ix| ix.checked_sub(1))
+                .unwrap_or(len - 1)
+        }) else {
+            self.entry_selected = None;
+            return;
+        };
 
-            if previous_index.is_some() {
-                list.set_selected_index(previous_index, window, cx);
-                list.scroll_to_selected_item(window, cx);
-            }
-        });
+        self.entry_selected = Some(ix);
+        self.scroll_handle.scroll_to_item(ix, ScrollStrategy::Top);
+
+        cx.notify();
     }
 
     fn on_entry_spawn(
@@ -162,11 +162,9 @@ impl View {
         cx: &mut Context<Self>,
     ) {
         let Some(command) = self
-            .list
-            .read(cx)
-            .delegate()
-            .selected_item()
-            .map(|application| application.command.clone())
+            .entry_selected
+            .map(|ix| self.entries.get(ix).unwrap())
+            .map(|entry| entry.command.clone())
         else {
             return;
         };
@@ -199,6 +197,132 @@ impl View {
             }
         }
     }
+
+    fn render_entries(
+        &mut self,
+        cx: &mut Context<'_, View>,
+    ) -> impl IntoElement {
+        div()
+            .id("launcher-entries")
+            .w_full()
+            .flex_1()
+            .min_h_0()
+            .overflow_hidden()
+            .child(
+                v_virtual_list(
+                    cx.entity().clone(),
+                    "launcher-virtual-entries",
+                    self.entries_sizes.clone(),
+                    |view, visible_range, _window, cx| {
+                        visible_range
+                            .filter_map(|ix| view.render_entry(ix, cx))
+                            .collect()
+                    },
+                )
+                .track_scroll(&self.scroll_handle),
+            )
+    }
+
+    fn render_entry(
+        &mut self,
+        ix: usize,
+        cx: &mut Context<Self>,
+    ) -> Option<ListItem> {
+        const ICON_SIZE: f32 = 40.0;
+
+        let entry = self
+            .entries_filtered
+            .get(ix)
+            .and_then(|&entry_ix| self.entries.get(entry_ix))?;
+
+        let selected = self.entry_selected == Some(ix);
+
+        let theme = cx.theme();
+
+        let (title_color, description_color) = if selected {
+            (theme.accent_foreground, theme.accent_foreground)
+        } else {
+            (theme.foreground, theme.muted_foreground)
+        };
+
+        let icon = div()
+            .size(px(ICON_SIZE))
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_center()
+            .when_some(entry.icon.clone(), |this, path| {
+                this.child(
+                    img(path)
+                        .size(px(ICON_SIZE))
+                        .object_fit(ObjectFit::Contain),
+                )
+            });
+
+        let body = div()
+            .min_w_0()
+            .flex_1()
+            .flex()
+            .flex_col()
+            .justify_center()
+            .overflow_hidden()
+            .child(
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .text_size(px(14.0))
+                    .font_bold()
+                    .text_color(title_color)
+                    .truncate()
+                    .child(entry.name.clone()),
+            )
+            .when_some(
+                entry
+                    .description
+                    .clone()
+                    .filter(|description| !description.trim().is_empty()),
+                |this, description| {
+                    this.child(
+                        div()
+                            .w_full()
+                            .min_w_0()
+                            .text_size(px(13.0))
+                            .text_color(description_color)
+                            .when(selected, |this| this.opacity(0.7))
+                            .truncate()
+                            .child(description),
+                    )
+                },
+            );
+
+        let entry = ListItem::new(("launcher-entry", ix))
+            .selected(selected)
+            .size_full()
+            .rounded_md()
+            .child(
+                div()
+                    .w_full()
+                    .min_w_0()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .gap_x_3()
+                    .overflow_hidden()
+                    .child(icon)
+                    .child(body),
+            );
+
+        Some(entry)
+    }
+
+    fn render_input(&mut self) -> impl IntoElement {
+        div()
+            .id("launcher-input")
+            .w_full()
+            .p_3()
+            .border_b_1()
+            .child(Input::new(&self.input).large().cleanable(true))
+    }
 }
 
 impl Render for View {
@@ -217,171 +341,7 @@ impl Render for View {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .child(
-                div()
-                    .id("launcher-input")
-                    .w_full()
-                    .p_3()
-                    .border_b_1()
-                    .child(Input::new(&self.input).large().cleanable(true)),
-            )
-            .child(
-                div()
-                    .id("launcher-entries")
-                    .w_full()
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_hidden()
-                    .child(List::new(&self.list).size_full()),
-            )
-    }
-}
-
-struct ApplicationListDelegate {
-    entries: Vec<DesktopEntry>,
-    entries_filtered: Vec<usize>,
-    entry_selected: Option<IndexPath>,
-}
-
-impl ApplicationListDelegate {
-    fn item(&self, row: usize) -> Option<&DesktopEntry> {
-        let item_index = *self.entries_filtered.get(row)?;
-        self.entries.get(item_index)
-    }
-
-    fn selected_item(&self) -> Option<&DesktopEntry> {
-        let selected = self.entry_selected?;
-        self.item(selected.row)
-    }
-
-    fn filter(&mut self, query: &str) {
-        self.entries_filtered.clear();
-
-        if query.is_empty() {
-            self.entries_filtered.extend(0..self.entries.len());
-            return;
-        }
-
-        let matches =
-            neo_frizbee::match_list(query, &self.entries, &Config::default());
-
-        self.entries_filtered.reserve(matches.len());
-        self.entries_filtered
-            .extend(matches.into_iter().map(|matched| matched.index as usize));
-    }
-}
-
-impl ListDelegate for ApplicationListDelegate {
-    type Item = ListItem;
-
-    fn items_count(&self, _section: usize, _cx: &App) -> usize {
-        self.entries_filtered.len()
-    }
-
-    fn render_item(
-        &mut self,
-        index: IndexPath,
-        _window: &mut Window,
-        cx: &mut Context<ListState<Self>>,
-    ) -> Option<Self::Item> {
-        const ICON_SIZE: f32 = 40.0;
-        const ROW_HEIGHT: f32 = 48.0;
-
-        let app = self.item(index.row)?;
-        let selected = self.entry_selected == Some(index);
-
-        let title_color = if selected {
-            cx.theme().accent_foreground
-        } else {
-            cx.theme().foreground
-        };
-
-        let description_color = if selected {
-            cx.theme().accent_foreground
-        } else {
-            cx.theme().muted_foreground
-        };
-
-        let description = app
-            .description
-            .clone()
-            .filter(|description| !description.trim().is_empty());
-
-        let icon_column = div()
-            .w(px(ICON_SIZE))
-            .h(px(ICON_SIZE))
-            .flex_none()
-            .flex()
-            .items_center()
-            .justify_center()
-            .when_some(app.icon.clone(), |this, icon_path| {
-                this.child(
-                    img(icon_path)
-                        .size(px(ICON_SIZE))
-                        .object_fit(gpui::ObjectFit::Contain),
-                )
-            });
-
-        let text_column = div()
-            .min_w_0()
-            .flex_1()
-            .flex()
-            .flex_col()
-            .justify_center()
-            .overflow_hidden()
-            .child(
-                div()
-                    .w_full()
-                    .min_w_0()
-                    .text_size(px(14.0))
-                    .font_bold()
-                    .text_color(title_color)
-                    .truncate()
-                    .child(app.name.clone()),
-            )
-            .when_some(description, |this, description| {
-                this.child(
-                    div()
-                        .w_full()
-                        .min_w_0()
-                        .text_size(px(13.0))
-                        .text_color(description_color)
-                        .when(selected, |this| this.opacity(0.7))
-                        .truncate()
-                        .child(description),
-                )
-            });
-
-        let content = div()
-            .w_full()
-            .min_w_0()
-            .h_full()
-            .flex()
-            .items_center()
-            .gap_x_3()
-            .overflow_hidden()
-            .child(icon_column)
-            .child(text_column);
-
-        Some(
-            ListItem::new(index)
-                .h(px(ROW_HEIGHT))
-                // Override ListItem's default 12px horizontal padding.
-                .px_2()
-                .py_1()
-                .rounded_md()
-                .child(content)
-                .selected(selected),
-        )
-    }
-
-    fn set_selected_index(
-        &mut self,
-        index: Option<IndexPath>,
-        _window: &mut Window,
-        cx: &mut Context<ListState<Self>>,
-    ) {
-        self.entry_selected = index;
-        cx.notify();
+            .child(self.render_input())
+            .child(self.render_entries(cx))
     }
 }
