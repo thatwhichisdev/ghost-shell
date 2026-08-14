@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use std::path::PathBuf;
 
 use gpui::Global;
@@ -9,6 +11,15 @@ pub struct Application {
     pub command: Vec<String>,
     pub icon: Option<PathBuf>,
     pub description: Option<String>,
+    pub terminal: bool,
+    pub path: Option<String>,
+}
+
+impl Application {
+    pub fn spawn(&mut self) -> Result<()> {
+        // todo: to implement simple spawn mechanism
+        Ok(())
+    }
 }
 
 impl AsRef<str> for Application {
@@ -31,6 +42,7 @@ pub fn load() -> Applications {
 
     let apps = freedesktop_desktop_entry::desktop_entries(&locales)
         .into_iter()
+        .filter(|entry| entry.no_display() == false)
         .map(|entry| {
             let id = entry.id().to_string();
             let name = entry.name(&locales).unwrap().into_owned();
@@ -48,6 +60,8 @@ pub fn load() -> Applications {
 
                 icon_builder.find()
             });
+            let terminal = entry.terminal();
+            let path = entry.path().map(|p| p.to_owned());
 
             Application {
                 id,
@@ -55,6 +69,8 @@ pub fn load() -> Applications {
                 command,
                 icon,
                 description,
+                terminal,
+                path,
             }
         })
         .collect();
