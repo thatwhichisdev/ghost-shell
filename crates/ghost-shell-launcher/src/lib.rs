@@ -1,44 +1,13 @@
-pub mod applications;
-pub mod launcher;
+mod actions;
+mod entries;
+mod launcher;
+mod view;
 
-pub use applications::*;
-pub use launcher::*;
+use gpui::App;
 
-use gpui::{App, BorrowAppContext as _, KeyBinding};
-
-use ghost_shell_actions::{LauncherClose, LauncherToggle};
-
-gpui::actions!(launcher, [Launch]);
-
+/// Entry point for launcher initialization.
+/// Responsible for dekstop entries discovery and basic launcher initialization.
 pub fn init(cx: &mut App) {
-    let apps = applications::load();
-    cx.set_global(apps);
-
-    let launcher = Launcher::new();
-    cx.set_global(launcher);
-
-    cx.bind_keys([
-        KeyBinding::new("escape", LauncherClose, Some("launcher")),
-        KeyBinding::new("enter", Launch, Some("launcher")),
-    ]);
-
-    cx.on_action(|_: &LauncherClose, cx| {
-        cx.defer(|cx| {
-            cx.update_global::<Launcher, _>(|launcher, cx| {
-                match launcher.close(cx) {
-                    Ok(()) => {}
-                    Err(err) => eprintln!("Failed to close launcher {err:#}"),
-                }
-            });
-        });
-    });
-
-    cx.on_action(|_: &LauncherToggle, cx| {
-        cx.update_global::<Launcher, _>(|launcher, cx| {
-            match launcher.toggle(cx) {
-                Ok(()) => {}
-                Err(err) => eprintln!("Failed to toggle launcher {err:#}"),
-            }
-        });
-    });
+    entries::init(cx);
+    launcher::init(cx);
 }

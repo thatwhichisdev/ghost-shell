@@ -1,11 +1,9 @@
-use anyhow::Result;
-
 use std::path::PathBuf;
 
-use gpui::Global;
+use gpui::{App, Global};
 
 #[derive(Debug, Clone)]
-pub struct Application {
+pub struct DesktopEntry {
     pub id: String,
     pub name: String,
     pub command: Vec<String>,
@@ -15,14 +13,7 @@ pub struct Application {
     pub path: Option<String>,
 }
 
-impl Application {
-    pub fn spawn(&mut self) -> Result<()> {
-        // todo: to implement simple spawn mechanism
-        Ok(())
-    }
-}
-
-impl AsRef<str> for Application {
+impl AsRef<str> for DesktopEntry {
     #[inline]
     fn as_ref(&self) -> &str {
         self.name.as_str()
@@ -30,13 +21,13 @@ impl AsRef<str> for Application {
 }
 
 #[derive(Clone)]
-pub struct Applications {
-    pub items: Vec<Application>,
+pub struct DesktopEntries {
+    pub items: Vec<DesktopEntry>,
 }
 
-impl Global for Applications {}
+impl Global for DesktopEntries {}
 
-pub fn load() -> Applications {
+pub fn init(cx: &mut App) {
     let locales = freedesktop_desktop_entry::get_languages_from_env();
     let theme = freedesktop_icons::default_theme_gtk();
 
@@ -63,7 +54,7 @@ pub fn load() -> Applications {
             let terminal = entry.terminal();
             let path = entry.path().map(|p| p.to_owned());
 
-            Application {
+            DesktopEntry {
                 id,
                 name,
                 command,
@@ -75,5 +66,7 @@ pub fn load() -> Applications {
         })
         .collect();
 
-    Applications { items: apps }
+    let desktop_entries = DesktopEntries { items: apps };
+
+    cx.set_global(desktop_entries);
 }

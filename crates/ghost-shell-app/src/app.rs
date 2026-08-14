@@ -28,6 +28,11 @@ impl GhostShell {
         }
     }
 
+    pub fn get_output(&self) -> &GhostShellOutput {
+        self.get_focused_output()
+            .unwrap_or(self.get_primary_output())
+    }
+
     pub fn get_focused_output(&self) -> Option<&GhostShellOutput> {
         self.outputs.iter().find(|display| display.is_focused)
     }

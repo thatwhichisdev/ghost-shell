@@ -10,6 +10,7 @@ pub enum Request {
     Workspaces,
     Windows,
     EventStream,
+    Action(Action),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -83,6 +84,12 @@ pub enum Event {
     CastStopped {
         stream_id: u64,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Action {
+    Spawn { command: Vec<String> },
+    SpawnSh { command: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
