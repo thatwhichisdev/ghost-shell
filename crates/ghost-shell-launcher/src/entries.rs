@@ -4,13 +4,11 @@ use gpui::{App, Global};
 
 #[derive(Debug, Clone)]
 pub struct DesktopEntry {
-    pub id: String,
     pub name: String,
     pub command: Vec<String>,
     pub icon: Option<PathBuf>,
     pub description: Option<String>,
     pub terminal: bool,
-    pub path: Option<String>,
 }
 
 impl AsRef<str> for DesktopEntry {
@@ -33,9 +31,8 @@ pub fn init(cx: &mut App) {
 
     let apps = freedesktop_desktop_entry::desktop_entries(&locales)
         .into_iter()
-        .filter(|entry| entry.no_display() == false)
+        .filter(|entry| !entry.no_display())
         .map(|entry| {
-            let id = entry.id().to_string();
             let name = entry.name(&locales).unwrap().into_owned();
             let command = entry.parse_exec_with_uris(&[], &locales).unwrap();
             let description = entry.comment(&locales).map(|d| d.to_string());
@@ -52,16 +49,13 @@ pub fn init(cx: &mut App) {
                 icon_builder.find()
             });
             let terminal = entry.terminal();
-            let path = entry.path().map(|p| p.to_owned());
 
             DesktopEntry {
-                id,
                 name,
                 command,
                 icon,
                 description,
                 terminal,
-                path,
             }
         })
         .collect();

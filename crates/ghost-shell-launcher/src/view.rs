@@ -24,17 +24,19 @@ use crate::{
 pub(crate) struct View {
     /// A strong well-typed reference to launcher's input
     input: Entity<InputState>,
-
     /// A handle to a input's subscription.
     /// When dropped, the subscription is cancelled and the callback will no longer be invoked.
-    _input_subscription: Subscription,
-
+    #[allow(unused)]
+    input_subscription: Subscription,
+    /// Vector that represents desktop entries available within the system
     entries: Vec<DesktopEntry>,
+    /// Vector that represents entry sizes within the virtual list
     entries_sizes: Rc<Vec<Size<Pixels>>>,
-
+    /// Vector that stores indices of query matched entries while performing search
     entries_filtered: Vec<usize>,
+    /// Index of selected entry if exists, otherwise empty
     entry_selected: Option<usize>,
-
+    /// Scroll handle for the virtual list
     scroll_handle: VirtualListScrollHandle,
 }
 
@@ -43,13 +45,12 @@ impl View {
         // Initialiaze input and focus it
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx);
-
             input.focus(window, cx);
             input
         });
 
         // Subscirbe to input's events and keep the handle
-        let _input_subscription =
+        let input_subscription =
             cx.subscribe_in(&input, window, Self::on_query_event);
 
         let entries = cx.global::<DesktopEntries>().clone();
@@ -59,7 +60,7 @@ impl View {
 
         Self {
             input,
-            _input_subscription,
+            input_subscription,
             entries: entries.items,
             entries_sizes,
             entries_filtered,
@@ -155,47 +156,51 @@ impl View {
         cx.notify();
     }
 
+    // todo: move spawning logic into separate file?
     fn on_entry_spawn(
         &mut self,
         _: &EntrySpawn,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(command) = self
+        let Some(entry) = self
             .entry_selected
-            .map(|ix| self.entries.get(ix).unwrap())
-            .map(|entry| entry.command.clone())
+            .and_then(|ix| self.entries_filtered.get(ix))
+            .and_then(|&ix| self.entries.get(ix))
+            .filter(|entry| !entry.command.is_empty())
         else {
             return;
         };
 
-        let action = ghost_shell_niri::Action::Spawn { command };
-        let request = ghost_shell_niri::Request::Action(action);
-
-        let reply = {
-            let runtime = gpui_tokio::Tokio::handle(cx);
-            let niri_client = cx.global_mut::<NiriClient>();
-
-            runtime.block_on(niri_client.send(request))
+        // todo: get terminal from the environment variable
+        let command = if entry.terminal {
+            ["ghostty", "-e"]
+                .into_iter()
+                .map(String::from)
+                .chain(entry.command.iter().cloned())
+                .collect()
+        } else {
+            entry.command.clone()
         };
 
-        match reply {
-            Ok(Ok(ghost_shell_niri::Response::Handled)) => {
-                cx.dispatch_action(&LauncherClose);
-            }
+        let spawn_task = gpui_tokio::Tokio::spawn_result(cx, async move {
+            let mut niri_client = NiriClient::try_new().await?;
+            niri_client.spawn(command).await
+        });
 
-            Ok(Ok(response)) => {
-                eprintln!("Unexpected Niri response: {response:?}");
+        cx.spawn_in(window, async move |view, cx| match spawn_task.await {
+            Ok(()) => {
+                if let Err(err) = view.update_in(cx, |_view, window, cx| {
+                    window.dispatch_action(Box::new(LauncherClose), cx);
+                }) {
+                    eprintln!("Failed to dispatch launcher close: {err:#}");
+                }
             }
-
-            Ok(Err(error)) => {
-                eprintln!("Niri failed to spawn application: {error}");
+            Err(err) => {
+                eprintln!("Failed to spawn application: {err:#}");
             }
-
-            Err(error) => {
-                eprintln!("Failed to communicate with Niri: {error:#}");
-            }
-        }
+        })
+        .detach();
     }
 
     fn render_entries(

@@ -10,7 +10,10 @@ use tokio::{
     },
 };
 
-use crate::protocol::{Reply, Request};
+use crate::{
+    Response,
+    protocol::{Reply, Request},
+};
 
 pub struct NiriClient {
     reader: BufReader<OwnedReadHalf>,
@@ -62,6 +65,17 @@ impl NiriClient {
         let reply = self.read().await?;
 
         Ok(reply)
+    }
+
+    pub async fn spawn(&mut self, command: Vec<String>) -> Result<()> {
+        match self
+            .send(Request::Action(crate::Action::Spawn { command }))
+            .await?
+            .map_err(anyhow::Error::msg)?
+        {
+            Response::Handled => Ok(()),
+            response => anyhow::bail!("unexpected Niri response: {response:?}"),
+        }
     }
 }
 
