@@ -2,28 +2,16 @@
 
 ![preview](assets/preview.png)
 
-## Motivation
-
-System customization is one of my favorite aspects of Linux. The freedom of
-choice that the Linux environment provides is beyond imagination. Over the last
-few years, I have experimented with vairous bars, launchers, and shell
-environments, but none of them really clicked with me. Ultimately, I decided to
-try building my own shell environment in Rust. My personal goals are to improve
-my Rust programming skills and explore new programming domains.
-
 # Overview
 
 Ghost Shell is a desktop shell built exclusively for the Niri Wayland
-compositor. This project explores a combination of modern technologies intended
-to produce a small and resource efficient shell environment. The project's name
-is inspired by the anime Ghost in the Shell.
+compositor. The project's name is inspired by the anime Ghost in the Shell.
 
-The project does not claim to be the best option on the market, nor does it aim
-to become one. I simply want to build a good tool that I will enjoy using on the
-daily basis. The project is currently in a very early stage of development, so
-it is not yet ready for general use.
+I simply want to build minimalist looking and resource efficient tool that I
+will enjoy using on the daily basis. The project is currently in a very early
+stage of development, so it is not yet ready for general use.
 
-The current goal is to implement the following basic functionality:
+The current scope before 0.1.0 release is to implement following:
 
 - [ ] Bar
   - [ ] Widget: System Menu
@@ -40,8 +28,8 @@ The current goal is to implement the following basic functionality:
   - [ ] Widget: Screenshot & Screen recording
   - [ ] Widget: Theme Polarity Changer
   - [ ] Widget: Weather
-- [ ] Launcher
-- [ ] Finder
+- [x] Launcher
+- [x] Finder
 - [ ] Lock Screen
 - [ ] Clipboard
 - [ ] Wallpapers
@@ -51,8 +39,8 @@ The current goal is to implement the following basic functionality:
 
 ## Prerequisities
 
-Development is currently intended for NixOS systems. There are no plans to
-support other systems at this time.
+Development and packaging is currently intended for NixOS systems. There are no
+plans to support other systems at this moment.
 
 ## Installation
 
@@ -85,9 +73,7 @@ cargo run
 ## Configuration
 
 Ghost Shell discovers its configuration according to the XDG Base Directory
-Specification. I keep my configuration at `~/.config/ghost-shell/config.toml`.
-
-Here is an example of the current configuration:
+Specification, for example `~/.config/ghost-shell/config.toml`.
 
 ```toml
 [general]
@@ -102,6 +88,7 @@ height = 27.0
 exclusive_zone = 27.0
 
 [bar."DP-1"]
+primary = true
 output = "DP-1"
 height = 27.0
 exclusive_zone = 27.0
@@ -109,6 +96,21 @@ exclusive_zone = 27.0
 [clock]
 format = "%H:%M"
 ```
+
+# Acknowledgments
+
+Ghost Shell would not be possible without the excellent work of the projects it
+builds upon:
+
+- Niri — an excellent scrollable Wayland compositor with a thoughtful design and
+  a surprisingly rich set of built-in capabilities, including IPC, application
+  spawning, workspace management, and much more.
+- GPUI — Zed's GPU-accelerated UI framework. Fast, expressive, and genuinely
+  enjoyable to build native interfaces with.
+- GPUI Component — a comprehensive component library for GPUI that provides most
+  of the building blocks needed to get a polished interface running quickly.
+- awww — a fast and beautifully implemented animated wallpaper daemon that keeps
+  Ghost's desktop background considerably less boring.
 
 # Licensing
 
