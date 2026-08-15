@@ -40,14 +40,12 @@ pub fn init(cx: &mut App) {
             .unwrap()
             .unwrap();
 
-        let windows = match response {
+        match response {
             Response::Windows(windows) => windows,
             response => {
                 panic!("unexpected Niri response: {response:?}");
             }
-        };
-
-        windows
+        }
     };
 
     // Update niri state with workspaces

@@ -24,8 +24,9 @@ impl PowerWidget {
 
     fn battery_icon(&self) -> &'static str {
         match self.battery.state() {
-            State::Unknown => "icons/battery-empty.svg",
+            State::Full => "icons/battery-full.svg",
             State::Charging => "icons/battery-charging.svg",
+            State::Unknown | State::Empty => "icons/battery-empty.svg",
             State::Discharging => {
                 match self.battery.state_of_charge().get::<percent>() {
                     level if level <= 25.0 => "icons/battery-25.svg",
@@ -34,8 +35,6 @@ impl PowerWidget {
                     _ => "icons/battery-full.svg",
                 }
             }
-            State::Empty => "icons/battery-empty.svg",
-            State::Full => "icons/battery-full.svg",
         }
     }
 }

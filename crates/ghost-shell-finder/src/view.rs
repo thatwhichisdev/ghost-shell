@@ -48,11 +48,11 @@ impl View {
                         let scan_progress =
                             view.search.get_scan_progress().unwrap();
                         let is_scanning = scan_progress.is_scanning;
-                        let files_count = scan_progress.scanned_files_count;
+                        let count = scan_progress.scanned_files_count;
 
                         view.is_scanning = is_scanning;
                         view.search_result =
-                            format!("{} files indexed", files_count,).into();
+                            format!("{count} files indexed").into();
 
                         cx.notify();
 
@@ -60,9 +60,7 @@ impl View {
                     })
                     .unwrap();
 
-                if is_scanning {
-                    continue;
-                } else {
+                if !is_scanning {
                     break;
                 }
             }
@@ -70,7 +68,7 @@ impl View {
         .detach();
 
         Self {
-            search: search,
+            search,
             input_query,
             items: vec![],
             item_sizes: Rc::new(vec![]),
@@ -89,6 +87,7 @@ impl View {
         cx: &mut Context<Self>,
     ) {
         match event {
+            InputEvent::Change | InputEvent::Focus | InputEvent::Blur => {}
             InputEvent::PressEnter {
                 secondary: _,
                 shift: _,
@@ -96,9 +95,6 @@ impl View {
                 let needle = input.read(cx).value().trim().to_owned();
                 self.search(needle, window, cx);
             }
-            InputEvent::Change => {}
-            InputEvent::Focus => {}
-            InputEvent::Blur => {}
         }
     }
 
@@ -116,8 +112,7 @@ impl View {
                 let matched = search_result.matched;
 
                 view.search_result = format!(
-                    "{} files indexed • {} dirs indexed • {} matched",
-                    indexed_files, indexed_dirs, matched,
+                    "{indexed_files} files indexed • {indexed_dirs} dirs indexed • {matched} matched"
                 )
                 .into();
 
