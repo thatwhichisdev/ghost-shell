@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum Request {
     Finder { action: FinderAction },
     Launcher { action: LauncherAction },
+    Lock { action: LockAction },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +19,11 @@ pub enum LauncherAction {
     Open,
     Close,
     Toggle,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LockAction {
+    Lock,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

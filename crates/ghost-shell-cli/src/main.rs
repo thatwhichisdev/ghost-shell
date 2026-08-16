@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::{env, path::PathBuf};
 
 use ghost_shell_ipc::{
-    FinderAction,
+    FinderAction, LockAction,
     client::Client,
     protocol::{LauncherAction, Request},
 };
@@ -33,6 +33,10 @@ pub enum MsgCommand {
         #[arg(value_enum)]
         action: FinderCommand,
     },
+    Session {
+        #[arg(value_enum)]
+        action: SessionCommand,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -43,6 +47,11 @@ pub enum LauncherCommand {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum FinderCommand {
     Toggle,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum SessionCommand {
+    Lock,
 }
 
 /// Entry point for the command line interface.
@@ -67,6 +76,11 @@ async fn main() -> Result<()> {
             MsgCommand::Finder { action } => match action {
                 FinderCommand::Toggle => Request::Finder {
                     action: FinderAction::Toggle,
+                },
+            },
+            MsgCommand::Session { action } => match action {
+                SessionCommand::Lock => Request::Lock {
+                    action: LockAction::Lock,
                 },
             },
         },

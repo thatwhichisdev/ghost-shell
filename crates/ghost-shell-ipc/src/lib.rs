@@ -13,7 +13,7 @@ use tokio::sync::mpsc::{self};
 
 use ghost_shell_actions::{
     FinderClose, FinderOpen, FinderToggle, LauncherClose, LauncherOpen,
-    LauncherToggle,
+    LauncherToggle, Lock,
 };
 
 pub fn init(cx: &mut App) {
@@ -46,6 +46,9 @@ pub fn init(cx: &mut App) {
                     FinderAction::Open => cx.dispatch_action(&FinderOpen),
                     FinderAction::Close => cx.dispatch_action(&FinderClose),
                     FinderAction::Toggle => cx.dispatch_action(&FinderToggle),
+                },
+                Request::Lock { action } => match action {
+                    LockAction::Lock => cx.dispatch_action(&Lock),
                 },
             });
 

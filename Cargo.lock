@@ -1117,7 +1117,7 @@ dependencies = [
 [[package]]
 name = "collections"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "gpui_util",
  "indexmap",
@@ -1576,7 +1576,7 @@ dependencies = [
 [[package]]
 name = "derive_refineable"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2555,6 +2555,7 @@ dependencies = [
  "ghost-shell-finder",
  "ghost-shell-ipc",
  "ghost-shell-launcher",
+ "ghost-shell-lockscreen",
  "ghost-shell-niri",
  "ghost-shell-theme",
  "gpui",
@@ -2613,6 +2614,13 @@ dependencies = [
 [[package]]
 name = "ghost-shell-lockscreen"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ghost-shell-actions",
+ "ghost-shell-app",
+ "gpui",
+ "gpui-component",
+]
 
 [[package]]
 name = "ghost-shell-niri"
@@ -2843,7 +2851,7 @@ dependencies = [
 [[package]]
 name = "gpui"
 version = "0.2.2"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -2925,7 +2933,7 @@ dependencies = [
 [[package]]
 name = "gpui-component"
 version = "0.5.2"
-source = "git+https://github.com/thatwhichisdev/gpui-component?rev=12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee#12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
+source = "git+https://github.com/thatwhichisdev/gpui-component?rev=bf00f71eeaf8d0040d6d4177a7acad0a1e774093#bf00f71eeaf8d0040d6d4177a7acad0a1e774093"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -2973,7 +2981,7 @@ dependencies = [
 [[package]]
 name = "gpui-component-assets"
 version = "0.5.1"
-source = "git+https://github.com/thatwhichisdev/gpui-component?rev=12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee#12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
+source = "git+https://github.com/thatwhichisdev/gpui-component?rev=bf00f71eeaf8d0040d6d4177a7acad0a1e774093#bf00f71eeaf8d0040d6d4177a7acad0a1e774093"
 dependencies = [
  "anyhow",
  "gpui",
@@ -2987,7 +2995,7 @@ dependencies = [
 [[package]]
 name = "gpui-component-macros"
 version = "0.5.1"
-source = "git+https://github.com/thatwhichisdev/gpui-component?rev=12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee#12bdfc28ec11a4357fbddeebb740baa7d3c7b4ee"
+source = "git+https://github.com/thatwhichisdev/gpui-component?rev=bf00f71eeaf8d0040d6d4177a7acad0a1e774093#bf00f71eeaf8d0040d6d4177a7acad0a1e774093"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2997,7 +3005,7 @@ dependencies = [
 [[package]]
 name = "gpui_linux"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "accesskit",
  "accesskit_unix",
@@ -3044,7 +3052,7 @@ dependencies = [
 [[package]]
 name = "gpui_macos"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -3092,7 +3100,7 @@ dependencies = [
 [[package]]
 name = "gpui_macros"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -3103,7 +3111,7 @@ dependencies = [
 [[package]]
 name = "gpui_platform"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "console_error_panic_hook",
  "gpui",
@@ -3116,7 +3124,7 @@ dependencies = [
 [[package]]
 name = "gpui_shared_string"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "schemars",
  "serde",
@@ -3126,7 +3134,7 @@ dependencies = [
 [[package]]
 name = "gpui_tokio"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "gpui",
@@ -3137,7 +3145,7 @@ dependencies = [
 [[package]]
 name = "gpui_util"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "log",
@@ -3147,7 +3155,7 @@ dependencies = [
 [[package]]
 name = "gpui_web"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -3171,7 +3179,7 @@ dependencies = [
 [[package]]
 name = "gpui_wgpu"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -3200,7 +3208,7 @@ dependencies = [
 [[package]]
 name = "gpui_windows"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "accesskit",
  "accesskit_windows",
@@ -3490,7 +3498,7 @@ dependencies = [
 [[package]]
 name = "http_client"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "async-compression",
@@ -4497,7 +4505,7 @@ dependencies = [
 [[package]]
 name = "media"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "bindgen",
@@ -5466,7 +5474,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 [[package]]
 name = "perf"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "collections",
  "serde",
@@ -6304,7 +6312,7 @@ dependencies = [
 [[package]]
 name = "refineable"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "derive_refineable",
 ]
@@ -6693,7 +6701,7 @@ dependencies = [
 [[package]]
 name = "scheduler"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "async-task",
  "backtrace",
@@ -7301,7 +7309,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "sum_tree"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "heapless",
  "log",
@@ -8246,7 +8254,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 [[package]]
 name = "util_macros"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "perf",
  "quote",
@@ -9916,7 +9924,7 @@ dependencies = [
 [[package]]
 name = "zlog"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "anyhow",
  "chrono",
@@ -9933,7 +9941,7 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 [[package]]
 name = "ztracing"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 dependencies = [
  "tracing",
  "tracing-subscriber",
@@ -9944,7 +9952,7 @@ dependencies = [
 [[package]]
 name = "ztracing_macro"
 version = "0.1.0"
-source = "git+https://github.com/thatwhichisdev/zed?rev=aa0c1b6acde47fd181f02a6b83fdc894fa3c8135#aa0c1b6acde47fd181f02a6b83fdc894fa3c8135"
+source = "git+https://github.com/thatwhichisdev/zed?rev=d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c#d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c"
 
 [[package]]
 name = "zune-core"

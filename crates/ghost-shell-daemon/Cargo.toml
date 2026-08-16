@@ -18,6 +18,7 @@ ghost-shell-config.workspace = true
 ghost-shell-finder.workspace = true
 ghost-shell-ipc.workspace = true
 ghost-shell-launcher.workspace = true
+ghost-shell-lockscreen.workspace = true
 ghost-shell-niri.workspace = true
 ghost-shell-theme.workspace = true
 

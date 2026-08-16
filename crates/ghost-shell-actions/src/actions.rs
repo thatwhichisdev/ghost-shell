@@ -13,5 +13,7 @@ gpui::actions!(
         LauncherClose,
         /// Action to toggle launcher window between two possible state open/close
         LauncherToggle,
+        /// Action to lock the session
+        Lock
     ]
 );
