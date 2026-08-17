@@ -14,3 +14,5 @@ gpui.workspace = true
 gpui-component.workspace = true
 
 anyhow.workspace = true
+jiff.workspace = true
+nonstick.workspace = true

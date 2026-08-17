@@ -1,16 +1,18 @@
-pub mod lockscreen;
-
-pub use lockscreen::*;
+mod auth;
+mod lockscreen;
+mod view;
 
 use ghost_shell_actions::Lock;
 use gpui::{App, BorrowAppContext as _, KeyBinding};
 
-gpui::actions!(lockscreen, [Unlock]);
+use crate::lockscreen::Lockscreen;
+
+gpui::actions!(lockscreen, [Authenticate, Unlock]);
 
 pub fn init(cx: &mut App) {
     cx.set_global(Lockscreen::new());
 
-    cx.bind_keys([KeyBinding::new("enter", Unlock, Some("lockscreen"))]);
+    cx.bind_keys([KeyBinding::new("escape", Unlock, Some("lockscreen"))]);
 
     cx.on_action(|_: &Lock, cx| {
         cx.update_global::<Lockscreen, _>(|lockscreen, cx| {

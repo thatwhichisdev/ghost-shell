@@ -1,11 +1,12 @@
 use anyhow::Result;
 use ghost_shell_app::GhostShell;
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, BorrowAppContext as _, Context,
-    FocusHandle, Focusable, Global, IntoElement, Render, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
-    prelude::*, px, rgb, rgba,
+    AnyWindowHandle, App, AppContext as _, Global, WindowBackgroundAppearance,
+    WindowBounds, WindowKind, WindowOptions,
 };
+use gpui_component::Root;
+
+use crate::view::View;
 
 pub struct Lockscreen {
     windows: Vec<AnyWindowHandle>,
@@ -25,8 +26,6 @@ impl Lockscreen {
             return Ok(());
         }
 
-        // Clone the displays before opening windows so we don't hold a borrow
-        // of GhostShell while mutating GPUI's window state.
         let displays = cx
             .global::<GhostShell>()
             .outputs
@@ -56,12 +55,8 @@ impl Lockscreen {
             };
 
             let handle = cx.open_window(window_options, |window, cx| {
-                let view = cx.new(LockscreenView::new);
-
-                let focus_handle = view.read(cx).focus_handle.clone();
-                window.focus(&focus_handle, cx);
-
-                view
+                let view = cx.new(|cx| View::new(window, cx));
+                cx.new(|cx| Root::new(view, window, cx).bordered(false))
             })?;
 
             self.windows.push(handle.into());
@@ -80,46 +75,5 @@ impl Global for Lockscreen {}
 impl Default for Lockscreen {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-pub struct LockscreenView {
-    focus_handle: FocusHandle,
-}
-
-impl LockscreenView {
-    fn new(cx: &mut Context<Self>) -> Self {
-        Self {
-            focus_handle: cx.focus_handle(),
-        }
-    }
-}
-
-impl Focusable for LockscreenView {
-    fn focus_handle(&self, _cx: &App) -> FocusHandle {
-        self.focus_handle.clone()
-    }
-}
-
-impl Render for LockscreenView {
-    fn render(
-        &mut self,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .id("lockscreen")
-            .key_context("lockscreen")
-            .track_focus(&self.focus_handle)
-            .size_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .gap_2()
-            .bg(rgba(0x00000000))
-            .text_color(rgb(0xf5f5f5))
-            .child(div().text_size(px(28.0)).child("Ghost Shell"))
-            .child(div().text_size(px(14.0)).child("Press Enter to unlock"))
     }
 }

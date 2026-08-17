@@ -47,6 +47,7 @@
             libxkbcommon
             vulkan-loader
             wayland
+            linux-pam
           ];
         in
         {
@@ -72,6 +73,8 @@
 
             XKB_CONFIG_ROOT = "${pkgs.xkeyboard_config}/share/X11/xkb";
             STARSHIP_CONFIG = "${./.config/starship.toml}";
+
+            LIBPAMSYS_IMPL = "LinuxPam";
 
             shellHook = ''
               unset NIX_ENFORCE_PURITY
