@@ -25,7 +25,7 @@ pub fn init(cx: &mut App) {
         })
         .collect();
 
-    let ghost_shell = GhostShell { outputs };
+    let ghost_shell = GhostShell::new(outputs);
 
     cx.set_global(ghost_shell);
 

@@ -1,18 +1,21 @@
 use anyhow::Result;
-use ghost_shell_app::GhostShell;
 use gpui::{
-    AnyWindowHandle, App, AppContext as _, Global, WindowBackgroundAppearance,
-    WindowBounds, WindowKind, WindowOptions,
+    App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds,
+    WindowHandle, WindowKind, WindowOptions,
 };
 use gpui_component::Root;
 
-use crate::view::View;
+use ghost_shell_app::GhostShell;
 
-pub struct Lockscreen {
-    windows: Vec<AnyWindowHandle>,
+use crate::view::LockView;
+
+/// Struct to represent lockscreen and it's state
+pub struct LockManager {
+    /// Lock screen views for each output
+    windows: Vec<WindowHandle<Root>>,
 }
 
-impl Lockscreen {
+impl LockManager {
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -20,30 +23,15 @@ impl Lockscreen {
         }
     }
 
-    pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        // Ignore duplicate lock requests while our lockscreen windows exist.
+    pub fn lock(&mut self, cx: &mut App) -> Result<()> {
         if !self.windows.is_empty() {
             return Ok(());
         }
 
-        let displays = cx
-            .global::<GhostShell>()
-            .outputs
-            .iter()
-            .map(|output| output.display.clone())
-            .collect::<Vec<_>>();
-
-        anyhow::ensure!(
-            !displays.is_empty(),
-            "cannot lock session without any available outputs"
-        );
-
-        for display in displays {
+        for display in cx.global::<GhostShell>().get_displays() {
             let window_options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(display.bounds())),
                 titlebar: None,
-                focus: true,
-                show: true,
                 kind: WindowKind::SessionLock,
                 is_movable: false,
                 is_resizable: false,
@@ -55,25 +43,29 @@ impl Lockscreen {
             };
 
             let handle = cx.open_window(window_options, |window, cx| {
-                let view = cx.new(|cx| View::new(window, cx));
+                let view = cx.new(|cx| LockView::new(window, cx));
                 cx.new(|cx| Root::new(view, window, cx).bordered(false))
             })?;
 
-            self.windows.push(handle.into());
+            self.windows.push(handle);
         }
 
         Ok(())
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(crate) fn unlock(&mut self, cx: &mut App) -> Result<()> {
+        cx.unlock_session()?;
+
         self.windows.clear();
+
+        Ok(())
     }
 }
 
-impl Global for Lockscreen {}
-
-impl Default for Lockscreen {
+impl Default for LockManager {
     fn default() -> Self {
         Self::new()
     }
 }
+
+impl Global for LockManager {}

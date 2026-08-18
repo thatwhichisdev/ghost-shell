@@ -1,104 +1,109 @@
 use std::{ffi::OsStr, time::Duration};
 
 use gpui::{
-    App, Context, Entity, FocusHandle, Focusable, FontWeight, IntoElement,
-    Render, Task, Window, div, prelude::*, px, relative, rgb,
+    Context, Entity, FontWeight, IntoElement, Render, SharedString,
+    Subscription, Task, Window, div, prelude::*, px, relative, rgb,
 };
 use gpui_component::input::{Input, InputContentType, InputEvent, InputState};
 use jiff::Zoned;
 
-use crate::{Authenticate, Unlock, auth};
+use crate::{Authenticate, auth};
 
-pub struct View {
-    input_password: Entity<InputState>,
-    hours: String,
-    minutes: String,
-    _clock_task: Task<()>,
+pub struct LockView {
+    password: Entity<InputState>,
+
+    #[allow(unused)]
+    password_subscription: Subscription,
+
+    clock: SharedString,
+
+    #[allow(unused)]
+    clock_update: Task<()>,
 }
 
-impl View {
+impl LockView {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let now = Zoned::now();
-
-        let clock_task = cx.spawn(async move |view, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_secs(
-                        60 - Zoned::now().second() as u64,
-                    ))
-                    .await;
-
-                if view
-                    .update(cx, |this, cx| {
-                        let now = Zoned::now();
-                        this.hours = format!("{:02}", now.hour());
-                        this.minutes = format!("{:02}", now.minute());
-                        cx.notify();
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        });
-
-        let input_password = cx.new(|cx| {
+        let input = cx.new(|cx| {
             let input = InputState::new(window, cx).masked(true);
             input.focus(window, cx);
             input
         });
 
-        cx.subscribe_in(
-            &input_password,
-            window,
-            |_this, _state, event: &InputEvent, window, cx| {
-                if matches!(
-                    event,
-                    InputEvent::PressEnter {
-                        secondary: _,
-                        shift: _
-                    }
-                ) {
-                    window.dispatch_action(Box::new(Authenticate), cx);
-                }
-            },
-        )
-        .detach();
+        let input_sub =
+            cx.subscribe_in(&input, window, Self::handle_password_event);
 
         Self {
-            input_password,
-            hours: format!("{:02}", now.hour()),
-            minutes: format!("{:02}", now.minute()),
-            _clock_task: clock_task,
+            password: input,
+            clock: Self::formatted_time("%H:%M"),
+            password_subscription: input_sub,
+            clock_update: Self::spawn_clock_task(cx),
+        }
+    }
+
+    fn formatted_time(format: &str) -> SharedString {
+        Zoned::now().strftime(format).to_string().into()
+    }
+
+    fn spawn_clock_task(cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn(async move |view, cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_mins(1)).await;
+
+                if let Err(err) = view.update(cx, |view, cx| {
+                    view.clock = Self::formatted_time("%H:%M");
+                    cx.notify();
+                }) {
+                    log::debug!("Failed to update lockscreen's clock: {err}");
+                }
+            }
+        })
+    }
+
+    fn handle_password_event(
+        _view: &mut LockView,
+        _state: &Entity<InputState>,
+        event: &InputEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if matches!(
+            event,
+            InputEvent::PressEnter {
+                secondary: _,
+                shift: _
+            }
+        ) {
+            window.dispatch_action(Box::new(Authenticate), cx);
         }
     }
 
     fn authenticate(
         &mut self,
         _: &Authenticate,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let password = self.input_password.read(cx).value().to_string();
+        let username = auth::username();
+        let password = self.password.read(cx).value().to_string();
 
-        if password.is_empty() {
+        // todo: add UI validations to now allow empty password
+        if password.is_empty() || username.is_empty() {
             return;
         }
 
-        let username = std::env::var_os("USER")
-            .filter(|username| !username.is_empty())
-            .unwrap();
-
         match auth::authenticate(&username, OsStr::new(&password)) {
-            Ok(()) => window.dispatch_action(Box::new(Unlock), cx),
-            Err(err) => {
-                eprintln!("Failed to authenticate user, error code {err:#}")
+            Ok(()) => match cx.unlock_session() {
+                Ok(()) => log::debug!("Session unlocked"),
+                Err(e) => log::error!("Session unlocking failed: {e:#}"),
+            },
+            Err(e) => {
+                log::error!("User authentication failed: {e:#}")
             }
         }
     }
 }
 
-impl Render for View {
+impl Render for LockView {
     fn render(
         &mut self,
         _window: &mut Window,
@@ -126,18 +131,12 @@ impl Render for View {
                             .flex_col()
                             .line_height(relative(0.85))
                             .text_size(px(256.0))
-                            .font_weight(FontWeight::SEMIBOLD)
+                            .font_weight(FontWeight::BLACK)
                             .child(
                                 div()
                                     .w_full()
                                     .text_center()
-                                    .child(self.hours.clone()),
-                            )
-                            .child(
-                                div()
-                                    .w_full()
-                                    .text_center()
-                                    .child(self.minutes.clone()),
+                                    .child(self.clock.clone()),
                             ),
                     ),
             )
@@ -150,7 +149,7 @@ impl Render for View {
                     .flex()
                     .justify_center()
                     .child(
-                        Input::new(&self.input_password)
+                        Input::new(&self.password)
                             .appearance(false)
                             .content_type(InputContentType::Password)
                             .w(px(240.0))

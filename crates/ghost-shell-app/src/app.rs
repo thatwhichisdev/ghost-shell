@@ -4,8 +4,8 @@ use gpui::{Global, PlatformDisplay, accesskit::Uuid};
 
 /// Struct that represets state of the shell
 pub struct GhostShell {
-    /// Collections of active shell outputs
-    pub outputs: Vec<GhostShellOutput>,
+    /// Active shell outputs
+    outputs: Vec<GhostShellOutput>,
 }
 
 /// Struct that represents shell output
@@ -19,6 +19,10 @@ pub struct GhostShellOutput {
 }
 
 impl GhostShell {
+    pub fn new(outputs: Vec<GhostShellOutput>) -> Self {
+        Self { outputs }
+    }
+
     pub fn set_focused_output(&mut self, display_uuid: Uuid) {
         for display in &mut self.outputs {
             display.is_focused = display
@@ -33,6 +37,10 @@ impl GhostShell {
             .unwrap_or(self.get_primary_output())
     }
 
+    pub fn get_outputs(&self) -> &Vec<GhostShellOutput> {
+        &self.outputs
+    }
+
     pub fn get_focused_output(&self) -> Option<&GhostShellOutput> {
         self.outputs.iter().find(|display| display.is_focused)
     }
@@ -42,6 +50,13 @@ impl GhostShell {
             .iter()
             .find(|display| display.is_primary)
             .expect("primary output should be set")
+    }
+
+    pub fn get_displays(&self) -> Vec<Rc<dyn PlatformDisplay>> {
+        self.outputs
+            .iter()
+            .map(|output| output.display.clone())
+            .collect::<Vec<_>>()
     }
 }
 

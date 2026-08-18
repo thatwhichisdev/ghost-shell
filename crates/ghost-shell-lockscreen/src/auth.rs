@@ -17,13 +17,20 @@ impl ConversationAdapter for PasswordConversation {
         Ok(self.username.clone())
     }
 
-    fn masked_prompt(&self, _request: impl AsRef<OsStr>) -> PamResult<OsString> {
+    fn masked_prompt(
+        &self,
+        _request: impl AsRef<OsStr>,
+    ) -> PamResult<OsString> {
         Ok(self.password.clone())
     }
 
     fn error_msg(&self, _message: impl AsRef<OsStr>) {}
 
     fn info_msg(&self, _message: impl AsRef<OsStr>) {}
+}
+
+pub fn username() -> OsString {
+    std::env::var_os("USER").unwrap()
 }
 
 pub fn authenticate(username: &OsStr, password: &OsStr) -> PamResult<()> {

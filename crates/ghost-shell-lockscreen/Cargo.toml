@@ -14,5 +14,7 @@ gpui.workspace = true
 gpui-component.workspace = true
 
 anyhow.workspace = true
+env_logger.workspace = true
 jiff.workspace = true
+log.workspace = true
 nonstick.workspace = true

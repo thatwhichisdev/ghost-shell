@@ -28,3 +28,5 @@ gpui_platform.workspace = true
 gpui_tokio.workspace = true
 
 anyhow.workspace = true
+env_logger.workspace = true
+log.workspace = true

@@ -15,6 +15,8 @@
 /// Initializes shell application itself, which loads bars and initializes all widgets.
 ///
 fn main() {
+    env_logger::init();
+
     let app =
         gpui_platform::application().with_assets(ghost_shell_assets::Assets);
 
