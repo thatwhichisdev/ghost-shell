@@ -1,3 +1,4 @@
+//! Session-lock window lifecycle.
 use anyhow::Result;
 use gpui::{
     App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds,
@@ -9,13 +10,16 @@ use ghost_shell_app::GhostShell;
 
 use crate::view::LockView;
 
-/// Struct to represent lockscreen and it's state
+/// Owns the session-lock windows for the active displays.
+///
+/// A non-empty window set prevents duplicate lock requests.
 pub struct LockManager {
     /// Lock screen views for each output
     windows: Vec<WindowHandle<Root>>,
 }
 
 impl LockManager {
+    /// Creates an unlocked lock manager.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -23,6 +27,13 @@ impl LockManager {
         }
     }
 
+    /// Begins session locking and opens a lockscreen window on each active display.
+    ///
+    /// Returns without changing state if lockscreen windows already exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a session-lock window cannot be opened.
     pub fn lock(&mut self, cx: &mut App) -> Result<()> {
         if !self.windows.is_empty() {
             return Ok(());
@@ -53,6 +64,13 @@ impl LockManager {
         Ok(())
     }
 
+    /// Unlocks the active session and releases its lockscreen windows.
+    ///
+    /// Window handles are retained if the session cannot be unlocked.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if GPUI cannot unlock the active Wayland session.
     pub(crate) fn unlock(&mut self, cx: &mut App) -> Result<()> {
         cx.unlock_session()?;
 

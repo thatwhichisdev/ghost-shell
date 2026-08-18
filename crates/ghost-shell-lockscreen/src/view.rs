@@ -1,5 +1,7 @@
-use std::{ffi::OsStr, time::Duration};
+//! Lockscreen presentation and input handling.
+use std::{ffi::OsString, time::Duration};
 
+use anyhow::Result;
 use gpui::{
     Context, Entity, FontWeight, IntoElement, Render, SharedString,
     Subscription, Task, Window, div, prelude::*, px, relative, rgb,
@@ -7,21 +9,23 @@ use gpui::{
 use gpui_component::input::{Input, InputContentType, InputEvent, InputState};
 use jiff::Zoned;
 
-use crate::{Authenticate, auth};
+use crate::{Authenticate, Unlock, auth};
 
+/// Renders the lockscreen for a single display.
 pub struct LockView {
     password: Entity<InputState>,
 
-    #[allow(unused)]
-    password_subscription: Subscription,
+    _password_subscription: Subscription,
 
     clock: SharedString,
 
-    #[allow(unused)]
-    clock_update: Task<()>,
+    _clock_update: Task<()>,
+
+    authenticating: bool,
 }
 
 impl LockView {
+    /// Creates a lockscreen view and starts its input and clock state.
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = cx.new(|cx| {
             let input = InputState::new(window, cx).masked(true);
@@ -35,8 +39,9 @@ impl LockView {
         Self {
             password: input,
             clock: Self::formatted_time("%H:%M"),
-            password_subscription: input_sub,
-            clock_update: Self::spawn_clock_task(cx),
+            _password_subscription: input_sub,
+            _clock_update: Self::spawn_clock_task(cx),
+            authenticating: false,
         }
     }
 
@@ -56,6 +61,17 @@ impl LockView {
                     log::debug!("Failed to update lockscreen's clock: {err}");
                 }
             }
+        })
+    }
+
+    fn spawn_authentication_task(
+        username: OsString,
+        password: OsString,
+        cx: &mut Context<Self>,
+    ) -> Task<Result<()>> {
+        gpui_tokio::Tokio::spawn_result(cx, async move {
+            auth::authenticate(&username, &password)
+                .map_err(|e| anyhow::Error::msg(e.to_string()))
         })
     }
 
@@ -80,26 +96,40 @@ impl LockView {
     fn authenticate(
         &mut self,
         _: &Authenticate,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let username = auth::username();
-        let password = self.password.read(cx).value().to_string();
+        if self.authenticating {
+            return;
+        }
+
+        let username: OsString = auth::username();
+        let password: OsString =
+            self.password.read(cx).value().to_string().into();
 
         // todo: add UI validations to now allow empty password
         if password.is_empty() || username.is_empty() {
             return;
         }
 
-        match auth::authenticate(&username, OsStr::new(&password)) {
-            Ok(()) => match cx.unlock_session() {
-                Ok(()) => log::debug!("Session unlocked"),
-                Err(e) => log::error!("Session unlocking failed: {e:#}"),
-            },
-            Err(e) => {
-                log::error!("User authentication failed: {e:#}")
-            }
-        }
+        self.authenticating = true;
+
+        let authentication =
+            Self::spawn_authentication_task(username, password, cx);
+
+        cx.spawn_in(window, async move |view, cx| {
+            let result = authentication.await;
+
+            let _ = view.update_in(cx, |view, window, cx| {
+                view.authenticating = false;
+
+                match result {
+                    Ok(()) => window.dispatch_action(Box::new(Unlock), cx),
+                    Err(e) => log::error!("User authentication failed: {e}"),
+                }
+            });
+        })
+        .detach();
     }
 }
 

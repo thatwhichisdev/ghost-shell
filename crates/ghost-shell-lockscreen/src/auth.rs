@@ -1,3 +1,4 @@
+//! PAM authentication support.
 use std::ffi::{OsStr, OsString};
 
 use nonstick::{
@@ -7,6 +8,7 @@ use nonstick::{
 
 const PAM_SERVICE: &str = "ghost-shell";
 
+/// Supplies credentials to PAM conversation prompts.
 struct PasswordConversation {
     username: OsString,
     password: OsString,
@@ -33,6 +35,12 @@ pub fn username() -> OsString {
     std::env::var_os("USER").unwrap()
 }
 
+/// Authenticates `username` with `password` and validates the account.
+///
+/// # Errors
+///
+/// Returns a PAM error if the transaction cannot be created, authentication
+/// fails, or account validation fails.
 pub fn authenticate(username: &OsStr, password: &OsStr) -> PamResult<()> {
     let conversation = PasswordConversation {
         username: username.to_owned(),
