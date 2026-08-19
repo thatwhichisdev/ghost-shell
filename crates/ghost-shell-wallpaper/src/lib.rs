@@ -1,5 +1,7 @@
 pub mod wallpaper;
 
+mod cache;
+
 use gpui::App;
 
 use crate::wallpaper::WallpaperManager;

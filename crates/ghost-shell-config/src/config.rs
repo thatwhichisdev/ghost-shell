@@ -1,31 +1,25 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use gpui::{Global, accesskit::Uuid};
+use gpui::Global;
 use serde::Deserialize;
 
 #[derive(Default, Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
+    #[serde(default)]
     pub general: GeneralConfig,
 
     #[serde(rename = "bar")]
+    #[serde(default)]
     pub bars: HashMap<String, BarConfig>,
 
+    #[serde(default)]
     pub clock: ClockConfig,
-}
 
-impl AppConfig {
-    pub fn get_primary_output(&self) -> Uuid {
-        self.bars
-            .iter()
-            .find(|(_output, bar)| bar.primary == true)
-            .map(|(output, _bar)| {
-                Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
-            })
-            .expect("primary output was not set")
-    }
+    #[serde(default)]
+    pub wallpaper: WallpaperConfig,
 }
 
 impl Global for AppConfig {}
@@ -84,17 +78,25 @@ impl Default for ClockConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct WallpaperConfig {
+    pub path: Option<String>,
+}
+
+impl Default for WallpaperConfig {
+    fn default() -> Self {
+        Self { path: None }
+    }
+}
+
 /// Load configuration of the shell by searching config according to XDG base directory specification
 ///
 /// # Errors
 /// - `ConfigError::NotFound`
 pub fn load() -> Result<AppConfig, ConfigError> {
-    let dirs = ProjectDirs::from("dev", "thatwhichis", "ghost-shell")
-        .ok_or_else(|| {
-            ConfigError::NotFound("app config dir doesn't exist".to_string())
-        })?;
-
-    let config_path = dirs.config_dir().join("config.toml");
+    let config_dir = config_dir()?;
+    let config_path = config_dir.join("config.toml");
     let config = Config::builder()
         .add_source(File::from(config_path.as_path()).required(true))
         .build()?;
@@ -102,4 +104,23 @@ pub fn load() -> Result<AppConfig, ConfigError> {
     let app_config: AppConfig = config.try_deserialize()?;
 
     Ok(app_config)
+}
+
+/// Get path of the configuration dir
+pub fn config_dir() -> Result<PathBuf, ConfigError> {
+    project_dir()
+        .ok_or_else(|| ConfigError::NotFound("app config dir doesn't exist".to_string()))
+        .map(|dirs| dirs.config_dir().to_path_buf())
+}
+
+/// Get path of the cache dir
+pub fn cache_dir() -> Result<PathBuf, ConfigError> {
+    project_dir()
+        .ok_or_else(|| ConfigError::NotFound("app cache dir doesn't exist".to_string()))
+        .map(|dirs| dirs.cache_dir().to_path_buf())
+}
+
+/// Get project directories
+pub fn project_dir() -> Option<ProjectDirs> {
+    ProjectDirs::from("dev", "thatwhichis", "ghost-shell")
 }

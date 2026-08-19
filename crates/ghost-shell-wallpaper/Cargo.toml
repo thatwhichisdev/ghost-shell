@@ -13,14 +13,14 @@ gpui.workspace = true
 gpui_platform.workspace = true
 gpui_tokio.workspace = true
 
-aehobak.workspace = true
 anyhow.workspace = true
-bsdiff.workspace = true
 image = {
   workspace = true,
-  features = ["gif"],
+  features = ["gif", "rayon"],
 }
 log.workspace = true
 lz4_flex = { workspace = true, features = ["safe-decode", "safe-encode", "std"] }
+postcard = { workspace = true, features = ["use-std"] }
 rayon.workspace = true
+serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true

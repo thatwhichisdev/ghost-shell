@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
+use ghost_shell_config::AppConfig;
 use gpui::{
     App, Context, Global, IntoElement, ObjectFit, ParentElement as _, Render,
     RenderImage, Styled as _, StyledImage as _, Task, Window, div, img,
@@ -14,8 +15,9 @@ use gpui::{
 use image::{AnimationDecoder, ImageDecoder as _, codecs::gif::GifDecoder};
 
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
-const WALLPAPER: &str = "/home/thatwhichisapple/Downloads/waneella_cell.gif";
+use crate::cache;
 
 pub struct WallpaperManager {
     source: Option<WallpaperSource>,
@@ -30,6 +32,7 @@ pub enum WallpaperSource {
 /// Immutable decoded animated wallpaper.
 ///
 /// Shared between every Wallpaper entity.
+#[derive(Serialize, Deserialize)]
 pub struct AnimatedWallpaper {
     pub width: u32,
     pub height: u32,
@@ -64,14 +67,14 @@ pub struct Wallpaper {
     _task: Task<()>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Frame {
     /// Full BGRA8 framebuffer.
     pub pixels: Box<[u8]>,
     pub delay: Duration,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FrameDelta {
     /// LZ4-compressed XOR against the previous frame.
     pub patch: Box<[u8]>,
@@ -89,12 +92,15 @@ pub struct StaticWallpaper;
 impl Global for WallpaperManager {}
 
 impl WallpaperManager {
-    pub fn new(_cx: &mut App) -> Self {
-        let source = WallpaperSource::load(PathBuf::from(WALLPAPER)).unwrap();
+    pub fn new(cx: &mut App) -> Self {
+        let source = cx
+            .global::<AppConfig>()
+            .wallpaper
+            .path
+            .clone()
+            .map(|path| WallpaperSource::load(PathBuf::from(path)).unwrap());
 
-        Self {
-            source: Some(source),
-        }
+        Self { source }
     }
 
     pub fn source(&self) -> Option<WallpaperSource> {
@@ -127,23 +133,20 @@ impl Wallpaper {
     fn spawn_task(window: &mut Window, cx: &mut Context<Self>) -> Task<()> {
         cx.spawn_in(window, async move |wallpaper, cx| {
             loop {
-                let delay = match wallpaper
-                    .update(cx, |wallpaper, _| wallpaper.delay())
-                {
+                let delay = match wallpaper.update(cx, |wallpaper, _| wallpaper.delay()) {
                     Ok(delay) => delay,
                     Err(_) => break,
                 };
 
                 cx.background_executor().timer(delay).await;
 
-                let result =
-                    wallpaper.update_in(cx, |wallpaper, window, cx| {
-                        if !window.is_window_active() {
-                            return Ok(true);
-                        }
+                let result = wallpaper.update_in(cx, |wallpaper, window, cx| {
+                    if !window.is_window_active() {
+                        return Ok(true);
+                    }
 
-                        wallpaper.advance(window, cx)
-                    });
+                    wallpaper.advance(window, cx)
+                });
 
                 match result {
                     Ok(Ok(true)) => {}
@@ -166,11 +169,7 @@ impl Wallpaper {
         }
     }
 
-    fn render_image(
-        width: u32,
-        height: u32,
-        pixels: &[u8],
-    ) -> Result<Arc<RenderImage>> {
+    fn render_image(width: u32, height: u32, pixels: &[u8]) -> Result<Arc<RenderImage>> {
         let expected_len = width as usize * height as usize * 4;
 
         anyhow::ensure!(
@@ -187,11 +186,7 @@ impl Wallpaper {
         Ok(Arc::new(RenderImage::new([frame])))
     }
 
-    fn advance(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Result<bool> {
+    fn advance(&mut self, window: &mut Window, cx: &mut Context<Self>) -> Result<bool> {
         if self.source.deltas.is_empty() {
             return Ok(false);
         }
@@ -216,11 +211,8 @@ impl Wallpaper {
             self.frame_index += 1;
         }
 
-        let next_image = Self::render_image(
-            self.source.width,
-            self.source.height,
-            &self.frame,
-        )?;
+        let next_image =
+            Self::render_image(self.source.width, self.source.height, &self.frame)?;
 
         let previous_image = std::mem::replace(&mut self.image, next_image);
 
@@ -234,17 +226,20 @@ impl Wallpaper {
 
 impl WallpaperSource {
     fn load(path: impl AsRef<Path>) -> Result<Self> {
-        let start = std::time::Instant::now();
         let path = path.as_ref();
+        let file_name = path
+            .file_name()
+            .context("wallpaper path has no file name")?;
 
-        let file = File::open(path).with_context(|| {
-            format!("failed to find wallpaper {}", path.display())
-        })?;
+        let file = File::open(path)
+            .with_context(|| format!("failed to find wallpaper {}", path.display()))?;
 
-        let decoder =
-            GifDecoder::new(BufReader::new(file)).with_context(|| {
-                format!("failed to decode wallpaper {}", path.display())
-            })?;
+        if let Some(wallpaper) = cache::load(file_name)? {
+            return Ok(Self::Animated(Arc::new(wallpaper)));
+        }
+
+        let decoder = GifDecoder::new(BufReader::new(file))
+            .with_context(|| format!("failed to decode wallpaper {}", path.display()))?;
 
         let (width, height) = decoder.dimensions();
 
@@ -271,20 +266,17 @@ impl WallpaperSource {
             .map(|pair| Frame::diff(&pair[0], &pair[1]))
             .collect::<Vec<_>>();
 
-        let elapsed = std::time::Instant::now().duration_since(start).as_secs();
-        let frames_count = deltas.len();
-
-        log::info!(
-            "Loaded gif in {elapsed}s, proccessed {frames_count} frames"
-        );
-
-        Ok(Self::Animated(Arc::new(AnimatedWallpaper {
+        let animated = AnimatedWallpaper {
             width,
             height,
             loop_count,
             initial,
             deltas,
-        })))
+        };
+
+        cache::save(file_name, &animated)?;
+
+        Ok(Self::Animated(Arc::new(animated)))
     }
 }
 

@@ -4,17 +4,26 @@ pub use app::*;
 
 use ghost_shell_config::AppConfig;
 use ghost_shell_niri::NiriState;
-use gpui::{App, BorrowAppContext};
+use gpui::{App, BorrowAppContext, accesskit::Uuid};
 
 pub fn init(cx: &mut App) {
     let output_focused = cx.global::<NiriState>().focused_output();
-    let output_primary = cx.global::<AppConfig>().get_primary_output();
+    let output_primary = cx
+        .global::<AppConfig>()
+        .bars
+        .iter()
+        .find(|(_output, bar)| bar.primary == true)
+        .map(|(output, _bar)| {
+            Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
+        })
+        .expect("primary output was not set");
+
     let outputs: Vec<GhostShellOutput> = cx
         .displays()
         .iter()
         .map(|display| {
-            let is_focused = output_focused
-                .is_some_and(|output| output == display.uuid().unwrap());
+            let is_focused =
+                output_focused.is_some_and(|id| id == display.uuid().unwrap());
             let is_primary = output_primary == display.uuid().unwrap();
 
             GhostShellOutput {
