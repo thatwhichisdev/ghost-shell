@@ -14,6 +14,7 @@ members = [
   "crates/ghost-shell-lockscreen",
   "crates/ghost-shell-niri",
   "crates/ghost-shell-theme",
+  "crates/ghost-shell-wallpaper",
   "crates/ghost-shell-widgets/ghost-shell-widget-audio",
   "crates/ghost-shell-widgets/ghost-shell-widget-clock",
   "crates/ghost-shell-widgets/ghost-shell-widget-focus",
@@ -44,6 +45,7 @@ ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
 ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
 ghost-shell-niri = { path = "crates/ghost-shell-niri" }
 ghost-shell-theme = { path = "crates/ghost-shell-theme" }
+ghost-shell-wallpaper = { path = "crates/ghost-shell-wallpaper" }
 
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
@@ -92,19 +94,25 @@ tokio = {
   ],
 }
 
+aehobak = "=0.0.14"
 anyhow = "1.0.104"
+bsdiff = "0.2.1"
 clap = "4.6.4"
 env_logger = "0.11.11"
 fff-search = "0.10.1"
 freedesktop-desktop-entry = "0.8.1"
 freedesktop-icons = "0.4.0"
+image = "0.25.10"
 jiff = "0.2.35"
 log = "0.4.33"
+lz4_flex = "0.14.0"
 neo_frizbee = "0.11.0"
 nonstick = "0.1.2"
+rayon = "1.12.0"
 regex = "1.13.1"
 rust-embed = "8.12.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.151"
+smallvec = "1.15.2"
 starship-battery = "0.11.1"
 thiserror = "2.0.18"

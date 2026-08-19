@@ -21,6 +21,7 @@ ghost-shell-launcher.workspace = true
 ghost-shell-lockscreen.workspace = true
 ghost-shell-niri.workspace = true
 ghost-shell-theme.workspace = true
+ghost-shell-wallpaper.workspace = true
 
 gpui.workspace = true
 gpui-component.workspace = true

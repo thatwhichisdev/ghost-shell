@@ -2,6 +2,9 @@
 use std::{ffi::OsString, time::Duration};
 
 use anyhow::Result;
+use ghost_shell_wallpaper::wallpaper::{
+    Wallpaper, WallpaperManager, WallpaperSource,
+};
 use gpui::{
     Context, Entity, FontWeight, IntoElement, Render, SharedString,
     Subscription, Task, Window, div, prelude::*, px, relative, rgb,
@@ -22,6 +25,8 @@ pub struct LockView {
     _clock_update: Task<()>,
 
     authenticating: bool,
+
+    wallpaper: Option<Entity<Wallpaper>>,
 }
 
 impl LockView {
@@ -36,12 +41,27 @@ impl LockView {
         let input_sub =
             cx.subscribe_in(&input, window, Self::handle_password_event);
 
+        let source = cx.global::<WallpaperManager>().source();
+
+        let wallpaper = source.map(|source| {
+            cx.new(|cx| match source {
+                WallpaperSource::Animated(animated) => {
+                    Wallpaper::new(animated, window, cx).unwrap()
+                }
+
+                WallpaperSource::Static(_) => {
+                    todo!("static wallpaper")
+                }
+            })
+        });
+
         Self {
             password: input,
             clock: Self::formatted_time("%H:%M"),
             _password_subscription: input_sub,
             _clock_update: Self::spawn_clock_task(cx),
             authenticating: false,
+            wallpaper,
         }
     }
 
@@ -146,6 +166,9 @@ impl Render for LockView {
             .relative()
             .size_full()
             .text_color(rgb(0xffffff))
+            .when_some(self.wallpaper.clone(), |this, wallpaper| {
+                this.child(wallpaper)
+            })
             .child(
                 div()
                     .absolute()

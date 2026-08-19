@@ -48,7 +48,7 @@ impl LockManager {
                 is_resizable: false,
                 is_minimizable: false,
                 display_id: Some(display.id()),
-                window_background: WindowBackgroundAppearance::Transparent,
+                window_background: WindowBackgroundAppearance::Opaque,
                 app_id: Some("ghost-shell-lockscreen".to_owned()),
                 ..Default::default()
             };

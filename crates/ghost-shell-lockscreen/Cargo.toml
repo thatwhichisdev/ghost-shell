@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 ghost-shell-actions.workspace = true
 ghost-shell-app.workspace = true
+ghost-shell-wallpaper.workspace = true
 
 gpui.workspace = true
 gpui-component.workspace = true

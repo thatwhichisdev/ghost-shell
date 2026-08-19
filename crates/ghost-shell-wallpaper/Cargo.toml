@@ -1,0 +1,26 @@
+[package]
+name = "ghost-shell-wallpaper"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ghost-shell-config.workspace = true
+
+gpui.workspace = true
+gpui_platform.workspace = true
+gpui_tokio.workspace = true
+
+aehobak.workspace = true
+anyhow.workspace = true
+bsdiff.workspace = true
+image = {
+  workspace = true,
+  features = ["gif"],
+}
+log.workspace = true
+lz4_flex = { workspace = true, features = ["safe-decode", "safe-encode", "std"] }
+rayon.workspace = true
+smallvec.workspace = true
