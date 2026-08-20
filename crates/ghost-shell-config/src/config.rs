@@ -82,11 +82,15 @@ impl Default for ClockConfig {
 #[serde(default)]
 pub struct WallpaperConfig {
     pub path: Option<String>,
+    pub bg: u32,
 }
 
 impl Default for WallpaperConfig {
     fn default() -> Self {
-        Self { path: None }
+        Self {
+            path: None,
+            bg: 0x0000_0000,
+        }
     }
 }
 

@@ -2,12 +2,10 @@
 use std::{ffi::OsString, time::Duration};
 
 use anyhow::Result;
-use ghost_shell_wallpaper::wallpaper::{
-    Wallpaper, WallpaperManager, WallpaperSource,
-};
+use ghost_shell_wallpaper::wallpaper::{Wallpaper, WallpaperManager};
 use gpui::{
-    Context, Entity, FontWeight, IntoElement, Render, SharedString,
-    Subscription, Task, Window, div, prelude::*, px, relative, rgb,
+    Context, Entity, FontWeight, IntoElement, Render, SharedString, Subscription, Task,
+    Window, div, prelude::*, px, relative, rgb,
 };
 use gpui_component::input::{Input, InputContentType, InputEvent, InputState};
 use jiff::Zoned;
@@ -26,7 +24,7 @@ pub struct LockView {
 
     authenticating: bool,
 
-    wallpaper: Option<Entity<Wallpaper>>,
+    wallpaper: Entity<Wallpaper>,
 }
 
 impl LockView {
@@ -38,22 +36,10 @@ impl LockView {
             input
         });
 
-        let input_sub =
-            cx.subscribe_in(&input, window, Self::handle_password_event);
+        let input_sub = cx.subscribe_in(&input, window, Self::handle_password_event);
 
-        let source = cx.global::<WallpaperManager>().source();
-
-        let wallpaper = source.map(|source| {
-            cx.new(|cx| match source {
-                WallpaperSource::Animated(animated) => {
-                    Wallpaper::new(animated, window, cx).unwrap()
-                }
-
-                WallpaperSource::Static(_) => {
-                    todo!("static wallpaper")
-                }
-            })
-        });
+        let source = cx.global::<WallpaperManager>().source.clone();
+        let wallpaper = source.entity(window, cx);
 
         Self {
             password: input,
@@ -124,8 +110,7 @@ impl LockView {
         }
 
         let username: OsString = auth::username();
-        let password: OsString =
-            self.password.read(cx).value().to_string().into();
+        let password: OsString = self.password.read(cx).value().to_string().into();
 
         // todo: add UI validations to now allow empty password
         if password.is_empty() || username.is_empty() {
@@ -134,8 +119,7 @@ impl LockView {
 
         self.authenticating = true;
 
-        let authentication =
-            Self::spawn_authentication_task(username, password, cx);
+        let authentication = Self::spawn_authentication_task(username, password, cx);
 
         cx.spawn_in(window, async move |view, cx| {
             let result = authentication.await;
@@ -166,9 +150,7 @@ impl Render for LockView {
             .relative()
             .size_full()
             .text_color(rgb(0xffffff))
-            .when_some(self.wallpaper.clone(), |this, wallpaper| {
-                this.child(wallpaper)
-            })
+            .child(self.wallpaper.clone())
             .child(
                 div()
                     .absolute()
@@ -186,10 +168,7 @@ impl Render for LockView {
                             .text_size(px(256.0))
                             .font_weight(FontWeight::BLACK)
                             .child(
-                                div()
-                                    .w_full()
-                                    .text_center()
-                                    .child(self.clock.clone()),
+                                div().w_full().text_center().child(self.clock.clone()),
                             ),
                     ),
             )
