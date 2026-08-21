@@ -1,8 +1,8 @@
 //! Session-lock window lifecycle.
 use anyhow::Result;
 use gpui::{
-    App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds,
-    WindowHandle, WindowKind, WindowOptions,
+    App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds, WindowHandle,
+    WindowKind, WindowOptions,
 };
 use gpui_component::Root;
 
@@ -35,6 +35,9 @@ impl LockManager {
     ///
     /// Returns an error if a session-lock window cannot be opened.
     pub fn lock(&mut self, cx: &mut App) -> Result<()> {
+        self.windows
+            .retain(|window| window.is_active(cx).is_some());
+
         if !self.windows.is_empty() {
             return Ok(());
         }
@@ -72,11 +75,7 @@ impl LockManager {
     ///
     /// Returns an error if GPUI cannot unlock the active Wayland session.
     pub(crate) fn unlock(&mut self, cx: &mut App) -> Result<()> {
-        cx.unlock_session()?;
-
-        self.windows.clear();
-
-        Ok(())
+        cx.unlock_session()
     }
 }
 

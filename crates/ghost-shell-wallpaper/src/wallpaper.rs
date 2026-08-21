@@ -4,19 +4,20 @@ use std::{
     io::BufReader,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context as _, Result};
-use ghost_shell_config::AppConfig;
 use gpui::{
     App, AppContext as _, Context, Entity, Global, IntoElement, ObjectFit, Render,
-    RenderImage, Rgba, Styled as _, StyledImage as _, Task, Window, div, img, rgba,
+    RenderImage, Rgba, Styled as _, StyledImage as _, Subscription, Task, Window, div,
+    img, rgba,
 };
 use image::{AnimationDecoder, ImageDecoder as _, ImageReader, codecs::gif::GifDecoder};
-
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use ghost_shell_config::AppConfig;
 
 use crate::cache;
 
@@ -39,19 +40,22 @@ pub enum Wallpaper {
 
 pub struct AnimatedWallpaper {
     source: Arc<Animation>,
-    frame: Vec<u8>,
-    scratch: Vec<u8>,
+
     image: Arc<RenderImage>,
+
+    delta_buffer: Vec<u8>,
+
+    frame: Vec<u8>,
     frame_index: usize,
-    completed_loops: u32,
+
     _task: Option<Task<()>>,
+    _activation_subscription: Option<Subscription>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Animation {
     pub width: u32,
     pub height: u32,
-    pub loop_count: u32,
     pub initial: Frame,
     pub deltas: Vec<FrameDelta>,
 }
@@ -89,27 +93,6 @@ impl WallpaperManager {
         };
 
         Self { source }
-    }
-
-    pub fn wallpaper(&self, window: &mut Window, cx: &mut App) -> Entity<Wallpaper> {
-        match &self.source {
-            WallpaperSource::Animated(animation) => cx.new(|cx| {
-                let inner = AnimatedWallpaper::new(animation.clone()).unwrap();
-                let mut wallpaper = Wallpaper::Animated(inner);
-                wallpaper.spawn_task(window, cx);
-                wallpaper
-            }),
-
-            WallpaperSource::Static(image) => {
-                let image = image.clone();
-                cx.new(|_| Wallpaper::Static(image))
-            }
-
-            WallpaperSource::Solid(solid) => {
-                let solid = *solid;
-                cx.new(|_| Wallpaper::Solid(solid))
-            }
-        }
     }
 
     fn load(path: impl AsRef<Path>) -> Result<WallpaperSource> {
@@ -175,11 +158,6 @@ impl WallpaperManager {
 
         let (width, height) = decoder.dimensions();
 
-        let loop_count = match decoder.loop_count() {
-            image::metadata::LoopCount::Infinite => 0,
-            image::metadata::LoopCount::Finite(count) => count.get(),
-        };
-
         let frames = decoder
             .into_frames()
             .collect::<image::ImageResult<Vec<_>>>()?
@@ -193,15 +171,19 @@ impl WallpaperManager {
             delay: initial.delay,
         };
 
-        let deltas = frames
+        let mut deltas = frames
             .par_windows(2)
-            .map(|pair| Frame::diff(&pair[0], &pair[1]))
+            .map(|pair| FrameDelta::between(&pair[0], &pair[1]))
             .collect::<Vec<_>>();
+
+        // calculate additional delta to connect last frame with initial
+        if let (Some(first), Some(last)) = (frames.first(), frames.last()) {
+            deltas.push(FrameDelta::between(last, first));
+        }
 
         let animated = Animation {
             width,
             height,
-            loop_count,
             initial,
             deltas,
         };
@@ -213,20 +195,20 @@ impl WallpaperManager {
 }
 
 impl AnimatedWallpaper {
-    pub fn new(source: Arc<Animation>) -> Result<Self> {
+    pub fn new(source: Arc<Animation>) -> Self {
         let frame = source.initial.pixels.to_vec();
-        let scratch = vec![0; frame.len()];
-        let image = Self::render_image(source.width, source.height, &frame)?;
+        let image = Self::render(source.width, source.height, &frame);
+        let delta_buffer = vec![0; frame.len()];
 
-        Ok(Self {
+        Self {
             source,
             frame,
-            scratch,
+            delta_buffer,
             image,
             frame_index: 0,
-            completed_loops: 0,
             _task: None,
-        })
+            _activation_subscription: None,
+        }
     }
 
     fn delay(&self) -> Duration {
@@ -237,78 +219,45 @@ impl AnimatedWallpaper {
         }
     }
 
-    fn render_image(width: u32, height: u32, pixels: &[u8]) -> Result<Arc<RenderImage>> {
-        let expected_len = width as usize * height as usize * 4;
-
-        anyhow::ensure!(
-            pixels.len() == expected_len,
-            "invalid wallpaper framebuffer size: expected {expected_len}, got {}",
-            pixels.len(),
-        );
-
-        let buffer = image::RgbaImage::from_raw(width, height, pixels.to_vec())
-            .context("failed to create wallpaper image buffer")?;
-
-        let frame = image::Frame::new(buffer);
-
-        Ok(Arc::new(RenderImage::new([frame])))
+    fn render(width: u32, height: u32, pixels: &[u8]) -> Arc<RenderImage> {
+        image::RgbaImage::from_raw(width, height, pixels.to_vec())
+            .map(|buffer| image::Frame::new(buffer))
+            .map(|frame| RenderImage::new([frame]))
+            .map(|image| Arc::new(image))
+            .unwrap()
     }
 
-    fn advance(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Wallpaper>,
-    ) -> Result<bool> {
+    fn advance(&mut self, window: &mut Window) {
         if self.source.deltas.is_empty() {
-            return Ok(false);
+            return;
         }
 
-        if self.frame_index == self.source.deltas.len() {
-            if self.source.loop_count != 0
-                && self.completed_loops + 1 >= self.source.loop_count
-            {
-                return Ok(false);
-            }
+        let delta = &self.source.deltas[self.frame_index];
+        delta.apply(&mut self.frame, &mut self.delta_buffer);
 
-            self.completed_loops += 1;
-            self.frame
-                .copy_from_slice(&self.source.initial.pixels);
-            self.frame_index = 0;
-        } else {
-            let delta = &self.source.deltas[self.frame_index];
-            delta.apply(&mut self.frame, &mut self.scratch)?;
-            self.frame_index += 1;
-        }
+        let next = Self::render(self.source.width, self.source.height, &self.frame);
+        let prev = std::mem::replace(&mut self.image, next);
 
-        let next_image =
-            Self::render_image(self.source.width, self.source.height, &self.frame)?;
+        self.frame_index = (self.frame_index + 1) % self.source.deltas.len();
 
-        let previous_image = std::mem::replace(&mut self.image, next_image);
-
-        window.drop_image(previous_image)?;
-
-        cx.notify();
-
-        Ok(true)
+        window.drop_image(prev).unwrap();
     }
 }
 
 impl WallpaperSource {
     pub fn entity(&self, window: &mut Window, cx: &mut App) -> Entity<Wallpaper> {
         match &self {
-            WallpaperSource::Animated(animation) => cx.new(|cx| {
-                let inner = AnimatedWallpaper::new(animation.clone()).unwrap();
-                let mut wallpaper = Wallpaper::Animated(inner);
-                wallpaper.spawn_task(window, cx);
-                wallpaper
-            }),
+            Self::Animated(animation) => {
+                let animation = animation.clone();
+                cx.new(|cx| Wallpaper::animated(animation, window, cx))
+            }
 
-            WallpaperSource::Static(image) => {
+            Self::Static(image) => {
                 let image = image.clone();
                 cx.new(|_| Wallpaper::Static(image))
             }
 
-            WallpaperSource::Solid(solid) => {
+            Self::Solid(solid) => {
                 let solid = *solid;
                 cx.new(|_| Wallpaper::Solid(solid))
             }
@@ -317,52 +266,94 @@ impl WallpaperSource {
 }
 
 impl Wallpaper {
-    fn spawn_task(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !matches!(self, Wallpaper::Animated(_)) {
+    fn animated(
+        source: Arc<Animation>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let inner = AnimatedWallpaper::new(source);
+
+        let mut wallpaper = Self::Animated(inner);
+
+        let subscription =
+            cx.observe_window_activation(window, |wallpaper, window, cx| {
+                if window.is_window_active() {
+                    wallpaper.start_animation(window, cx);
+                } else {
+                    wallpaper.stop_animation();
+                }
+            });
+
+        wallpaper
+            .animation_mut()
+            ._activation_subscription = Some(subscription);
+
+        if window.is_window_active() {
+            wallpaper.start_animation(window, cx);
+        }
+
+        wallpaper
+    }
+
+    fn start_animation(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.animation()._task.is_some() {
             return;
         }
 
-        let task = cx.spawn_in(window, async move |wallpaper, cx| {
+        let task = Self::spawn_animation_task(window, cx);
+        self.animation_mut()._task = Some(task);
+    }
+
+    fn stop_animation(&mut self) {
+        self.animation_mut()._task = None;
+    }
+
+    fn animation(&self) -> &AnimatedWallpaper {
+        match self {
+            Self::Animated(animation) => animation,
+            _ => unreachable!("animation task attached to non-animated wallpaper"),
+        }
+    }
+
+    fn animation_mut(&mut self) -> &mut AnimatedWallpaper {
+        match self {
+            Self::Animated(animation) => animation,
+            _ => unreachable!("animation task attached to non-animated wallpaper"),
+        }
+    }
+
+    fn spawn_animation_task(window: &mut Window, cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn_in(window, async move |wallpaper, cx| {
+            let mut advance_time = Duration::ZERO;
             loop {
-                let delay = match wallpaper.update(cx, |wallpaper, _| match wallpaper {
-                    Wallpaper::Animated(animated) => Some(animated.delay()),
-                    _ => None,
-                }) {
-                    Ok(Some(delay)) => delay,
-                    _ => break,
+                let delay = match wallpaper
+                    .update(cx, |wallpaper, _| wallpaper.animation().delay())
+                {
+                    Ok(delay) => delay.saturating_sub(advance_time),
+                    Err(_) => break,
                 };
 
                 cx.background_executor()
                     .timer(delay)
                     .await;
 
-                let should_advance = wallpaper
+                let started = Instant::now();
+
+                if wallpaper
                     .update_in(cx, |wallpaper, window, cx| {
-                        let Wallpaper::Animated(animated) = wallpaper else {
-                            return false;
-                        };
-
-                        if !window.is_window_active() {
-                            return true;
-                        }
-
-                        let continue_playback = animated.advance(window, cx).unwrap();
-
+                        wallpaper
+                            .animation_mut()
+                            .advance(window);
                         cx.notify();
-
-                        continue_playback
                     })
-                    .unwrap();
-
-                if !should_advance {
+                    .is_err()
+                {
                     break;
                 }
-            }
-        });
 
-        if let Wallpaper::Animated(animated) = self {
-            animated._task = Some(task);
-        }
+                advance_time = started.elapsed();
+            }
+        })
     }
 }
 
@@ -392,7 +383,20 @@ impl Render for Wallpaper {
 }
 
 impl Frame {
-    fn diff(first: &DecodedFrame, second: &DecodedFrame) -> FrameDelta {
+    fn decode(frame: image::Frame) -> DecodedFrame {
+        let delay = frame.delay().into();
+        let mut pixels = frame.into_buffer().into_raw();
+
+        for pixel in pixels.chunks_exact_mut(4) {
+            pixel.swap(0, 2);
+        }
+
+        DecodedFrame { pixels, delay }
+    }
+}
+
+impl FrameDelta {
+    fn between(first: &DecodedFrame, second: &DecodedFrame) -> FrameDelta {
         let mut delta: Vec<u8> = vec![0u8; first.pixels.len()];
 
         for ((out, a), b) in delta
@@ -411,33 +415,14 @@ impl Frame {
         }
     }
 
-    fn decode(frame: image::Frame) -> DecodedFrame {
-        let delay = frame.delay().into();
-        let mut pixels = frame.into_buffer().into_raw();
+    pub fn apply(&self, frame: &mut [u8], delta_buffer: &mut [u8]) {
+        let len = lz4_flex::block::decompress_into(&self.patch, delta_buffer).unwrap();
 
-        for pixel in pixels.chunks_exact_mut(4) {
-            pixel.swap(0, 2);
-        }
-
-        DecodedFrame { pixels, delay }
-    }
-}
-
-impl FrameDelta {
-    pub fn apply(&self, frame: &mut [u8], scratch: &mut [u8]) -> Result<()> {
-        let len = lz4_flex::block::decompress_into(&self.patch, scratch)?;
-
-        anyhow::ensure!(
-            len == frame.len(),
-            "wallpaper delta has invalid size: expected {}, got {}",
-            frame.len(),
-            len,
-        );
-
-        for (pixel, delta) in frame.iter_mut().zip(&scratch[..len]) {
+        for (pixel, delta) in frame
+            .iter_mut()
+            .zip(&delta_buffer[..len])
+        {
             *pixel ^= *delta;
         }
-
-        Ok(())
     }
 }
