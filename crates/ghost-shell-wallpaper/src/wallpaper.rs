@@ -82,10 +82,7 @@ impl Global for WallpaperManager {}
 
 impl WallpaperManager {
     pub fn new(cx: &mut App) -> Self {
-        let config = cx
-            .global::<AppConfig>()
-            .wallpaper
-            .clone();
+        let config = cx.global::<AppConfig>().wallpaper.clone();
 
         let source = match config.path {
             Some(path) => Self::load(PathBuf::from(path)).unwrap(),
@@ -333,17 +330,13 @@ impl Wallpaper {
                     Err(_) => break,
                 };
 
-                cx.background_executor()
-                    .timer(delay)
-                    .await;
+                cx.background_executor().timer(delay).await;
 
                 let started = Instant::now();
 
                 if wallpaper
                     .update_in(cx, |wallpaper, window, cx| {
-                        wallpaper
-                            .animation_mut()
-                            .advance(window);
+                        wallpaper.animation_mut().advance(window);
                         cx.notify();
                     })
                     .is_err()
@@ -418,10 +411,7 @@ impl FrameDelta {
     pub fn apply(&self, frame: &mut [u8], delta_buffer: &mut [u8]) {
         let len = lz4_flex::block::decompress_into(&self.patch, delta_buffer).unwrap();
 
-        for (pixel, delta) in frame
-            .iter_mut()
-            .zip(&delta_buffer[..len])
-        {
+        for (pixel, delta) in frame.iter_mut().zip(&delta_buffer[..len]) {
             *pixel ^= *delta;
         }
     }

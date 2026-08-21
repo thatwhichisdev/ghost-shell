@@ -1,5 +1,5 @@
 max_width = 90
-chain_width = 40
+chain_width = 45
 
 format_macro_bodies = true
 format_macro_matchers = true
