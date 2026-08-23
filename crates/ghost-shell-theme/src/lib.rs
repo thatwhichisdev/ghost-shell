@@ -1,26 +1,37 @@
 pub mod theme;
 
-use gpui::{App, Hsla, UpdateGlobal, px, rgba};
+use gpui::{App, UpdateGlobal, px};
 
 use ghost_shell_config::AppConfig;
 use gpui_component::{Theme, ThemeMode};
 
 pub fn init(cx: &mut App) {
-    let config = cx.global::<AppConfig>().clone();
+    let (font_family, font_size, mode, palette) = {
+        let config = cx.global::<AppConfig>();
 
-    Theme::change(ThemeMode::Dark, None, cx);
+        let (mode, palette) = match config.theme.mode {
+            ghost_shell_config::ThemeMode::Dark => {
+                (ThemeMode::Dark, config.theme.dark.clone())
+            }
+            ghost_shell_config::ThemeMode::Light => {
+                (ThemeMode::Light, config.theme.light.clone())
+            }
+            ghost_shell_config::ThemeMode::System => todo!(),
+        };
 
-    let background: Hsla = rgba(config.general.bg).into();
-    let foreground: Hsla = rgba(config.general.fg).into();
+        (
+            config.general.font_family.clone(),
+            config.general.font_size,
+            mode,
+            palette,
+        )
+    };
 
-    Theme::update_global(cx, |theme, _cx| {
-        theme.font_family = config.general.font_family.clone().into();
-        theme.font_size = px(config.general.font_size);
+    Theme::change(mode, None, cx);
+    Theme::update_global(cx, |theme, _| {
+        theme.font_family = font_family.into();
+        theme.font_size = px(font_size);
 
-        theme.colors.background = background;
-        theme.colors.foreground = foreground;
-
-        theme.tokens.background = background.into();
-        theme.tokens.foreground = foreground.into();
+        theme::apply_base16(theme, &palette);
     });
 }

@@ -34,12 +34,17 @@ pub fn init(cx: &mut App) {
         .filter(|entry| !entry.no_display())
         .map(|entry| {
             let name = entry.name(&locales).unwrap().into_owned();
-            let command = entry.parse_exec_with_uris(&[], &locales).unwrap();
-            let description = entry.comment(&locales).map(|d| d.to_string());
+            let command = entry
+                .parse_exec_with_uris(&[], &locales)
+                .unwrap();
+            let description = entry
+                .comment(&locales)
+                .map(|d| d.to_string());
             let icon = entry.icon().and_then(|i| {
                 let mut icon_builder = freedesktop_icons::lookup(i)
-                    .with_size(40)
-                    .with_scale(2)
+                    .with_size(64)
+                    .with_scale(1)
+                    .force_svg()
                     .with_cache();
 
                 if let Some(theme) = theme.as_deref() {

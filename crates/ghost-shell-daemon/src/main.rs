@@ -15,13 +15,11 @@
 /// Initializes shell application itself, which loads bars and initializes all widgets.
 ///
 fn main() {
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info"),
-    )
-    .init();
+    let env = env_logger::Env::default().default_filter_or("info");
 
-    let app =
-        gpui_platform::application().with_assets(ghost_shell_assets::Assets);
+    env_logger::Builder::from_env(env).init();
+
+    let app = gpui_platform::application().with_assets(ghost_shell_assets::Assets);
 
     app.run(|cx: &mut gpui::App| {
         gpui_tokio::init(cx);

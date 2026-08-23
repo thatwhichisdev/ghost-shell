@@ -3,8 +3,8 @@ use ghost_shell_actions::{LauncherClose, LauncherToggle};
 use ghost_shell_app::GhostShell;
 use gpui::{
     App, AppContext as _, BorrowAppContext as _, Bounds, Global, KeyBinding,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind,
-    WindowOptions, px, size,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    px, size,
 };
 use gpui_component::Root;
 
@@ -20,21 +20,17 @@ pub fn init(cx: &mut App) {
 
     cx.on_action(|_: &LauncherClose, cx| {
         cx.defer(|cx| {
-            cx.update_global::<Launcher, _>(|launcher, cx| {
-                match launcher.close(cx) {
-                    Ok(()) => {}
-                    Err(err) => eprintln!("Failed to close launcher {err:#}"),
-                }
+            cx.update_global::<Launcher, _>(|launcher, cx| match launcher.close(cx) {
+                Ok(()) => {}
+                Err(err) => eprintln!("Failed to close launcher {err:#}"),
             });
         });
     });
 
     cx.on_action(|_: &LauncherToggle, cx| {
-        cx.update_global::<Launcher, _>(|launcher, cx| {
-            match launcher.toggle(cx) {
-                Ok(()) => {}
-                Err(err) => eprintln!("Failed to toggle launcher {err:#}"),
-            }
+        cx.update_global::<Launcher, _>(|launcher, cx| match launcher.toggle(cx) {
+            Ok(()) => {}
+            Err(err) => eprintln!("Failed to toggle launcher {err:#}"),
         });
     });
 }
@@ -61,18 +57,13 @@ impl Launcher {
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
         let output = cx.global::<GhostShell>().get_output();
-        let window_bounds = Bounds::centered(
-            Some(output.display.id()),
-            size(px(540.0), px(450.0)),
-            cx,
-        );
+
+        let window_size = size(px(540.0), px(450.0));
+        let window_bounds = Bounds::centered(Some(output.display.id()), window_size, cx);
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: None,
-            focus: true,
-            show: true,
             kind: WindowKind::Normal,
-            is_movable: false,
             is_resizable: false,
             is_minimizable: false,
             display_id: Some(output.display.id()),

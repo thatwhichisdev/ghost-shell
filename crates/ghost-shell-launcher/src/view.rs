@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
 use gpui::{
-    Context, Entity, IntoElement, ObjectFit, Pixels, Render, ScrollStrategy,
-    Size, Subscription, Window, div, img, prelude::*, px, size,
+    App, Context, Div, Entity, IntoElement, ObjectFit, Pixels, Render, ScrollStrategy,
+    Size, Stateful, Subscription, TextStyle, TextStyleRefinement, Window, div, img,
+    prelude::*, px, size,
 };
 use gpui_component::{
-    ActiveTheme as _, Sizable, StyledExt, VirtualListScrollHandle,
+    ActiveTheme as _, StyledExt, VirtualListScrollHandle,
     input::{Input, InputEvent, InputState, MoveDown, MoveUp},
-    list::ListItem,
     v_virtual_list,
 };
 use neo_frizbee::Config;
@@ -19,6 +19,17 @@ use crate::{
     actions::EntrySpawn,
     entries::{DesktopEntries, DesktopEntry},
 };
+
+const INPUT_HEIGHT: f32 = 36.0;
+const INPUT_PADDING_X: f32 = 4.0;
+
+const ENTRY_GAP: f32 = 6.0;
+const ICON_SIZE: f32 = 32.0;
+
+const TEXT_SIZE: f32 = 14.0;
+const TEXT_SIZE_SMALL: f32 = 12.0;
+
+const FOOTER_PADDING: f32 = 6.0;
 
 /// Struct that represents launcher's view.
 pub(crate) struct View {
@@ -50,8 +61,7 @@ impl View {
         });
 
         // Subscirbe to input's events and keep the handle
-        let input_subscription =
-            cx.subscribe_in(&input, window, Self::on_query_event);
+        let input_subscription = cx.subscribe_in(&input, window, Self::on_query_event);
 
         let entries = cx.global::<DesktopEntries>().clone();
         let entries_len = entries.items.len();
@@ -86,24 +96,20 @@ impl View {
             if query.is_empty() {
                 (0..self.entries.len()).collect()
             } else {
-                neo_frizbee::match_list(
-                    query.trim(),
-                    &self.entries,
-                    &Config::default(),
-                )
-                .into_iter()
-                .map(|matched| matched.index as usize)
-                .collect()
+                neo_frizbee::match_list(query.trim(), &self.entries, &Config::default())
+                    .into_iter()
+                    .map(|matched| matched.index as usize)
+                    .collect()
             }
         };
 
         self.entry_selected = (!matched.is_empty()).then_some(0);
-        self.entries_sizes =
-            Rc::new(vec![size(px(0.0), px(48.0)); matched.len()]);
+        self.entries_sizes = Rc::new(vec![size(px(0.0), px(48.0)); matched.len()]);
         self.entries_filtered = matched;
 
         if self.entry_selected.is_some() {
-            self.scroll_handle.scroll_to_item(0, ScrollStrategy::Top);
+            self.scroll_handle
+                .scroll_to_item(0, ScrollStrategy::Top);
         }
 
         cx.notify();
@@ -127,7 +133,8 @@ impl View {
         };
 
         self.entry_selected = Some(ix);
-        self.scroll_handle.scroll_to_item(ix, ScrollStrategy::Top);
+        self.scroll_handle
+            .scroll_to_item(ix, ScrollStrategy::Top);
 
         cx.notify();
     }
@@ -151,7 +158,8 @@ impl View {
         };
 
         self.entry_selected = Some(ix);
-        self.scroll_handle.scroll_to_item(ix, ScrollStrategy::Top);
+        self.scroll_handle
+            .scroll_to_item(ix, ScrollStrategy::Top);
 
         cx.notify();
     }
@@ -203,10 +211,7 @@ impl View {
         .detach();
     }
 
-    fn render_entries(
-        &mut self,
-        cx: &mut Context<'_, View>,
-    ) -> impl IntoElement {
+    fn render_entries(&mut self, cx: &mut Context<'_, View>) -> impl IntoElement {
         div()
             .id("launcher-entries")
             .w_full()
@@ -232,23 +237,14 @@ impl View {
         &mut self,
         ix: usize,
         cx: &mut Context<Self>,
-    ) -> Option<ListItem> {
-        const ICON_SIZE: f32 = 40.0;
-
+    ) -> Option<Stateful<Div>> {
         let entry = self
             .entries_filtered
             .get(ix)
             .and_then(|&entry_ix| self.entries.get(entry_ix))?;
 
         let selected = self.entry_selected == Some(ix);
-
         let theme = cx.theme();
-
-        let (title_color, description_color) = if selected {
-            (theme.accent_foreground, theme.accent_foreground)
-        } else {
-            (theme.foreground, theme.muted_foreground)
-        };
 
         let icon = div()
             .size(px(ICON_SIZE))
@@ -275,9 +271,8 @@ impl View {
                 div()
                     .w_full()
                     .min_w_0()
-                    .text_size(px(14.0))
-                    .font_bold()
-                    .text_color(title_color)
+                    .text_size(px(TEXT_SIZE))
+                    .font_semibold()
                     .truncate()
                     .child(entry.name.clone()),
             )
@@ -291,42 +286,76 @@ impl View {
                         div()
                             .w_full()
                             .min_w_0()
-                            .text_size(px(13.0))
-                            .text_color(description_color)
-                            .when(selected, |this| this.opacity(0.7))
+                            .text_size(px(TEXT_SIZE_SMALL))
+                            .text_color(theme.foreground)
                             .truncate()
                             .child(description),
                     )
                 },
             );
 
-        let entry = ListItem::new(("launcher-entry", ix))
-            .selected(selected)
-            .size_full()
-            .rounded_md()
-            .child(
-                div()
-                    .w_full()
-                    .min_w_0()
-                    .h_full()
-                    .flex()
-                    .items_center()
-                    .gap_x_3()
-                    .overflow_hidden()
-                    .child(icon)
-                    .child(body),
-            );
-
-        Some(entry)
+        Some(
+            div()
+                .id(("launcher-entry", ix))
+                .w_full()
+                .h_full()
+                .px(px(4.0))
+                .py(px(2.0))
+                .child(
+                    // Actual visual / selection surface.
+                    div()
+                        .w_full()
+                        .h_full()
+                        .min_w_0()
+                        .flex()
+                        .items_center()
+                        .gap(px(ENTRY_GAP))
+                        .px(px(6.0))
+                        .rounded_sm()
+                        .when(selected, |this| this.bg(cx.theme().list_active))
+                        .hover(|style| style.bg(cx.theme().list_hover))
+                        .child(icon)
+                        .child(body),
+                ),
+        )
     }
 
-    fn render_input(&mut self) -> impl IntoElement {
+    fn render_input(&mut self, cx: &mut App) -> impl IntoElement {
         div()
             .id("launcher-input")
             .w_full()
-            .p_3()
+            .h(px(INPUT_HEIGHT))
+            .px(px(INPUT_PADDING_X))
+            .flex_none()
+            .flex()
+            .items_center()
             .border_b_1()
-            .child(Input::new(&self.input).large().cleanable(true))
+            .border_color(cx.theme().border)
+            .child(
+                Input::new(&self.input)
+                    .appearance(false)
+                    .text_size(px(TEXT_SIZE)),
+            )
+    }
+
+    fn render_status(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let total = self.entries.len();
+        let filtered = self.entries_filtered.len();
+
+        div()
+            .id("launcher-status")
+            .w_full()
+            .flex_none()
+            .flex()
+            .items_center()
+            .justify_between()
+            .p(px(FOOTER_PADDING))
+            .border_t_1()
+            .border_color(cx.theme().border)
+            .text_size(px(TEXT_SIZE_SMALL))
+            .text_color(cx.theme().foreground)
+            .child(format!("{filtered} matches"))
+            .child(format!("{total} applications"))
     }
 }
 
@@ -346,7 +375,8 @@ impl Render for View {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .child(self.render_input())
+            .child(self.render_input(cx))
             .child(self.render_entries(cx))
+            .child(self.render_status(cx))
     }
 }

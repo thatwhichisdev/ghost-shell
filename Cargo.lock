@@ -2669,6 +2669,7 @@ dependencies = [
  "gpui",
  "gpui-component",
  "gpui_tokio",
+ "log",
  "neo_frizbee",
  "tokio",
 ]

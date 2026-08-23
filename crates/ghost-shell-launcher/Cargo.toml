@@ -19,5 +19,6 @@ ghost-shell-niri.workspace = true
 anyhow.workspace = true
 freedesktop-desktop-entry.workspace = true
 freedesktop-icons.workspace = true
+log.workspace = true
 neo_frizbee.workspace = true
 tokio = { workspace = true, features = ["process"] }
