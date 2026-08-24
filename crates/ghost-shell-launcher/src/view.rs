@@ -2,8 +2,7 @@ use std::rc::Rc;
 
 use gpui::{
     App, Context, Div, Entity, IntoElement, ObjectFit, Pixels, Render, ScrollStrategy,
-    Size, Stateful, Subscription, TextStyle, TextStyleRefinement, Window, div, img,
-    prelude::*, px, size,
+    Size, Stateful, Subscription, Window, div, img, prelude::*, px, size,
 };
 use gpui_component::{
     ActiveTheme as _, StyledExt, VirtualListScrollHandle,
