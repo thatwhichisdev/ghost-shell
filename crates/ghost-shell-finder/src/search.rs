@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use fff_search::{
-    FilePicker, FilePickerOptions, FuzzySearchOptions, MixedItemRef,
-    MixedSearchConfig, PaginationArgs, QueryParser, ScanProgress,
-    SharedFilePicker, SharedFrecency,
+    FilePicker, FilePickerOptions, FuzzySearchOptions, MixedItemRef, MixedSearchConfig,
+    PaginationArgs, QueryParser, ScanProgress, SharedFilePicker, SharedFrecency,
 };
 
 #[derive(Clone)]
@@ -37,8 +36,6 @@ pub struct SearchResult {
     pub indexed_dirs: usize,
 }
 
-pub struct NeoSearchResult;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SearchItemKind {
     File,
@@ -69,18 +66,21 @@ impl Search {
         let picker = SharedFilePicker::default();
         let frecency = SharedFrecency::default();
 
-        FilePicker::new_with_shared_state(
-            picker.clone(),
-            frecency.clone(),
-            options,
-        )?;
+        FilePicker::new_with_shared_state(picker.clone(), frecency.clone(), options)
+            .context("Failed to create shared file picker")?;
 
         Ok(Self { picker, frecency })
     }
 
     pub fn get_scan_progress(&self) -> Result<ScanProgress> {
-        let guard = self.picker.read()?;
-        let picker = guard.as_ref().unwrap();
+        let guard = self
+            .picker
+            .read()
+            .context("failed to acquire the file picker")?;
+
+        let picker = guard
+            .as_ref()
+            .context("file picker is not initialized")?;
 
         Ok(picker.get_scan_progress())
     }
@@ -97,8 +97,14 @@ impl Search {
             });
         }
 
-        let picker_guard = self.picker.read()?;
-        let picker = picker_guard.as_ref().unwrap();
+        let picker_guard = self
+            .picker
+            .read()
+            .context("failed to acquire the file picker")?;
+
+        let picker = picker_guard
+            .as_ref()
+            .context("file picker is not initialized")?;
 
         let query_parser = QueryParser::new(MixedSearchConfig);
         let query = query_parser.parse(needle);

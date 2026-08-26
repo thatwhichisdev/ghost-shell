@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Arc, time::Duration};
 
 use gpui::{
     Context, Div, Entity, IntoElement, Pixels, Render, ScrollStrategy, Size, Stateful,
-    Window, div, prelude::*, px, size,
+    Task, Window, div, prelude::*, px, size,
 };
 use gpui_component::{
     ActiveTheme as _, IconName, Sizable, VirtualListScrollHandle,
@@ -13,27 +13,37 @@ use gpui_component::{
 
 use crate::search::{Search, SearchItem, SearchOptions};
 
-pub(crate) struct View {
+/// Struct that represtents state of finder's UI
+pub(crate) struct FinderView {
+    /// Thread-safe pointer to the Search service
     search: Arc<Search>,
-
+    /// Identifies the newest requested search.
+    search_generation: u64,
+    /// Keeps the current search continuation alive and cancels it when replaced.
+    search_task: Option<Task<()>>,
+    /// Strong reference to finder's input
     query: Entity<InputState>,
-
+    /// Vector that represents search result entries
     entries: Vec<SearchItem>,
+    /// Vector that represents sizes of the search result entries
     entries_sizes: Rc<Vec<Size<Pixels>>>,
-
+    /// Index of selected entry if exists, otherwise empty
     entry_selected: Option<usize>,
+    /// Index of mouse hovered entry if exists, otherwise empty
     entry_hovered: Option<usize>,
-
+    /// Scroll handle for the virtual list
     scroll_handle: VirtualListScrollHandle,
-
+    /// Identifies if indexing task is running
     is_indexing: bool,
+    /// Identifies if search task is running
     is_searching: bool,
-
+    /// Number of all indexed entries on the given base path
     indexed_entries: usize,
+    /// Number of entries that matched query
     matched_entries: usize,
 }
 
-impl View {
+impl FinderView {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let search = Arc::new(Search::try_new(SearchOptions::default()).unwrap());
         let query = cx.new(|cx| {
@@ -45,7 +55,7 @@ impl View {
         cx.subscribe_in(&query, window, Self::on_input_query_event)
             .detach();
 
-        Self::spawn_scan(window, cx);
+        Self::spawn_indexing(cx).detach();
 
         Self {
             search,
@@ -57,6 +67,8 @@ impl View {
             scroll_handle: VirtualListScrollHandle::new(),
             is_indexing: true,
             is_searching: false,
+            search_generation: 0,
+            search_task: None,
             indexed_entries: 0,
             matched_entries: 0,
         }
@@ -66,7 +78,7 @@ impl View {
         &mut self,
         query: &Entity<InputState>,
         event: &InputEvent,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         match event {
@@ -76,7 +88,7 @@ impl View {
                 shift: _,
             } => {
                 let needle = query.read(cx).value().trim().to_owned();
-                self.spawn_search(needle, window, cx);
+                self.spawn_search(needle, cx);
             }
         }
     }
@@ -130,86 +142,109 @@ impl View {
         cx.notify();
     }
 
-    fn spawn_scan(window: &mut Window, cx: &mut Context<Self>) {
-        cx.spawn_in(window, async move |view, cx| {
+    fn spawn_indexing(cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn(async move |view, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(100))
                     .await;
 
-                let is_indexing = view
-                    .update(cx, |view, cx| {
-                        let scan_progress = view.search.get_scan_progress().unwrap();
-                        let is_indexing = scan_progress.is_scanning;
-                        let entries_count = scan_progress.scanned_files_count;
+                let keep_polling = match view.update(cx, |view, cx| {
+                    match view.search.get_scan_progress() {
+                        Ok(progress) => {
+                            view.is_indexing = progress.is_scanning;
+                            view.indexed_entries = progress.scanned_files_count;
+                            cx.notify();
 
-                        view.is_indexing = is_indexing;
-                        view.indexed_entries = entries_count;
+                            progress.is_scanning
+                        }
+                        Err(error) => {
+                            log::error!(
+                                "Failed to read file indexing progress: {error:#}"
+                            );
 
-                        cx.notify();
+                            view.is_indexing = false;
+                            cx.notify();
 
-                        is_indexing
-                    })
-                    .unwrap();
+                            false
+                        }
+                    }
+                }) {
+                    Ok(keep_polling) => keep_polling,
+                    Err(_) => {
+                        log::warn!(
+                            "Finder's view is dropped, cancelling indexing progress task"
+                        );
+                        break;
+                    }
+                };
 
-                if !is_indexing {
+                if !keep_polling {
                     break;
                 }
             }
         })
-        .detach();
     }
 
-    fn spawn_search(
-        &mut self,
-        needle: String,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn spawn_search(&mut self, needle: String, cx: &mut Context<Self>) {
         self.is_searching = true;
+        self.search_task.take();
+        self.search_generation = self.search_generation.wrapping_add(1);
+
         cx.notify();
 
+        if needle.is_empty() {
+            self.is_searching = false;
+            self.entry_selected = None;
+            self.entry_hovered = None;
+            self.entries.clear();
+            self.entries_sizes = Rc::new(Vec::new());
+            self.matched_entries = 0;
+            cx.notify();
+            return;
+        }
+
+        let search_generation = self.search_generation;
         let search = self.search.clone();
         let search_task = cx
             .background_executor()
             .spawn(async move { search.search(&needle, 100) });
 
-        cx.spawn_in(window, async move |this, cx| {
-            let Ok(search_result) = search_task.await else {
-                this.update(cx, |view, cx| {
-                    view.is_searching = false;
-                    cx.notify();
-                })?;
-
-                anyhow::bail!("failed to search")
-            };
-
-            this.update(cx, |view, cx| {
-                view.entry_selected = if search_result.items.is_empty() {
-                    None
-                } else {
-                    Some(0)
-                };
-
-                view.indexed_entries = search_result.indexed_files;
-                view.matched_entries = search_result.matched;
-                view.entries = search_result.items;
-                view.entries_sizes = Rc::new(vec![
-                    size(
-                        px(0.0),
-                        gpui_component::Size::XSmall.table_row_height()
-                    );
-                    view.entries.len()
-                ]);
+        self.search_task = Some(cx.spawn(async move |this, cx| {
+            let search_result = search_task.await;
+            let _ = this.update(cx, |view, cx| {
+                // A newer request was started while this search was running.
+                if view.search_generation != search_generation {
+                    return;
+                }
 
                 view.is_searching = false;
 
-                cx.notify();
-            })?;
+                match search_result {
+                    Ok(result) => {
+                        view.entries = result.items;
+                        view.entries_sizes = Rc::new(vec![
+                            size(
+                                px(0.0),
+                                gpui_component::Size::XSmall.table_row_height(),
+                            );
+                            view.entries.len()
+                        ]);
+                        view.entry_selected = (!view.entries.is_empty()).then_some(0);
+                        view.entry_hovered = None;
 
-            anyhow::Ok(())
-        })
-        .detach();
+                        view.indexed_entries = result.indexed_files;
+                        view.matched_entries = result.matched;
+                    }
+
+                    Err(error) => {
+                        log::error!("Failed to search files: {error:#}");
+                    }
+                }
+
+                cx.notify();
+            });
+        }));
     }
 
     fn render_input(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -350,7 +385,7 @@ impl View {
     }
 }
 
-impl Render for View {
+impl Render for FinderView {
     fn render(
         &mut self,
         _window: &mut Window,

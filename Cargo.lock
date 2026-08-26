@@ -2638,6 +2638,7 @@ dependencies = [
  "ghost-shell-niri",
  "gpui",
  "gpui-component",
+ "log",
  "neo_frizbee",
  "regex",
 ]
