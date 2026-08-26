@@ -4,7 +4,7 @@ use ghost_shell_app::GhostShell;
 use gpui::{
     App, AppContext, BorrowAppContext as _, Bounds, Global, KeyBinding,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
-    px, size,
+    actions, px, size,
 };
 use gpui_component::Root;
 
@@ -13,13 +13,19 @@ use crate::view::FinderView;
 mod search;
 mod view;
 
+actions!(finder, [FinderOpenSelected, FinderPreviewSelected]);
+
 /// Initializes the finder and registers its actions and key bindings.
 ///
 /// The finder is stored as a GPUI global and starts without an open window.
 pub fn init(cx: &mut App) {
     cx.set_global(Finder::new());
 
-    cx.bind_keys([KeyBinding::new("escape", FinderClose, Some("finder"))]);
+    cx.bind_keys([
+        KeyBinding::new("escape", FinderClose, Some("finder")),
+        KeyBinding::new("ctrl-o", FinderOpenSelected, Some("finder")),
+        KeyBinding::new("ctrl-p", FinderPreviewSelected, Some("finder")),
+    ]);
 
     cx.on_action(|_: &FinderClose, cx| {
         cx.defer(|cx| {

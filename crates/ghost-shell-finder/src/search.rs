@@ -29,6 +29,7 @@ impl Default for SearchOptions {
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 pub struct SearchResult {
     pub items: Vec<SearchItem>,
     pub matched: usize,
@@ -43,6 +44,7 @@ pub enum SearchItemKind {
 }
 
 #[derive(Debug, Clone)]
+#[allow(unused)]
 pub struct SearchItem {
     pub name: String,
     pub path: PathBuf,

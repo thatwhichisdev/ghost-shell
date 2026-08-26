@@ -11,7 +11,10 @@ use gpui_component::{
     v_virtual_list,
 };
 
-use crate::search::{Search, SearchItem, SearchOptions};
+use crate::{
+    FinderOpenSelected,
+    search::{Search, SearchItem, SearchOptions},
+};
 
 /// Struct that represtents state of finder's UI
 pub(crate) struct FinderView {
@@ -140,6 +143,42 @@ impl FinderView {
             .scroll_to_item(ix, ScrollStrategy::Top);
 
         cx.notify();
+    }
+
+    fn on_item_open(
+        &mut self,
+        _: &FinderOpenSelected,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) {
+        let Some(entry) = self
+            .entry_selected
+            .and_then(|index| self.entries.get(index))
+        else {
+            return;
+        };
+
+        // todo: implement spawning logic via niri client, that will allow to open a file location using `xdg-open` command
+
+        log::info!("Selected finder entry: {entry:#?}");
+    }
+
+    fn on_item_preview(
+        &mut self,
+        _: &FinderOpenSelected,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) {
+        let Some(entry) = self
+            .entry_selected
+            .and_then(|index| self.entries.get(index))
+        else {
+            return;
+        };
+
+        // todo: implement preview logic, if file is text based then we can preview it in additional window, take inspirantion from zed's file picker
+
+        log::info!("Selected finder entry: {entry:#?}");
     }
 
     fn spawn_indexing(cx: &mut Context<Self>) -> Task<()> {
@@ -398,6 +437,8 @@ impl Render for FinderView {
             .key_context("finder")
             .on_action(cx.listener(Self::on_item_select_previous))
             .on_action(cx.listener(Self::on_item_select_next))
+            .on_action(cx.listener(Self::on_item_open))
+            .on_action(cx.listener(Self::on_item_preview))
             .overflow_hidden()
             .size_full()
             .flex()
