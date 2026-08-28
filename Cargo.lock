@@ -2576,6 +2576,7 @@ dependencies = [
  "ghost-shell-widget-network",
  "ghost-shell-widget-notifications",
  "ghost-shell-widget-power",
+ "ghost-shell-widget-tray",
  "ghost-shell-widget-workspaces",
  "gpui",
  "gpui-component",
@@ -2612,6 +2613,7 @@ dependencies = [
  "ghost-shell-assets",
  "ghost-shell-bar",
  "ghost-shell-config",
+ "ghost-shell-dbus",
  "ghost-shell-finder",
  "ghost-shell-ipc",
  "ghost-shell-launcher",
@@ -2624,6 +2626,19 @@ dependencies = [
  "gpui_platform",
  "gpui_tokio",
  "log",
+]
+
+[[package]]
+name = "ghost-shell-dbus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "gpui",
+ "gpui_tokio",
+ "log",
+ "tokio",
+ "zbus",
 ]
 
 [[package]]
@@ -2781,6 +2796,17 @@ dependencies = [
  "gpui",
  "gpui-component",
  "starship-battery",
+]
+
+[[package]]
+name = "ghost-shell-widget-tray"
+version = "0.1.0"
+dependencies = [
+ "freedesktop-icons",
+ "ghost-shell-dbus",
+ "gpui",
+ "image",
+ "log",
 ]
 
 [[package]]
@@ -7950,6 +7976,7 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
+ "tracing",
  "windows-sys 0.61.2",
 ]
 
@@ -9825,6 +9852,7 @@ dependencies = [
  "rustix 1.1.4",
  "serde",
  "serde_repr",
+ "tokio",
  "tracing",
  "uds_windows",
  "uuid",

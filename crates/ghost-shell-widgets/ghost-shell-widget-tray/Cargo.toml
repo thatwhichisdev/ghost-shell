@@ -1,0 +1,18 @@
+[package]
+name = "ghost-shell-widget-tray"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/tray.rs"
+
+[dependencies]
+ghost-shell-dbus.workspace = true
+
+freedesktop-icons.workspace = true
+gpui.workspace = true
+image.workspace = true
+log.workspace = true

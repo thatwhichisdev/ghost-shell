@@ -9,6 +9,7 @@ use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
 use ghost_shell_widget_power::PowerWidget;
+use ghost_shell_widget_tray::TrayWidget;
 use ghost_shell_widget_workspaces::WorkspacesWidget;
 
 pub fn init(cx: &mut App) {
@@ -18,6 +19,7 @@ pub fn init(cx: &mut App) {
     let power = cx.new(|_cx| PowerWidget::try_new().unwrap());
     let clock = cx.new(ClockWidget::new);
     let focus = cx.new(FocusWidget::new);
+    let tray = cx.new(TrayWidget::new);
 
     config.bars.into_iter().for_each(|(output, bar_config)| {
         let id = Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes());
@@ -33,6 +35,7 @@ pub fn init(cx: &mut App) {
             menu: menu.clone(),
             workspaces,
             focus: focus.clone(),
+            tray: tray.clone(),
             power: power.clone(),
             clock: clock.clone(),
         };

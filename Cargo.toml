@@ -8,6 +8,7 @@ members = [
   "crates/ghost-shell-cli",
   "crates/ghost-shell-config",
   "crates/ghost-shell-daemon",
+  "crates/ghost-shell-dbus",
   "crates/ghost-shell-finder",
   "crates/ghost-shell-ipc",
   "crates/ghost-shell-launcher",
@@ -22,6 +23,7 @@ members = [
   "crates/ghost-shell-widgets/ghost-shell-widget-network",
   "crates/ghost-shell-widgets/ghost-shell-widget-notifications",
   "crates/ghost-shell-widgets/ghost-shell-widget-power",
+  "crates/ghost-shell-widgets/ghost-shell-widget-tray",
   "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
 ]
 default-members = ["crates/ghost-shell-daemon"]
@@ -39,6 +41,7 @@ ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-assets = { path = "crates/ghost-shell-assets" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
+ghost-shell-dbus = { path = "crates/ghost-shell-dbus" }
 ghost-shell-finder = { path = "crates/ghost-shell-finder" }
 ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
 ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
@@ -56,6 +59,7 @@ ghost-shell-widget-notifications = {
   path = "crates/ghost-shell-widgets/ghost-shell-widget-notifications"
 }
 ghost-shell-widget-power = { path = "crates/ghost-shell-widgets/ghost-shell-widget-power" }
+ghost-shell-widget-tray = { path = "crates/ghost-shell-widgets/ghost-shell-widget-tray" }
 ghost-shell-widget-workspaces = {
   path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces"
 }
@@ -80,6 +84,8 @@ gpui_tokio = {
   git = "https://github.com/thatwhichisdev/zed",
   rev = "d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c",
 }
+
+futures-util = "0.3.32"
 
 gpui-component = {
   git = "https://github.com/thatwhichisdev/gpui-component",
@@ -117,3 +123,8 @@ serde_json = "1.0.151"
 smallvec = "1.15.2"
 starship-battery = "0.11.1"
 thiserror = "2.0.18"
+zbus = {
+  version = "5.18.0",
+  default-features = false,
+  features = ["tokio"],
+}

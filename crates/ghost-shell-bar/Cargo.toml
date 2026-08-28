@@ -18,6 +18,7 @@ ghost-shell-widget-menu.workspace = true
 ghost-shell-widget-network.workspace = true
 ghost-shell-widget-notifications.workspace = true
 ghost-shell-widget-power.workspace = true
+ghost-shell-widget-tray.workspace = true
 ghost-shell-widget-workspaces.workspace = true
 
 gpui.workspace = true

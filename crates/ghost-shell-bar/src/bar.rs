@@ -5,6 +5,7 @@ use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
 use ghost_shell_widget_power::PowerWidget;
+use ghost_shell_widget_tray::TrayWidget;
 use ghost_shell_widget_workspaces::WorkspacesWidget;
 use gpui::{
     AnyWindowHandle, App, Entity, IntoElement, PlatformDisplay, Render, Size,
@@ -33,6 +34,7 @@ pub struct Widgets {
     pub workspaces: Entity<WorkspacesWidget>,
     pub focus: Entity<FocusWidget>,
     pub power: Entity<PowerWidget>,
+    pub tray: Entity<TrayWidget>,
     pub clock: Entity<ClockWidget>,
 }
 
@@ -147,6 +149,7 @@ impl Render for BarView {
                     .gap_x_2()
                     .items_center()
                     .justify_end()
+                    .child(self.widgets.tray.clone())
                     .child(self.widgets.power.clone())
                     .child(self.widgets.clock.clone())
             })
