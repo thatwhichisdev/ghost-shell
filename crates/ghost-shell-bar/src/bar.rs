@@ -8,9 +8,8 @@ use ghost_shell_widget_power::PowerWidget;
 use ghost_shell_widget_tray::TrayWidget;
 use ghost_shell_widget_workspaces::WorkspacesWidget;
 use gpui::{
-    AnyWindowHandle, App, Entity, IntoElement, PlatformDisplay, Render, Size,
-    Window, WindowBackgroundAppearance, WindowBounds, WindowKind,
-    WindowOptions, div,
+    AnyWindowHandle, App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     point,
     prelude::*,
@@ -101,9 +100,7 @@ impl Bar {
 
         let handle = cx
             .open_window(window_options, |window, cx| {
-                cx.new(|cx| {
-                    Root::new(self.view.clone(), window, cx).bordered(false)
-                })
+                cx.new(|cx| Root::new(self.view.clone(), window, cx).bordered(false))
             })
             .unwrap();
 
@@ -149,7 +146,6 @@ impl Render for BarView {
                     .gap_x_2()
                     .items_center()
                     .justify_end()
-                    .child(self.widgets.tray.clone())
                     .child(self.widgets.power.clone())
                     .child(self.widgets.clock.clone())
             })

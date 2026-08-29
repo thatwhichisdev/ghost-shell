@@ -1,306 +1,356 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, process};
 
-use anyhow::{Result, bail};
-use zbus::{
-    fdo::PropertiesProxy,
-    names::InterfaceName,
-    proxy,
-    zvariant::{OwnedObjectPath, OwnedValue},
+use anyhow::{Context as _, Result, anyhow};
+use gpui::{App, AppContext as _, Context, Entity, EventEmitter};
+use tokio::{sync::mpsc, task::JoinHandle};
+use zbus::{Connection, fdo::RequestNameFlags};
+
+use crate::{
+    status_notifier_item::{
+        StatusNotifierId, StatusNotifierItem, StatusNotifierItemClient,
+        StatusNotifierItemEvent,
+    },
+    status_notifier_watcher::{
+        StatusNotifierWatcherClient, StatusNotifierWatcherEvent,
+        StatusNotifierWatcherService,
+    },
 };
 
-pub(crate) const STATUS_NOTIFIER_ITEM_INTERFACE: &str = "org.kde.StatusNotifierItem";
-const DEFAULT_ITEM_PATH: &str = "/StatusNotifierItem";
+const STATE_CHANNEL_CAPACITY: usize = 256;
+const WATCHER_CHANNEL_CAPACITY: usize = 64;
+const ITEM_CHANNEL_CAPACITY: usize = 256;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct StatusNotifierId {
-    service: String,
-    object_path: String,
+pub(crate) fn init(cx: &mut App) -> Entity<StatusNotifierState> {
+    let state = cx.new(|_| StatusNotifierState::default());
+
+    let (sender, mut receiver) = mpsc::channel(STATE_CHANNEL_CAPACITY);
+
+    // D-Bus / zbus work MUST run on Tokio.
+    gpui_tokio::Tokio::spawn(cx, async move {
+        if let Err(error) = run(sender).await {
+            log::error!("Status notifier integration stopped: {error:#}");
+        }
+    })
+    .detach();
+
+    // State mutations MUST run on GPUI.
+    let state_handle = state.clone();
+
+    cx.spawn(async move |cx| {
+        while let Some(event) = receiver.recv().await {
+            state_handle.update(cx, |state, cx| state.apply(event, cx))
+        }
+    })
+    .detach();
+
+    state
 }
 
-impl StatusNotifierId {
-    #[must_use]
-    pub fn service(&self) -> &str {
-        &self.service
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StatusNotifierEvent {
+    Registered(StatusNotifierId),
+    Updated(StatusNotifierId),
+    Unregistered(StatusNotifierId),
+}
+
+#[derive(Default)]
+pub struct StatusNotifierState {
+    items: HashMap<StatusNotifierId, StatusNotifierItem>,
+}
+
+impl StatusNotifierState {
+    pub fn items(&self) -> impl Iterator<Item = &StatusNotifierItem> {
+        self.items.values()
     }
 
     #[must_use]
-    pub fn object_path(&self) -> &str {
-        &self.object_path
+    pub fn item(&self, id: &StatusNotifierId) -> Option<&StatusNotifierItem> {
+        self.items.get(id)
     }
 
-    pub(crate) fn from_registered_item(item: &str) -> Result<Self> {
-        let (service, object_path) = match item.find('/') {
-            Some(index) if index > 0 => (&item[..index], &item[index..]),
-            Some(_) => bail!("status notifier item is missing a service name"),
-            None => (item, DEFAULT_ITEM_PATH),
+    fn apply(&mut self, update: StatusNotifierStateUpdate, cx: &mut Context<Self>) {
+        let event = match update {
+            StatusNotifierStateUpdate::Registered(item) => {
+                log::info!("registered tray item: {item:?}");
+
+                let id = item.id.clone();
+
+                self.items.insert(id.clone(), item);
+
+                StatusNotifierEvent::Registered(id)
+            }
+
+            StatusNotifierStateUpdate::Updated(item) => {
+                let id = item.id.clone();
+
+                if !self.items.contains_key(&id) {
+                    log::debug!(
+                        "Ignoring update for unregistered \
+                         status notifier item {id}"
+                    );
+
+                    return;
+                }
+
+                self.items.insert(id.clone(), item);
+
+                StatusNotifierEvent::Updated(id)
+            }
+
+            StatusNotifierStateUpdate::Unregistered(id) => {
+                if self.items.remove(&id).is_none() {
+                    return;
+                }
+
+                StatusNotifierEvent::Unregistered(id)
+            }
         };
 
-        if service.is_empty() {
-            bail!("status notifier item is missing a service name");
+        log::info!("dispatching dbus event: {event:?}");
+
+        cx.emit(event);
+        cx.notify();
+    }
+}
+
+impl EventEmitter<StatusNotifierEvent> for StatusNotifierState {}
+
+enum StatusNotifierStateUpdate {
+    Registered(StatusNotifierItem),
+    Updated(StatusNotifierItem),
+    Unregistered(StatusNotifierId),
+}
+
+async fn run(state_updates: mpsc::Sender<StatusNotifierStateUpdate>) -> Result<()> {
+    let connection = Connection::session()
+        .await
+        .context("failed to connect to D-Bus session bus")?;
+
+    let host_service = format!("org.kde.StatusNotifierHost-{}", process::id(),);
+
+    connection
+        .request_name_with_flags(
+            host_service.as_str(),
+            RequestNameFlags::DoNotQueue.into(),
+        )
+        .await
+        .context("failed to acquire StatusNotifierHost bus name")?;
+
+    match StatusNotifierWatcherService::serve(&connection).await {
+        Ok(()) => {
+            log::info!("Ghost Shell is the status notifier watcher");
         }
 
-        Ok(Self {
-            service: service.to_owned(),
-            object_path: object_path.to_owned(),
-        })
-    }
-}
-
-impl fmt::Display for StatusNotifierId {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}{}", self.service, self.object_path)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct IconPixmap {
-    pub width: i32,
-    pub height: i32,
-    pub argb: Vec<u8>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ToolTip {
-    pub icon_name: String,
-    pub icon_pixmaps: Vec<IconPixmap>,
-    pub title: String,
-    pub description: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct StatusNotifierItem {
-    pub id: StatusNotifierId,
-    pub category: Option<String>,
-    pub identifier: Option<String>,
-    pub title: Option<String>,
-    pub status: Option<String>,
-    pub window_id: Option<u32>,
-    pub icon_name: Option<String>,
-    pub icon_pixmaps: Vec<IconPixmap>,
-    pub overlay_icon_name: Option<String>,
-    pub overlay_icon_pixmaps: Vec<IconPixmap>,
-    pub attention_icon_name: Option<String>,
-    pub attention_icon_pixmaps: Vec<IconPixmap>,
-    pub attention_movie_name: Option<String>,
-    pub tool_tip: Option<ToolTip>,
-    pub item_is_menu: Option<bool>,
-    pub menu: Option<String>,
-    pub icon_theme_path: Option<String>,
-}
-
-impl StatusNotifierItem {
-    #[must_use]
-    pub fn empty(id: StatusNotifierId) -> Self {
-        Self {
-            id,
-            category: None,
-            identifier: None,
-            title: None,
-            status: None,
-            window_id: None,
-            icon_name: None,
-            icon_pixmaps: Vec::new(),
-            overlay_icon_name: None,
-            overlay_icon_pixmaps: Vec::new(),
-            attention_icon_name: None,
-            attention_icon_pixmaps: Vec::new(),
-            attention_movie_name: None,
-            tool_tip: None,
-            item_is_menu: None,
-            menu: None,
-            icon_theme_path: None,
+        Err(zbus::Error::NameTaken) => {
+            log::info!("Using existing status notifier watcher");
         }
-    }
-}
 
-pub(crate) async fn fetch_status_notifier_item(
-    connection: &zbus::Connection,
-    id: StatusNotifierId,
-) -> Result<StatusNotifierItem> {
-    let proxy = PropertiesProxy::builder(connection)
-        .destination(id.service())?
-        .path(id.object_path())?
-        .build()
-        .await?;
-    let interface = InterfaceName::try_from(STATUS_NOTIFIER_ITEM_INTERFACE)?;
-    let mut properties = proxy.get_all(interface).await?;
-
-    let tool_tip = take_property::<RawToolTip>(&mut properties, "ToolTip").map(
-        |(icon_name, icon_pixmaps, title, description)| ToolTip {
-            icon_name,
-            icon_pixmaps: convert_icon_pixmaps(icon_pixmaps),
-            title,
-            description,
-        },
-    );
-    let menu = take_property::<OwnedObjectPath>(&mut properties, "Menu")
-        .map(|path| path.to_string());
-
-    Ok(StatusNotifierItem {
-        id,
-        category: take_property(&mut properties, "Category"),
-        identifier: take_property(&mut properties, "Id"),
-        title: take_property(&mut properties, "Title"),
-        status: take_property(&mut properties, "Status"),
-        window_id: take_property(&mut properties, "WindowId"),
-        icon_name: take_property(&mut properties, "IconName"),
-        icon_pixmaps: take_property::<RawIconPixmaps>(&mut properties, "IconPixmap")
-            .map(convert_icon_pixmaps)
-            .unwrap_or_default(),
-        overlay_icon_name: take_property(&mut properties, "OverlayIconName"),
-        overlay_icon_pixmaps: take_property::<RawIconPixmaps>(
-            &mut properties,
-            "OverlayIconPixmap",
-        )
-        .map(convert_icon_pixmaps)
-        .unwrap_or_default(),
-        attention_icon_name: take_property(&mut properties, "AttentionIconName"),
-        attention_icon_pixmaps: take_property::<RawIconPixmaps>(
-            &mut properties,
-            "AttentionIconPixmap",
-        )
-        .map(convert_icon_pixmaps)
-        .unwrap_or_default(),
-        attention_movie_name: take_property(&mut properties, "AttentionMovieName"),
-        tool_tip,
-        item_is_menu: take_property(&mut properties, "ItemIsMenu"),
-        menu,
-        icon_theme_path: take_property(&mut properties, "IconThemePath"),
-    })
-}
-
-type RawIconPixmap = (i32, i32, Vec<u8>);
-type RawIconPixmaps = Vec<RawIconPixmap>;
-type RawToolTip = (String, RawIconPixmaps, String, String);
-
-fn convert_icon_pixmaps(pixmaps: RawIconPixmaps) -> Vec<IconPixmap> {
-    pixmaps
-        .into_iter()
-        .map(|(width, height, argb)| IconPixmap {
-            width,
-            height,
-            argb,
-        })
-        .collect()
-}
-
-fn take_property<T>(properties: &mut HashMap<String, OwnedValue>, name: &str) -> Option<T>
-where
-    T: TryFrom<OwnedValue, Error = zbus::zvariant::Error>,
-{
-    let value = properties.remove(name)?;
-
-    match T::try_from(value) {
-        Ok(value) => Some(value),
         Err(error) => {
-            log::debug!("Failed to decode status notifier property {name}: {error:#}");
-            None
+            return Err(error).context("failed to initialize status notifier watcher");
+        }
+    }
+
+    let (watcher_events, mut watcher_event_receiver) =
+        mpsc::channel(WATCHER_CHANNEL_CAPACITY);
+
+    let (item_events, mut item_event_receiver) = mpsc::channel(ITEM_CHANNEL_CAPACITY);
+
+    let watcher = StatusNotifierWatcherClient::new(&connection);
+
+    let mut watcher_task = tokio::spawn(watcher.run(host_service, watcher_events));
+
+    let mut item_tasks = HashMap::<StatusNotifierId, JoinHandle<Result<()>>>::new();
+
+    let result = loop {
+        tokio::select! {
+            result = &mut watcher_task => {
+                break watcher_result(result);
+            }
+
+            Some(event) =
+                watcher_event_receiver.recv() =>
+            {
+                if let Err(error) =
+                    handle_watcher_event(
+                        event,
+                        &connection,
+                        &item_events,
+                        &state_updates,
+                        &mut item_tasks,
+                    )
+                    .await
+                {
+                    break Err(error);
+                }
+            }
+
+            Some(event) =
+                item_event_receiver.recv() =>
+            {
+                if let Err(error) =
+                    handle_item_event(
+                        event,
+                        &state_updates,
+                        &item_tasks,
+                    )
+                    .await
+                {
+                    break Err(error);
+                }
+            }
+        }
+    };
+
+    watcher_task.abort();
+
+    for (_, task) in item_tasks {
+        task.abort();
+    }
+
+    result
+}
+
+async fn handle_watcher_event(
+    event: StatusNotifierWatcherEvent,
+    connection: &Connection,
+    item_events: &mpsc::Sender<StatusNotifierItemEvent>,
+    state_updates: &mpsc::Sender<StatusNotifierStateUpdate>,
+    item_tasks: &mut HashMap<StatusNotifierId, JoinHandle<Result<()>>>,
+) -> Result<()> {
+    match event {
+        StatusNotifierWatcherEvent::Registered(registration) => {
+            register_item(
+                registration,
+                connection,
+                item_events,
+                state_updates,
+                item_tasks,
+            )
+            .await
+        }
+
+        StatusNotifierWatcherEvent::Unregistered(registration) => {
+            unregister_item(registration, state_updates, item_tasks).await
         }
     }
 }
 
-#[proxy(
-    interface = "org.kde.StatusNotifierItem",
-    assume_defaults = false,
-    gen_blocking = false
-)]
-pub trait StatusNotifierItemInterface {
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn category(&self) -> zbus::Result<String>;
+async fn register_item(
+    registration: String,
+    connection: &Connection,
+    item_events: &mpsc::Sender<StatusNotifierItemEvent>,
+    state_updates: &mpsc::Sender<StatusNotifierStateUpdate>,
+    item_tasks: &mut HashMap<StatusNotifierId, JoinHandle<Result<()>>>,
+) -> Result<()> {
+    let id = match StatusNotifierId::from_registered_item(&registration) {
+        Ok(id) => id,
 
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn id(&self) -> zbus::Result<String>;
+        Err(error) => {
+            log::warn!(
+                "Ignoring invalid status notifier \
+                 registration {registration:?}: {error:#}"
+            );
 
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn title(&self) -> zbus::Result<String>;
+            return Ok(());
+        }
+    };
 
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn status(&self) -> zbus::Result<String>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn window_id(&self) -> zbus::Result<u32>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn icon_name(&self) -> zbus::Result<String>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn icon_pixmap(&self) -> zbus::Result<RawIconPixmaps>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn overlay_icon_name(&self) -> zbus::Result<String>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn overlay_icon_pixmap(&self) -> zbus::Result<RawIconPixmaps>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn attention_icon_name(&self) -> zbus::Result<String>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn attention_icon_pixmap(&self) -> zbus::Result<RawIconPixmaps>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn attention_movie_name(&self) -> zbus::Result<String>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn tool_tip(&self) -> zbus::Result<RawToolTip>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn item_is_menu(&self) -> zbus::Result<bool>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn menu(&self) -> zbus::Result<OwnedObjectPath>;
-
-    #[zbus(property(emits_changed_signal = "false"))]
-    fn icon_theme_path(&self) -> zbus::Result<String>;
-
-    fn context_menu(&self, x: i32, y: i32) -> zbus::Result<()>;
-
-    fn activate(&self, x: i32, y: i32) -> zbus::Result<()>;
-
-    fn secondary_activate(&self, x: i32, y: i32) -> zbus::Result<()>;
-
-    fn scroll(&self, delta: i32, orientation: &str) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_title(&self) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_icon(&self) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_attention_icon(&self) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_overlay_icon(&self) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_tool_tip(&self) -> zbus::Result<()>;
-
-    #[zbus(signal)]
-    fn new_status(&self, status: &str) -> zbus::Result<()>;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::StatusNotifierId;
-
-    #[test]
-    fn parses_registered_item_with_default_path() {
-        let id = StatusNotifierId::from_registered_item("org.example.Item")
-            .expect("valid status notifier item");
-
-        assert_eq!(id.service(), "org.example.Item");
-        assert_eq!(id.object_path(), "/StatusNotifierItem");
+    if item_tasks
+        .get(&id)
+        .is_some_and(|task| !task.is_finished())
+    {
+        return Ok(());
     }
 
-    #[test]
-    fn parses_registered_item_with_explicit_path() {
-        let id = StatusNotifierId::from_registered_item(
-            ":1.42/org/example/StatusNotifierItem",
-        )
-        .expect("valid status notifier item");
+    // A previous client may have terminated before the
+    // watcher emitted Unregistered. A new registration
+    // should be allowed to replace it.
+    item_tasks.remove(&id);
 
-        assert_eq!(id.service(), ":1.42");
-        assert_eq!(id.object_path(), "/org/example/StatusNotifierItem");
+    let (item, task) = match StatusNotifierItemClient::spawn(
+        connection,
+        id.clone(),
+        item_events.clone(),
+    )
+    .await
+    {
+        Ok(result) => result,
+
+        Err(error) => {
+            log::warn!(
+                "Failed to initialize status notifier \
+                     item {id}: {error:#}"
+            );
+
+            return Ok(());
+        }
+    };
+
+    item_tasks.insert(id, task);
+
+    state_updates
+        .send(StatusNotifierStateUpdate::Registered(item))
+        .await
+        .context("status notifier state receiver stopped")
+}
+
+async fn unregister_item(
+    registration: String,
+    state_updates: &mpsc::Sender<StatusNotifierStateUpdate>,
+    item_tasks: &mut HashMap<StatusNotifierId, JoinHandle<Result<()>>>,
+) -> Result<()> {
+    let id = match StatusNotifierId::from_registered_item(&registration) {
+        Ok(id) => id,
+
+        Err(error) => {
+            log::warn!(
+                "Ignoring invalid status notifier \
+                 unregistration {registration:?}: \
+                 {error:#}"
+            );
+
+            return Ok(());
+        }
+    };
+
+    if let Some(task) = item_tasks.remove(&id) {
+        task.abort();
+    }
+
+    state_updates
+        .send(StatusNotifierStateUpdate::Unregistered(id))
+        .await
+        .context("status notifier state receiver stopped")
+}
+
+async fn handle_item_event(
+    event: StatusNotifierItemEvent,
+    state_updates: &mpsc::Sender<StatusNotifierStateUpdate>,
+    item_tasks: &HashMap<StatusNotifierId, JoinHandle<Result<()>>>,
+) -> Result<()> {
+    match event {
+        StatusNotifierItemEvent::Updated(item) => {
+            // Prevent an already queued item update from
+            // resurrecting an item after watcher
+            // unregistration.
+            if !item_tasks.contains_key(&item.id) {
+                return Ok(());
+            }
+
+            state_updates
+                .send(StatusNotifierStateUpdate::Updated(item))
+                .await
+                .context("status notifier state receiver stopped")
+        }
+    }
+}
+
+fn watcher_result(
+    result: Result<zbus::Result<()>, tokio::task::JoinError>,
+) -> Result<()> {
+    match result {
+        Ok(Ok(())) => Err(anyhow!("status notifier watcher client stopped")),
+        Ok(Err(error)) => Err(error).context("status notifier watcher client failed"),
+        Err(error) => Err(error).context("status notifier watcher task failed"),
     }
 }

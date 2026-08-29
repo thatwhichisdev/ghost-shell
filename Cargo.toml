@@ -126,5 +126,5 @@ thiserror = "2.0.18"
 zbus = {
   version = "5.18.0",
   default-features = false,
-  features = ["tokio"],
+  features = ["async-io"],
 }
