@@ -146,6 +146,7 @@ impl Render for BarView {
                     .gap_x_2()
                     .items_center()
                     .justify_end()
+                    .child(self.widgets.tray.clone())
                     .child(self.widgets.power.clone())
                     .child(self.widgets.clock.clone())
             })

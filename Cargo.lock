@@ -2802,6 +2802,7 @@ dependencies = [
 name = "ghost-shell-widget-tray"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "freedesktop-icons",
  "ghost-shell-dbus",
  "gpui",

@@ -6,6 +6,7 @@ mod status_notifier_watcher;
 use gpui::{App, Entity, Global};
 
 pub use status_notifier::{StatusNotifierEvent, StatusNotifierState};
+pub use status_notifier_item::{IconPixmap, StatusNotifierId, StatusNotifierItem};
 
 pub struct Dbus {
     status_notifier: Entity<StatusNotifierState>,

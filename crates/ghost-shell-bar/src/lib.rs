@@ -19,7 +19,7 @@ pub fn init(cx: &mut App) {
     let power = cx.new(|_cx| PowerWidget::try_new().unwrap());
     let clock = cx.new(ClockWidget::new);
     let focus = cx.new(FocusWidget::new);
-    let tray = cx.new(|_| TrayWidget);
+    let tray = cx.new(TrayWidget::new);
 
     config
         .bars

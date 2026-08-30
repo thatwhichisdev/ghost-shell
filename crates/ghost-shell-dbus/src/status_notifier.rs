@@ -48,8 +48,8 @@ pub(crate) fn init(cx: &mut App) -> Entity<StatusNotifierState> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StatusNotifierEvent {
-    Registered(StatusNotifierId),
-    Updated(StatusNotifierId),
+    Registered(StatusNotifierItem),
+    Updated(StatusNotifierItem),
     Unregistered(StatusNotifierId),
 }
 
@@ -75,9 +75,9 @@ impl StatusNotifierState {
 
                 let id = item.id.clone();
 
-                self.items.insert(id.clone(), item);
+                self.items.insert(id.clone(), item.clone());
 
-                StatusNotifierEvent::Registered(id)
+                StatusNotifierEvent::Registered(item)
             }
 
             StatusNotifierStateUpdate::Updated(item) => {
@@ -92,9 +92,9 @@ impl StatusNotifierState {
                     return;
                 }
 
-                self.items.insert(id.clone(), item);
+                self.items.insert(id.clone(), item.clone());
 
-                StatusNotifierEvent::Updated(id)
+                StatusNotifierEvent::Updated(item)
             }
 
             StatusNotifierStateUpdate::Unregistered(id) => {
@@ -164,7 +164,11 @@ async fn run(state_updates: mpsc::Sender<StatusNotifierStateUpdate>) -> Result<(
     let result = loop {
         tokio::select! {
             result = &mut watcher_task => {
-                break watcher_result(result);
+                break match result {
+                    Ok(Ok(())) => Err(anyhow!("status notifier watcher client stopped")),
+                    Ok(Err(error)) => Err(error).context("status notifier watcher client failed"),
+                    Err(error) => Err(error).context("status notifier watcher task failed"),
+                }
             }
 
             Some(event) =
@@ -342,15 +346,5 @@ async fn handle_item_event(
                 .await
                 .context("status notifier state receiver stopped")
         }
-    }
-}
-
-fn watcher_result(
-    result: Result<zbus::Result<()>, tokio::task::JoinError>,
-) -> Result<()> {
-    match result {
-        Ok(Ok(())) => Err(anyhow!("status notifier watcher client stopped")),
-        Ok(Err(error)) => Err(error).context("status notifier watcher client failed"),
-        Err(error) => Err(error).context("status notifier watcher task failed"),
     }
 }

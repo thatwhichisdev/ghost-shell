@@ -12,6 +12,7 @@ path = "src/tray.rs"
 [dependencies]
 ghost-shell-dbus.workspace = true
 
+anyhow.workspace = true
 freedesktop-icons.workspace = true
 gpui.workspace = true
 image.workspace = true

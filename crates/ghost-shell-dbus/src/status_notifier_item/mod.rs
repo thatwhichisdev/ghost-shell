@@ -8,7 +8,7 @@ pub(crate) use client::StatusNotifierItemClient;
 
 const DEFAULT_ITEM_PATH: &str = "/StatusNotifierItem";
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct StatusNotifierId {
     service: String,
     object_path: String,
