@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use ghost_shell_dbus::{Dbus, StatusNotifierEvent, StatusNotifierId};
+use ghost_shell_dbus::{
+    Dbus, ItemEvent, StatusNotifierId, StatusNotifierItem, WatcherEvent,
+};
 use gpui::{Context, ObjectFit, Subscription, Window, div, img, prelude::*};
 
 use crate::item::TrayItem;
@@ -10,48 +12,95 @@ mod item;
 
 pub struct TrayWidget {
     items: BTreeMap<StatusNotifierId, TrayItem>,
-    _subscription: Subscription,
+    _watcher_subscription: Subscription,
+    _item_subscription: Subscription,
 }
 
 impl TrayWidget {
     #[must_use]
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let status_notifier = cx.global::<Dbus>().status_notifier().clone();
+        let dbus = cx.global::<Dbus>();
+        let watcher = dbus.status_notifier_watcher().clone();
+        let item = dbus.status_notifier_item().clone();
 
-        let items = status_notifier
+        for registration in watcher
             .read(cx)
             .items()
-            .filter_map(|item| {
-                TrayItem::try_from(item)
-                    .ok()
-                    .map(|tray_item| (item.id.clone(), tray_item))
-            })
-            .collect();
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+        {
+            let item = item.clone();
 
-        let subscription = cx.subscribe(&status_notifier, |tray, _state, event, cx| {
-            match event {
-                StatusNotifierEvent::Registered(item)
-                | StatusNotifierEvent::Updated(item) => {
-                    let id = item.id.clone();
-                    match TrayItem::try_from(item) {
-                        Ok(item) => {
-                            tray.items.insert(id, item);
-                        }
-                        Err(err) => {
-                            log::error!("failed to create tray item {err:#}");
-                        }
-                    }
+            cx.spawn(async move |tray, cx| {
+                let task = item.update(cx, |item, cx| item.discover(registration, cx));
+                let status_notifier_item = task.await?;
+
+                tray.update(cx, |tray, cx| {
+                    tray.update_item(&status_notifier_item);
+                    cx.notify();
+                })
+            })
+            .detach();
+        }
+
+        let watcher_subscription = cx.subscribe(&watcher, {
+            let item = item.clone();
+
+            move |tray, _watcher, event, cx| match event {
+                WatcherEvent::Registered(registration) => {
+                    let reg = registration.clone();
+                    let item = item.clone();
+
+                    cx.spawn(async move |tray, cx| {
+                        let task = item.update(cx, |item, cx| item.discover(reg, cx));
+                        let status_notifier_item = task.await?;
+
+                        tray.update(cx, |tray, cx| {
+                            tray.update_item(&status_notifier_item);
+                            cx.notify();
+                        })
+                    })
+                    .detach();
                 }
-                StatusNotifierEvent::Unregistered(id) => {
-                    tray.items.remove(id);
+
+                WatcherEvent::Unregistered(registration) => {
+                    let Ok(id) =
+                        StatusNotifierId::from_registration(registration.as_str())
+                    else {
+                        return;
+                    };
+
+                    tray.items.remove(&id);
+                    cx.notify();
                 }
             }
-            cx.notify();
         });
 
+        let item_subscription =
+            cx.subscribe(&item, |tray, _item, event, cx| match event {
+                ItemEvent::Updated(item) => {
+                    tray.update_item(item);
+                    cx.notify();
+                }
+            });
+
         Self {
-            items,
-            _subscription: subscription,
+            items: BTreeMap::new(),
+            _watcher_subscription: watcher_subscription,
+            _item_subscription: item_subscription,
+        }
+    }
+
+    fn update_item(&mut self, item: &StatusNotifierItem) {
+        let id = item.id.clone();
+
+        match TrayItem::try_from(item) {
+            Ok(item) => {
+                self.items.insert(id, item);
+            }
+            Err(error) => {
+                log::warn!("failed to create tray item {id}: {error:#}");
+            }
         }
     }
 }
