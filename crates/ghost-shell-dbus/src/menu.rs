@@ -112,12 +112,43 @@ impl Menu {
                 .context("D-Bus menu client dropped discovery request")?
         })
     }
+
+    pub fn activate(
+        &self,
+        menu: MenuId,
+        item_id: i32,
+        cx: &mut Context<Self>,
+    ) -> Task<Result<()>> {
+        let commands = self.commands.clone();
+
+        cx.spawn(async move |_this, _cx| {
+            let (reply, response) = oneshot::channel();
+
+            commands
+                .send(MenuCommand::Activate {
+                    menu,
+                    item_id,
+                    reply,
+                })
+                .await
+                .context("D-Bus menu client stopped")?;
+
+            response
+                .await
+                .context("D-Bus menu client dropped activation request")?
+        })
+    }
 }
 
 enum MenuCommand {
     Discover {
         id: MenuId,
         reply: oneshot::Sender<Result<MenuLayout>>,
+    },
+    Activate {
+        menu: MenuId,
+        item_id: i32,
+        reply: oneshot::Sender<Result<()>>,
     },
 }
 
@@ -146,8 +177,16 @@ async fn run(mut commands: mpsc::Receiver<MenuCommand>) -> Result<()> {
             MenuCommand::Discover { id, reply } => {
                 let result = DbusMenuClient::fetch(&connection, id).await;
 
-                // The requesting UI may have disappeared while
-                // the D-Bus request was in flight.
+                let _ = reply.send(result);
+            }
+
+            MenuCommand::Activate {
+                menu,
+                item_id,
+                reply,
+            } => {
+                let result = DbusMenuClient::activate(&connection, &menu, item_id).await;
+
                 let _ = reply.send(result);
             }
         }

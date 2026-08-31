@@ -4,13 +4,14 @@ mod notifications;
 mod watcher;
 
 pub use crate::{
-    item::IconPixmap, item::ItemEvent, item::StatusNotifierId, item::StatusNotifierItem,
+    item::{IconPixmap, ItemEvent, StatusNotifierId, StatusNotifierItem},
+    menu::{Menu, MenuId, MenuItem, MenuItemType, MenuLayout},
     watcher::WatcherEvent,
 };
 
 use gpui::{App, Entity, Global};
 
-use crate::{item::Item, menu::Menu, watcher::Watcher};
+use crate::{item::Item, watcher::Watcher};
 
 pub struct Dbus {
     status_notifier_watcher: Entity<Watcher>,

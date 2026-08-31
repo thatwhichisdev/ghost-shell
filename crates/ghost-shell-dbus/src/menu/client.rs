@@ -22,6 +22,14 @@ trait DbusMenuInterface {
         recursion_depth: i32,
         property_names: Vec<String>,
     ) -> zbus::Result<(u32, RawMenuItem)>;
+
+    fn event(
+        &self,
+        id: i32,
+        event_id: &str,
+        data: OwnedValue,
+        timestamp: u32,
+    ) -> zbus::Result<()>;
 }
 
 pub(super) struct DbusMenuClient;
@@ -44,6 +52,28 @@ impl DbusMenuClient {
             .with_context(|| format!("failed to decode D-Bus menu layout for {id}"))?;
 
         Ok(MenuLayout { id, revision, root })
+    }
+
+    pub(super) async fn activate(
+        connection: &Connection,
+        menu: &MenuId,
+        item_id: i32,
+    ) -> Result<()> {
+        let proxy = DbusMenuInterfaceProxy::builder(connection)
+            .destination(menu.service().to_owned())?
+            .path(menu.object_path().to_owned())?
+            .build()
+            .await
+            .with_context(|| format!("failed to create D-Bus menu proxy for {menu}"))?;
+
+        proxy
+            .event(item_id, "clicked", OwnedValue::from(0_i32), 0)
+            .await
+            .with_context(|| {
+                format!("failed to activate D-Bus menu item {item_id} for {menu}")
+            })?;
+
+        Ok(())
     }
 }
 

@@ -78,7 +78,7 @@ impl Bar {
                 show: true,
                 kind: WindowKind::LayerShell(LayerShellOptions {
                     namespace,
-                    layer: Layer::Top,
+                    layer: Layer::Overlay,
                     anchor: Anchor::TOP | Anchor::LEFT | Anchor::RIGHT,
                     exclusive_zone: Some(px(self.config.exclusive_zone)),
                     keyboard_interactivity: KeyboardInteractivity::None,
