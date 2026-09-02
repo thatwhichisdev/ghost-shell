@@ -9,10 +9,10 @@ use std::{
 
 use anyhow::{Context as _, Result};
 use gpui::{
-    App, AppContext as _, Context, Entity, Global, IntoElement, ObjectFit, Render,
-    RenderImage, Rgba, Styled as _, StyledImage as _, Subscription, Task, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
-    div, img,
+    App, AppContext as _, Bounds, Context, DevicePixels, Entity, Global, IntoElement,
+    ObjectFit, Point, Render, RenderImage, Rgba, Size, Styled as _, StyledImage as _,
+    Subscription, Task, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
+    WindowKind, WindowOptions, div, img,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     px, rgba,
 };
@@ -80,7 +80,12 @@ pub struct Frame {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FrameDelta {
+    /// LZ4-compressed sparse delta stream.
     pub patch: Box<[u8]>,
+
+    /// Size of the sparse stream after LZ4 decompression.
+    pub decoded_len: usize,
+
     pub delay: Duration,
 }
 
@@ -186,11 +191,11 @@ impl WallpaperManager {
         let mut deltas = frames
             .par_windows(2)
             .map(|pair| FrameDelta::between(&pair[0], &pair[1]))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         // calculate additional delta to connect last frame with initial
         if let (Some(first), Some(last)) = (frames.first(), frames.last()) {
-            deltas.push(FrameDelta::between(last, first));
+            deltas.push(FrameDelta::between(last, first)?);
         }
 
         let animated = Animation {
@@ -253,7 +258,15 @@ impl AnimatedWallpaper {
     pub fn new(source: Arc<Animation>) -> Self {
         let frame = source.initial.pixels.to_vec();
         let image = Self::render(source.width, source.height, &frame);
-        let delta_buffer = vec![0; frame.len()];
+
+        let delta_buffer_len = source
+            .deltas
+            .iter()
+            .map(|delta| delta.decoded_len)
+            .max()
+            .unwrap_or_default();
+
+        let delta_buffer = vec![0; delta_buffer_len];
 
         Self {
             source,
@@ -282,20 +295,36 @@ impl AnimatedWallpaper {
             .unwrap()
     }
 
-    fn advance(&mut self, window: &mut Window) {
+    fn advance(&mut self, window: &mut Window) -> Result<()> {
         if self.source.deltas.is_empty() {
-            return;
+            return Ok(());
         }
 
         let delta = &self.source.deltas[self.frame_index];
-        delta.apply(&mut self.frame, &mut self.delta_buffer);
+        delta.apply(&mut self.frame, &mut self.delta_buffer)?;
 
-        let next = Self::render(self.source.width, self.source.height, &self.frame);
-        let prev = std::mem::replace(&mut self.image, next);
+        let bounds = Bounds {
+            origin: Point {
+                x: DevicePixels(0),
+                y: DevicePixels(0),
+            },
+            size: Size {
+                width: DevicePixels(self.source.width as i32),
+                height: DevicePixels(self.source.height as i32),
+            },
+        };
+
+        if !window
+            .update_image_region(&self.image, 0, bounds, &self.frame)
+            .unwrap()
+        {
+            let next = Self::render(self.source.width, self.source.height, &self.frame);
+            let _ = std::mem::replace(&mut self.image, next);
+        }
 
         self.frame_index = (self.frame_index + 1) % self.source.deltas.len();
 
-        window.drop_image(prev).unwrap();
+        Ok(())
     }
 }
 
@@ -306,7 +335,7 @@ impl WallpaperSource {
                 let animation = animation.clone();
                 cx.new(|cx| {
                     let mut wallpaper = Wallpaper::animated(animation, window, cx);
-                    // wallpaper.start_animation(window, cx);
+                    wallpaper.start_animation(window, cx);
                     wallpaper
                 })
             }
@@ -398,7 +427,7 @@ impl Wallpaper {
 
                 if wallpaper
                     .update_in(cx, |wallpaper, window, cx| {
-                        wallpaper.animation_mut().advance(window);
+                        let _ = wallpaper.animation_mut().advance(window);
                         cx.notify();
                     })
                     .is_err()
@@ -451,30 +480,165 @@ impl Frame {
 }
 
 impl FrameDelta {
-    fn between(first: &DecodedFrame, second: &DecodedFrame) -> FrameDelta {
-        let mut delta: Vec<u8> = vec![0u8; first.pixels.len()];
+    const BYTES_PER_PIXEL: usize = 4;
+    const RUN_HEADER_SIZE: usize = 8;
 
-        for ((out, a), b) in delta
-            .iter_mut()
-            .zip(first.pixels.iter())
-            .zip(second.pixels.iter())
-        {
-            *out = a ^ b;
+    fn between(first: &DecodedFrame, second: &DecodedFrame) -> Result<Self> {
+        anyhow::ensure!(
+            first.pixels.len() == second.pixels.len(),
+            "animation frames have different sizes"
+        );
+
+        anyhow::ensure!(
+            first.pixels.len() % Self::BYTES_PER_PIXEL == 0,
+            "animation frame is not BGRA-aligned"
+        );
+
+        let pixel_count = first.pixels.len() / Self::BYTES_PER_PIXEL;
+        let mut stream = Vec::new();
+        let mut cursor = 0;
+
+        while cursor < pixel_count {
+            let skip_start = cursor;
+
+            while cursor < pixel_count
+                && Self::pixel_eq(&first.pixels, &second.pixels, cursor)
+            {
+                cursor += 1;
+            }
+
+            let skip = cursor - skip_start;
+
+            // Everything after the last changed run is unchanged, so there is
+            // nothing else to encode.
+            if cursor == pixel_count {
+                break;
+            }
+
+            let changed_start = cursor;
+
+            while cursor < pixel_count
+                && !Self::pixel_eq(&first.pixels, &second.pixels, cursor)
+            {
+                cursor += 1;
+            }
+
+            let changed = cursor - changed_start;
+
+            let skip = u32::try_from(skip).context("wallpaper delta skip exceeds u32")?;
+
+            let changed =
+                u32::try_from(changed).context("wallpaper delta run exceeds u32")?;
+
+            stream.extend_from_slice(&skip.to_le_bytes());
+            stream.extend_from_slice(&changed.to_le_bytes());
+
+            let start = changed_start * Self::BYTES_PER_PIXEL;
+            let end = cursor * Self::BYTES_PER_PIXEL;
+
+            stream.extend_from_slice(&second.pixels[start..end]);
         }
 
-        let patch = lz4_flex::block::compress(&delta);
+        let decoded_len = stream.len();
 
-        FrameDelta {
+        let patch = if stream.is_empty() {
+            Vec::new()
+        } else {
+            lz4_flex::block::compress(&stream)
+        };
+
+        Ok(Self {
             patch: patch.into_boxed_slice(),
+            decoded_len,
             delay: second.delay,
-        }
+        })
     }
 
-    pub fn apply(&self, frame: &mut [u8], delta_buffer: &mut [u8]) {
-        let len = lz4_flex::block::decompress_into(&self.patch, delta_buffer).unwrap();
+    #[inline]
+    fn pixel_eq(first: &[u8], second: &[u8], index: usize) -> bool {
+        let start = index * Self::BYTES_PER_PIXEL;
+        let end = start + Self::BYTES_PER_PIXEL;
 
-        for (pixel, delta) in frame.iter_mut().zip(&delta_buffer[..len]) {
-            *pixel ^= *delta;
+        first[start..end] == second[start..end]
+    }
+
+    pub fn apply(&self, frame: &mut [u8], delta_buffer: &mut [u8]) -> Result<()> {
+        if self.decoded_len == 0 {
+            return Ok(());
         }
+
+        anyhow::ensure!(
+            delta_buffer.len() >= self.decoded_len,
+            "wallpaper delta buffer is too small"
+        );
+
+        let decoded_len = lz4_flex::block::decompress_into(&self.patch, delta_buffer)
+            .context("failed to decompress wallpaper delta")?;
+
+        anyhow::ensure!(
+            decoded_len == self.decoded_len,
+            "wallpaper delta decompressed to unexpected size"
+        );
+
+        let delta = &delta_buffer[..decoded_len];
+
+        let mut source = 0;
+        let mut pixel = 0usize;
+
+        while source < delta.len() {
+            let header_end = source
+                .checked_add(Self::RUN_HEADER_SIZE)
+                .context("wallpaper delta header overflow")?;
+
+            let header = delta
+                .get(source..header_end)
+                .context("truncated wallpaper delta header")?;
+
+            let skip =
+                u32::from_le_bytes([header[0], header[1], header[2], header[3]]) as usize;
+
+            let changed =
+                u32::from_le_bytes([header[4], header[5], header[6], header[7]]) as usize;
+
+            source = header_end;
+
+            pixel = pixel
+                .checked_add(skip)
+                .context("wallpaper delta pixel offset overflow")?;
+
+            let changed_bytes = changed
+                .checked_mul(Self::BYTES_PER_PIXEL)
+                .context("wallpaper delta byte count overflow")?;
+
+            let literal_end = source
+                .checked_add(changed_bytes)
+                .context("wallpaper delta literal overflow")?;
+
+            let literal = delta
+                .get(source..literal_end)
+                .context("truncated wallpaper delta pixels")?;
+
+            let frame_start = pixel
+                .checked_mul(Self::BYTES_PER_PIXEL)
+                .context("wallpaper frame offset overflow")?;
+
+            let frame_end = frame_start
+                .checked_add(changed_bytes)
+                .context("wallpaper frame range overflow")?;
+
+            let destination = frame
+                .get_mut(frame_start..frame_end)
+                .context("wallpaper delta exceeds frame bounds")?;
+
+            destination.copy_from_slice(literal);
+
+            source = literal_end;
+
+            pixel = pixel
+                .checked_add(changed)
+                .context("wallpaper delta pixel offset overflow")?;
+        }
+
+        Ok(())
     }
 }

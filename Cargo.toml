@@ -66,7 +66,7 @@ ghost-shell-widget-workspaces = {
 
 gpui = {
   git = "https://github.com/thatwhichisdev/zed",
-  rev = "d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c",
+  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
   features = [
     "wayland",
   ]
@@ -74,7 +74,7 @@ gpui = {
 
 gpui_platform = {
   git = "https://github.com/thatwhichisdev/zed",
-  rev = "d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c",
+  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
   features = [
     "wayland",
   ]
@@ -82,14 +82,14 @@ gpui_platform = {
 
 gpui_tokio = {
   git = "https://github.com/thatwhichisdev/zed",
-  rev = "d1bbe629307928b7eb8d996e7f1b7cb1f0c37d5c",
+  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
 }
 
 futures-util = "0.3.32"
 
 gpui-component = {
   git = "https://github.com/thatwhichisdev/gpui-component",
-  rev = "bf00f71eeaf8d0040d6d4177a7acad0a1e774093"
+  rev = "5c74aaa5d8967b129e725c65fed27306d582540f",
 }
 
 tokio = {
