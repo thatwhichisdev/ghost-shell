@@ -10,19 +10,31 @@ use std::{
 use anyhow::{Context as _, Result};
 use gpui::{
     App, AppContext as _, Context, Entity, Global, IntoElement, ObjectFit, Render,
-    RenderImage, Rgba, Styled as _, StyledImage as _, Subscription, Task, Window, div,
-    img, rgba,
+    RenderImage, Rgba, Styled as _, StyledImage as _, Subscription, Task, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    div, img,
+    layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
+    px, rgba,
 };
 use image::{AnimationDecoder, ImageDecoder as _, ImageReader, codecs::gif::GifDecoder};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use ghost_shell_app::GhostShell;
 use ghost_shell_config::AppConfig;
 
-use crate::cache;
+mod cache;
+
+pub fn init(cx: &mut App) {
+    let mut manager = WallpaperManager::new(cx);
+    manager.open(cx);
+
+    cx.set_global(manager);
+}
 
 pub struct WallpaperManager {
     pub source: WallpaperSource,
+    windows: Vec<WindowHandle<Wallpaper>>,
 }
 
 #[derive(Clone)]
@@ -89,7 +101,10 @@ impl WallpaperManager {
             None => WallpaperSource::Solid(rgba(config.bg)),
         };
 
-        Self { source }
+        Self {
+            source,
+            windows: Vec::new(),
+        }
     }
 
     fn load(path: impl AsRef<Path>) -> Result<WallpaperSource> {
@@ -189,6 +204,49 @@ impl WallpaperManager {
 
         Ok(WallpaperSource::Animated(Arc::new(animated)))
     }
+
+    pub fn open(&mut self, cx: &mut App) {
+        if !self.windows.is_empty() {
+            return;
+        }
+
+        for display in cx.global::<GhostShell>().get_displays() {
+            let window_options = WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(display.bounds())),
+                titlebar: None,
+                focus: false,
+                kind: WindowKind::LayerShell(LayerShellOptions {
+                    namespace: "ghost-shell-wallpaper".to_owned(),
+                    layer: Layer::Background,
+                    anchor: Anchor::TOP | Anchor::RIGHT | Anchor::BOTTOM | Anchor::LEFT,
+                    exclusive_zone: Some(px(-1.0)),
+                    keyboard_interactivity: KeyboardInteractivity::None,
+                    ..Default::default()
+                }),
+                is_movable: false,
+                is_resizable: false,
+                is_minimizable: false,
+                display_id: Some(display.id()),
+                window_background: WindowBackgroundAppearance::Transparent,
+                app_id: Some("dev.thatwhichis.ghost-shell.wallpaper".to_owned()),
+                ..Default::default()
+            };
+
+            let source = self.source.clone();
+
+            match cx
+                .open_window(window_options, move |window, cx| source.entity(window, cx))
+            {
+                Ok(handle) => self.windows.push(handle),
+                Err(error) => {
+                    log::error!(
+                        "Failed to open wallpaper surface on display {:?}: {error:#}",
+                        display.id(),
+                    );
+                }
+            }
+        }
+    }
 }
 
 impl AnimatedWallpaper {
@@ -246,7 +304,11 @@ impl WallpaperSource {
         match &self {
             Self::Animated(animation) => {
                 let animation = animation.clone();
-                cx.new(|cx| Wallpaper::animated(animation, window, cx))
+                cx.new(|cx| {
+                    let mut wallpaper = Wallpaper::animated(animation, window, cx);
+                    // wallpaper.start_animation(window, cx);
+                    wallpaper
+                })
             }
 
             Self::Static(image) => {

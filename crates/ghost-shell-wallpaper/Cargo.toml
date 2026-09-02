@@ -6,7 +6,11 @@ rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[lib]
+path = "src/wallpaper.rs"
+
 [dependencies]
+ghost-shell-app.workspace = true
 ghost-shell-config.workspace = true
 
 gpui.workspace = true

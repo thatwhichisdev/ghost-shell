@@ -2733,6 +2733,7 @@ name = "ghost-shell-wallpaper"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ghost-shell-app",
  "ghost-shell-config",
  "gpui",
  "gpui_platform",

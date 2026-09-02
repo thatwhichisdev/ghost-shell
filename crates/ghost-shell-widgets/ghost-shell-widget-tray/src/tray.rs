@@ -83,20 +83,16 @@ impl TrayWidget {
 
         cx.spawn(async move |tray, cx| {
             let item_task = item.update(cx, |item, cx| item.discover(registration, cx));
-
             let status_notifier_item = match item_task.await {
                 Ok(item) => item,
-
                 Err(error) => {
                     log::warn!("failed to discover status notifier item: {error:#}");
-
                     return;
                 }
             };
 
             let tray_menu = if let Some(path) = status_notifier_item.menu.as_deref() {
                 let id = MenuId::new(status_notifier_item.id.service(), path);
-
                 let menu_task = menu.update(cx, |menu, cx| menu.discover(id, cx));
 
                 match menu_task.await {
@@ -108,7 +104,6 @@ impl TrayWidget {
                                  {error:#}",
                             status_notifier_item.id
                         );
-
                         None
                     }
                 }
@@ -118,7 +113,6 @@ impl TrayWidget {
 
             _ = tray.update(cx, |tray, cx| {
                 tray.insert_item(&status_notifier_item, tray_menu);
-
                 cx.notify();
             });
         })
@@ -132,7 +126,6 @@ impl TrayWidget {
             Ok(item) => {
                 self.items.insert(id, item);
             }
-
             Err(error) => {
                 log::warn!("failed to create tray item {id}: {error:#}");
             }
@@ -147,7 +140,6 @@ impl TrayWidget {
                 Ok(item) => {
                     self.items.insert(id.clone(), item);
                 }
-
                 Err(error) => {
                     log::warn!("failed to create tray item {id}: {error:#}");
                 }
@@ -170,22 +162,14 @@ impl TrayWidget {
     ) {
         let popup = PopupOptions {
             parent: window.window_handle(),
-
-            // Mouse coordinates are already local to the bar surface.
             anchor_rect: Bounds::new(position, size(px(1.0), px(1.0))),
-
-            // Tray is on the right, so grow down and towards the left.
             anchor: PopupAnchor::BottomRight,
             gravity: PopupGravity::BottomLeft,
-
             constraint_adjustment: PopupConstraintAdjustment::SLIDE_X
                 | PopupConstraintAdjustment::SLIDE_Y
                 | PopupConstraintAdjustment::FLIP_X
                 | PopupConstraintAdjustment::FLIP_Y,
-
             offset: point(px(0.0), px(4.0)),
-
-            // Correct behavior for a context menu.
             grab: true,
         };
 
@@ -204,12 +188,8 @@ impl TrayWidget {
         };
 
         if let Err(error) = cx.open_window(options, move |window, cx| {
-            let dbus_menu = cx.global::<Dbus>().dbus_menu().clone();
-            let popup_menu = menu.build(dbus_menu, window, cx);
+            let popup_menu = menu.build(window, cx);
 
-            // PopupMenu normally emits DismissEvent and its ContextMenu
-            // wrapper hides it. We don't use that wrapper anymore, so close
-            // the native popup window ourselves.
             window
                 .subscribe(&popup_menu, cx, |_menu, _: &DismissEvent, window, _cx| {
                     window.remove_window();
@@ -226,7 +206,7 @@ impl TrayWidget {
 impl Render for TrayWidget {
     fn render(
         &mut self,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         div()
@@ -250,13 +230,11 @@ impl Render for TrayWidget {
                             .object_fit(ObjectFit::Contain),
                     )
                     .on_mouse_down(
-                        gpui::MouseButton::Right,
+                        gpui::MouseButton::Left,
                         cx.listener(move |tray, event: &MouseDownEvent, window, cx| {
-                            let Some(menu) = menu.clone() else {
-                                return;
+                            if let Some(menu) = menu.clone() {
+                                tray.open_menu(menu, event.position, window, cx);
                             };
-
-                            tray.open_menu(menu, event.position, window, cx);
                         }),
                     )
             }))

@@ -1,8 +1,6 @@
-use ghost_shell_dbus::{Menu, MenuId, MenuItem, MenuItemType, MenuLayout};
+use ghost_shell_dbus::{Dbus, Menu, MenuId, MenuItem, MenuItemType, MenuLayout};
 use gpui::{App, Context, Entity, Window, px};
 use gpui_component::menu::{PopupMenu, PopupMenuItem};
-
-use crate::MENU_HEIGHT;
 
 #[derive(Clone)]
 pub(crate) struct TrayMenu {
@@ -10,17 +8,12 @@ pub(crate) struct TrayMenu {
 }
 
 impl TrayMenu {
-    pub(crate) fn build(
-        &self,
-        dbus_menu: Entity<Menu>,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Entity<PopupMenu> {
+    pub(crate) fn build(&self, window: &mut Window, cx: &mut App) -> Entity<PopupMenu> {
         let menu_id = self.layout.id.clone();
         let items = self.layout.items().to_vec();
 
         PopupMenu::build(window, cx, move |menu, window, cx| {
-            render_items(menu, &items, &menu_id, &dbus_menu, window, cx)
+            render_items(menu, &items, &menu_id, window, cx)
         })
     }
 }
@@ -35,23 +28,21 @@ fn render_items(
     mut menu: PopupMenu,
     items: &[MenuItem],
     menu_id: &MenuId,
-    dbus_menu: &Entity<Menu>,
     window: &mut Window,
     cx: &mut Context<PopupMenu>,
 ) -> PopupMenu {
+    let dbus_menu = cx.global::<Dbus>().dbus_menu().clone();
+
     for item in items.iter().filter(|item| item.visible) {
         match item.item_type {
             MenuItemType::Separator => {
                 menu = menu.separator();
             }
-
             _ if !item.children.is_empty() => {
                 let children = item.children.clone();
                 let menu_id = menu_id.clone();
-                let dbus_menu = dbus_menu.clone();
-
                 let submenu = PopupMenu::build(window, cx, move |submenu, window, cx| {
-                    render_items(submenu, &children, &menu_id, &dbus_menu, window, cx)
+                    render_items(submenu, &children, &menu_id, window, cx)
                 });
 
                 menu = menu.item(
@@ -59,9 +50,8 @@ fn render_items(
                         .disabled(!item.enabled),
                 );
             }
-
             _ => {
-                menu = menu.item(render_item(item, menu_id, dbus_menu));
+                menu = menu.item(render_item(item, menu_id, &dbus_menu));
             }
         }
     }

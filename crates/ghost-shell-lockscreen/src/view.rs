@@ -2,7 +2,7 @@
 use std::{ffi::OsString, time::Duration};
 
 use anyhow::Result;
-use ghost_shell_wallpaper::wallpaper::{Wallpaper, WallpaperManager};
+use ghost_shell_wallpaper::{Wallpaper, WallpaperManager};
 use gpui::{
     Context, Entity, FontWeight, IntoElement, Render, SharedString, Subscription, Task,
     Window, div, prelude::*, px, relative, rgb,
@@ -38,7 +38,10 @@ impl LockView {
 
         let input_sub = cx.subscribe_in(&input, window, Self::handle_password_event);
 
-        let source = cx.global::<WallpaperManager>().source.clone();
+        let source = cx
+            .global::<WallpaperManager>()
+            .source
+            .clone();
         let wallpaper = source.entity(window, cx);
 
         Self {
@@ -52,13 +55,18 @@ impl LockView {
     }
 
     fn formatted_time(format: &str) -> SharedString {
-        Zoned::now().strftime(format).to_string().into()
+        Zoned::now()
+            .strftime(format)
+            .to_string()
+            .into()
     }
 
     fn spawn_clock_task(cx: &mut Context<Self>) -> Task<()> {
         cx.spawn(async move |view, cx| {
             loop {
-                cx.background_executor().timer(Duration::from_mins(1)).await;
+                cx.background_executor()
+                    .timer(Duration::from_mins(1))
+                    .await;
 
                 if let Err(err) = view.update(cx, |view, cx| {
                     view.clock = Self::formatted_time("%H:%M");
@@ -110,7 +118,12 @@ impl LockView {
         }
 
         let username: OsString = auth::username();
-        let password: OsString = self.password.read(cx).value().to_string().into();
+        let password: OsString = self
+            .password
+            .read(cx)
+            .value()
+            .to_string()
+            .into();
 
         // todo: add UI validations to now allow empty password
         if password.is_empty() || username.is_empty() {
@@ -168,7 +181,10 @@ impl Render for LockView {
                             .text_size(px(256.0))
                             .font_weight(FontWeight::BLACK)
                             .child(
-                                div().w_full().text_center().child(self.clock.clone()),
+                                div()
+                                    .w_full()
+                                    .text_center()
+                                    .child(self.clock.clone()),
                             ),
                     ),
             )

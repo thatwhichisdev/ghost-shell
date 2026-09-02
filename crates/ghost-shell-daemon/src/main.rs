@@ -25,13 +25,16 @@ fn main() {
         gpui_tokio::init(cx);
         gpui_component::init(cx);
 
-        ghost_shell_dbus::init(cx);
         ghost_shell_config::init(cx);
-        ghost_shell_wallpaper::init(cx);
         ghost_shell_theme::init(cx);
+
+        ghost_shell_dbus::init(cx);
         ghost_shell_niri::init(cx);
         ghost_shell_ipc::init(cx);
+
         ghost_shell_app::init(cx);
+
+        ghost_shell_wallpaper::init(cx);
         ghost_shell_lockscreen::init(cx);
         ghost_shell_launcher::init(cx);
         ghost_shell_finder::init(cx);
