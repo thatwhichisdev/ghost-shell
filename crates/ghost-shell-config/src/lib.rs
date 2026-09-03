@@ -1,7 +1,6 @@
 pub mod config;
 
 pub use config::*;
-
 use gpui::App;
 
 pub fn init(cx: &mut App) {

@@ -1,8 +1,9 @@
-use anyhow::{Context as _, Result, anyhow};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
+
+use anyhow::{Context as _, Result, anyhow};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{UnixListener, UnixStream, unix::SocketAddr},
@@ -121,8 +122,10 @@ impl Connection {
         loop {
             buffer.clear();
 
-            let bytes_read =
-                reader.read_line(&mut buffer).await.with_context(|| {
+            let bytes_read = reader
+                .read_line(&mut buffer)
+                .await
+                .with_context(|| {
                     format!("failed to read IPC request from {address:?}")
                 })?;
 
@@ -147,16 +150,14 @@ impl Connection {
                     reply: reply_sender,
                 })
                 .await
-                .map_err(|_| {
-                    anyhow!("daemon IPC request receiver was dropped")
-                })?;
+                .map_err(|_| anyhow!("daemon IPC request receiver was dropped"))?;
 
             let reply = reply_receiver
                 .await
                 .context("daemon dropped the IPC reply channel")?;
 
-            let mut response = serde_json::to_vec(&reply)
-                .context("failed to serialize IPC reply")?;
+            let mut response =
+                serde_json::to_vec(&reply).context("failed to serialize IPC reply")?;
 
             response.push(b'\n');
 
@@ -165,7 +166,10 @@ impl Connection {
                 .await
                 .context("failed to write IPC reply")?;
 
-            writer.flush().await.context("failed to flush IPC reply")?;
+            writer
+                .flush()
+                .await
+                .context("failed to flush IPC reply")?;
         }
     }
 }

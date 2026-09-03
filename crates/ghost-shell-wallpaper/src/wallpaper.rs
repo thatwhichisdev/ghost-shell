@@ -8,6 +8,8 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
+use ghost_shell_app::GhostShell;
+use ghost_shell_config::AppConfig;
 use gpui::{
     App, AppContext as _, Bounds, Context, DevicePixels, Entity, Global, IntoElement,
     ObjectFit, Point, Render, RenderImage, Rgba, Size, Styled as _, StyledImage as _,
@@ -19,9 +21,6 @@ use gpui::{
 use image::{AnimationDecoder, ImageDecoder as _, ImageReader, codecs::gif::GifDecoder};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use ghost_shell_app::GhostShell;
-use ghost_shell_config::AppConfig;
 
 mod cache;
 

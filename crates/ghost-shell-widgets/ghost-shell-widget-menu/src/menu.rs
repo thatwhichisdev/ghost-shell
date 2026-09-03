@@ -9,11 +9,16 @@ impl Render for MenuWidget {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        div().id("menu").flex().items_center().pl(px(8.0)).child(
-            Icon::empty()
-                .path("icons/nixos.svg")
-                .with_size(px(18.0))
-                .text_color(cx.theme().colors.foreground),
-        )
+        div()
+            .id("menu")
+            .flex()
+            .items_center()
+            .pl(px(8.0))
+            .child(
+                Icon::empty()
+                    .path("icons/nixos.svg")
+                    .with_size(px(18.0))
+                    .text_color(cx.theme().colors.foreground),
+            )
     }
 }

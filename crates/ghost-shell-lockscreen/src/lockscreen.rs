@@ -1,12 +1,11 @@
 //! Session-lock window lifecycle.
 use anyhow::Result;
+use ghost_shell_app::GhostShell;
 use gpui::{
     App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds, WindowHandle,
     WindowKind, WindowOptions,
 };
 use gpui_component::Root;
-
-use ghost_shell_app::GhostShell;
 
 use crate::view::LockView;
 

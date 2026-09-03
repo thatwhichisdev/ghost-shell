@@ -40,6 +40,9 @@ impl Render for FocusWidget {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        div().id("focus").truncate().child(self.title.clone())
+        div()
+            .id("focus")
+            .truncate()
+            .child(self.title.clone())
     }
 }

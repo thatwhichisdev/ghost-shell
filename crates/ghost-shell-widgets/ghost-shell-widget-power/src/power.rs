@@ -28,7 +28,11 @@ impl PowerWidget {
             State::Charging => "icons/battery-charging.svg",
             State::Unknown | State::Empty => "icons/battery-empty.svg",
             State::Discharging => {
-                match self.battery.state_of_charge().get::<percent>() {
+                match self
+                    .battery
+                    .state_of_charge()
+                    .get::<percent>()
+                {
                     level if level <= 25.0 => "icons/battery-25.svg",
                     level if level <= 50.0 => "icons/battery-50.svg",
                     level if level <= 75.0 => "icons/battery-75.svg",
@@ -47,11 +51,15 @@ impl Render for PowerWidget {
     ) -> impl IntoElement {
         let icon = self.battery_icon();
 
-        div().id("power").flex().items_center().child(
-            Icon::empty()
-                .path(icon)
-                .with_size(px(24.0))
-                .text_color(cx.theme().colors.foreground),
-        )
+        div()
+            .id("power")
+            .flex()
+            .items_center()
+            .child(
+                Icon::empty()
+                    .path(icon)
+                    .with_size(px(24.0))
+                    .text_color(cx.theme().colors.foreground),
+            )
     }
 }

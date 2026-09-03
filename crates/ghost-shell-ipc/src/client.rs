@@ -1,5 +1,6 @@
-use crate::protocol::{Reply, Request};
 use std::path::Path;
+
+use anyhow::Result;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{
@@ -8,7 +9,7 @@ use tokio::{
     },
 };
 
-use anyhow::Result;
+use crate::protocol::{Reply, Request};
 
 pub struct Client {
     reader: BufReader<OwnedReadHalf>,

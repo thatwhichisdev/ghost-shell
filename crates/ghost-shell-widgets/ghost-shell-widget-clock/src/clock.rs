@@ -1,9 +1,8 @@
 use std::time::Duration;
 
+use ghost_shell_config::AppConfig;
 use gpui::{Context, SharedString, Window, div, prelude::*, px};
 use jiff::Zoned;
-
-use ghost_shell_config::AppConfig;
 
 pub struct ClockWidget {
     time: SharedString,
@@ -18,7 +17,9 @@ impl ClockWidget {
         // Spawn a task that will update clock's state every 60 seconds
         cx.spawn(async move |clock, cx| {
             loop {
-                cx.background_executor().timer(Duration::from_mins(1)).await;
+                cx.background_executor()
+                    .timer(Duration::from_mins(1))
+                    .await;
 
                 if let Err(err) = clock.update(cx, |clock, cx| {
                     clock.time = formatted_time(&config.format);
@@ -50,5 +51,8 @@ impl Render for ClockWidget {
 }
 
 fn formatted_time(format: &str) -> SharedString {
-    Zoned::now().strftime(format).to_string().into()
+    Zoned::now()
+        .strftime(format)
+        .to_string()
+        .into()
 }

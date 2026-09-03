@@ -178,8 +178,10 @@ impl NiriState {
     pub fn update(&mut self, event: Event) {
         match event {
             Event::WorkspacesChanged { workspaces } => {
-                self.workspaces =
-                    workspaces.into_iter().map(|ws| (ws.id, ws)).collect();
+                self.workspaces = workspaces
+                    .into_iter()
+                    .map(|ws| (ws.id, ws))
+                    .collect();
             }
             Event::WorkspaceUrgencyChanged { id, urgent } => {
                 for ws in self.workspaces.values_mut() {
@@ -211,13 +213,14 @@ impl NiriState {
                 active_window_id,
             } => {
                 let ws = self.workspaces.get_mut(&workspace_id);
-                let ws =
-                    ws.expect("changed workspace was missing from the map");
+                let ws = ws.expect("changed workspace was missing from the map");
                 ws.active_window_id = active_window_id;
             }
             Event::WindowsChanged { windows } => {
-                self.windows =
-                    windows.into_iter().map(|win| (win.id, win)).collect();
+                self.windows = windows
+                    .into_iter()
+                    .map(|win| (win.id, win))
+                    .collect();
             }
             Event::WindowOpenedOrChanged { window } => {
                 let (id, is_focused) = match self.windows.entry(window.id) {
@@ -271,8 +274,7 @@ impl NiriState {
             Event::WindowLayoutsChanged { changes } => {
                 for (id, update) in changes {
                     let win = self.windows.get_mut(&id);
-                    let win =
-                        win.expect("changed window was missing from the map");
+                    let win = win.expect("changed window was missing from the map");
                     win.layout = update;
                 }
             }
@@ -281,7 +283,9 @@ impl NiriState {
             }
             Event::KeyboardLayoutSwitched { idx } => {
                 let kb = self.keyboard_layouts.as_mut();
-                let kb = kb.expect("keyboard layouts must be set before a layout can be switched");
+                let kb = kb.expect(
+                    "keyboard layouts must be set before a layout can be switched",
+                );
                 kb.current_idx = idx;
             }
             Event::OverviewOpenedOrClosed { is_open } => {
@@ -291,8 +295,10 @@ impl NiriState {
                 self.failed = failed;
             }
             Event::CastsChanged { casts } => {
-                self.casts =
-                    casts.into_iter().map(|c| (c.stream_id, c)).collect();
+                self.casts = casts
+                    .into_iter()
+                    .map(|c| (c.stream_id, c))
+                    .collect();
             }
             Event::CastStartedOrChanged { cast } => {
                 self.casts.insert(cast.stream_id, cast);

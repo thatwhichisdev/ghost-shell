@@ -1,8 +1,5 @@
 use ghost_shell_niri::NiriState;
-use gpui::{
-    Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, svg,
-};
-
+use gpui::{Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, svg};
 use gpui_component::ActiveTheme as _;
 
 pub struct WorkspacesWidget {
@@ -29,10 +26,8 @@ impl WorkspacesWidget {
                 .values()
                 .filter(|workspace| {
                     let output_name = workspace.output.as_ref().unwrap();
-                    let output_uuid = Uuid::new_v5(
-                        &Uuid::NAMESPACE_DNS,
-                        output_name.as_bytes(),
-                    );
+                    let output_uuid =
+                        Uuid::new_v5(&Uuid::NAMESPACE_DNS, output_name.as_bytes());
 
                     output_uuid == widget.display_uuid
                 })

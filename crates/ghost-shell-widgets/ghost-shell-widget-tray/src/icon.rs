@@ -1,9 +1,9 @@
-use anyhow::{Context as _, Result, anyhow, bail};
-use ghost_shell_dbus::IconPixmap;
-use image::{Frame, ImageReader, RgbaImage};
 use std::{path::Path, sync::Arc};
 
+use anyhow::{Context as _, Result, anyhow, bail};
+use ghost_shell_dbus::IconPixmap;
 use gpui::RenderImage;
+use image::{Frame, ImageReader, RgbaImage};
 
 pub(crate) struct TrayIcon(Arc<RenderImage>);
 

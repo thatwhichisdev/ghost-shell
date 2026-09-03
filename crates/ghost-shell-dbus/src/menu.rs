@@ -1,11 +1,10 @@
 mod client;
 
 use anyhow::{Context as _, Result};
+use client::DbusMenuClient;
 use gpui::{App, AppContext as _, Context, Entity, Task};
 use tokio::sync::{mpsc, oneshot};
 use zbus::Connection;
-
-use client::DbusMenuClient;
 
 const COMMAND_CHANNEL_CAPACITY: usize = 32;
 

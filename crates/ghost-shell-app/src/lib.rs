@@ -1,7 +1,6 @@
 pub mod app;
 
 pub use app::*;
-
 use ghost_shell_config::AppConfig;
 use ghost_shell_niri::NiriState;
 use gpui::{App, BorrowAppContext, accesskit::Uuid};
@@ -13,9 +12,7 @@ pub fn init(cx: &mut App) {
         .bars
         .iter()
         .find(|(_output, bar)| bar.primary == true)
-        .map(|(output, _bar)| {
-            Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
-        })
+        .map(|(output, _bar)| Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes()))
         .expect("primary output was not set");
 
     let outputs: Vec<GhostShellOutput> = cx

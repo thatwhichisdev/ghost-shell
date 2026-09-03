@@ -2,8 +2,7 @@
 use std::ffi::{OsStr, OsString};
 
 use nonstick::{
-    AuthnFlags, ConversationAdapter, Result as PamResult, Transaction,
-    TransactionBuilder,
+    AuthnFlags, ConversationAdapter, Result as PamResult, Transaction, TransactionBuilder,
 };
 
 const PAM_SERVICE: &str = "ghost-shell";
@@ -19,10 +18,7 @@ impl ConversationAdapter for PasswordConversation {
         Ok(self.username.clone())
     }
 
-    fn masked_prompt(
-        &self,
-        _request: impl AsRef<OsStr>,
-    ) -> PamResult<OsString> {
+    fn masked_prompt(&self, _request: impl AsRef<OsStr>) -> PamResult<OsString> {
         Ok(self.password.clone())
     }
 

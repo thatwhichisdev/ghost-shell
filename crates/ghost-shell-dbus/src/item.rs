@@ -3,14 +3,13 @@ mod client;
 use std::{collections::HashMap, fmt};
 
 use anyhow::{Context as _, Result, bail};
+use client::StatusNotifierItemClient;
 use gpui::{App, AppContext as _, Context, Entity, EventEmitter, Task};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
 use zbus::Connection;
-
-use client::StatusNotifierItemClient;
 
 const COMMAND_CHANNEL_CAPACITY: usize = 64;
 const EVENT_CHANNEL_CAPACITY: usize = 256;

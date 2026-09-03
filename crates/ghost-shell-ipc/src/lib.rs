@@ -2,19 +2,17 @@ pub mod client;
 pub mod protocol;
 pub mod server;
 
-pub use client::*;
-pub use protocol::*;
-pub use server::*;
-
 use std::{env, path::PathBuf};
 
-use gpui::App;
-use tokio::sync::mpsc::{self};
-
+pub use client::*;
 use ghost_shell_actions::{
-    FinderClose, FinderOpen, FinderToggle, LauncherClose, LauncherOpen,
-    LauncherToggle, Lock,
+    FinderClose, FinderOpen, FinderToggle, LauncherClose, LauncherOpen, LauncherToggle,
+    Lock,
 };
+use gpui::App;
+pub use protocol::*;
+pub use server::*;
+use tokio::sync::mpsc::{self};
 
 pub fn init(cx: &mut App) {
     let (sender, mut receiver) = mpsc::channel::<AsyncRequest>(256);
@@ -38,9 +36,7 @@ pub fn init(cx: &mut App) {
                 Request::Launcher { action } => match action {
                     LauncherAction::Open => cx.dispatch_action(&LauncherOpen),
                     LauncherAction::Close => cx.dispatch_action(&LauncherClose),
-                    LauncherAction::Toggle => {
-                        cx.dispatch_action(&LauncherToggle)
-                    }
+                    LauncherAction::Toggle => cx.dispatch_action(&LauncherToggle),
                 },
                 Request::Finder { action } => match action {
                     FinderAction::Open => cx.dispatch_action(&FinderOpen),

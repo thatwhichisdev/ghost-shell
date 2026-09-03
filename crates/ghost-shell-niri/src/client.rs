@@ -1,7 +1,7 @@
-use anyhow::{Context as _, Result};
-use gpui::Global;
 use std::{env, path::PathBuf};
 
+use anyhow::{Context as _, Result};
+use gpui::Global;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
     net::{
@@ -26,12 +26,10 @@ impl NiriClient {
             .map(PathBuf::from)
             .context("NIRI_SOCKET is not set; is Ghost running under Niri?")?;
 
-        let stream =
-            UnixStream::connect(&socket_path).await.with_context(|| {
-                format!(
-                    "failed to connect to Niri socket {}",
-                    socket_path.display()
-                )
+        let stream = UnixStream::connect(&socket_path)
+            .await
+            .with_context(|| {
+                format!("failed to connect to Niri socket {}", socket_path.display())
             })?;
 
         let (reader, writer) = stream.into_split();

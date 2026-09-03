@@ -1,8 +1,7 @@
 pub mod theme;
 
-use gpui::{App, UpdateGlobal, px};
-
 use ghost_shell_config::AppConfig;
+use gpui::{App, UpdateGlobal, px};
 use gpui_component::{Theme, ThemeMode};
 
 pub fn init(cx: &mut App) {

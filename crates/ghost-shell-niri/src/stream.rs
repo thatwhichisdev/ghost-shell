@@ -1,6 +1,6 @@
-use anyhow::{Context as _, Result};
 use std::{env, path::PathBuf};
 
+use anyhow::{Context as _, Result};
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
     net::{
@@ -24,12 +24,10 @@ impl NiriStream {
             .map(PathBuf::from)
             .context("NIRI_SOCKET is not set; is Ghost running under Niri?")?;
 
-        let stream =
-            UnixStream::connect(&socket_path).await.with_context(|| {
-                format!(
-                    "failed to connect to Niri socket {}",
-                    socket_path.display()
-                )
+        let stream = UnixStream::connect(&socket_path)
+            .await
+            .with_context(|| {
+                format!("failed to connect to Niri socket {}", socket_path.display())
             })?;
 
         let (reader, mut writer) = stream.into_split();
@@ -49,9 +47,7 @@ impl NiriStream {
 
                 Ok(Self { reader, writer })
             }
-            Ok(Reply::Ok(_)) => {
-                Err(anyhow::Error::msg("wrong response from niri"))
-            }
+            Ok(Reply::Ok(_)) => Err(anyhow::Error::msg("wrong response from niri")),
             Ok(Err(err)) => Err(anyhow::Error::msg(err)),
             Err(err) => Err(anyhow::Error::msg(err.to_string())),
         }

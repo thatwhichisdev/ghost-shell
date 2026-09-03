@@ -1,12 +1,13 @@
-use anyhow::{Context as _, Result};
-use ghost_shell_config::config;
-use serde::{Serialize, de::DeserializeOwned};
 use std::{
     ffi::OsStr,
     fs::File,
     io::{BufWriter, Write as _},
     path::PathBuf,
 };
+
+use anyhow::{Context as _, Result};
+use ghost_shell_config::config;
+use serde::{Serialize, de::DeserializeOwned};
 
 pub fn save<T>(name: &OsStr, data: &T) -> Result<PathBuf>
 where

@@ -1,7 +1,7 @@
-use anyhow::{Result, bail};
-use clap::{Parser, Subcommand, ValueEnum};
 use std::{env, path::PathBuf};
 
+use anyhow::{Result, bail};
+use clap::{Parser, Subcommand, ValueEnum};
 use ghost_shell_ipc::{
     FinderAction, LockAction,
     client::Client,
@@ -61,10 +61,10 @@ pub enum SessionCommand {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let socket_path =
-        env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap();
-    let mut client =
-        Client::connect(socket_path.join("ghost-shell-daemon")).await?;
+    let socket_path = env::var_os("XDG_RUNTIME_DIR")
+        .map(PathBuf::from)
+        .unwrap();
+    let mut client = Client::connect(socket_path.join("ghost-shell-daemon")).await?;
 
     let request = match cli.command {
         Command::Msg { command } => match command {

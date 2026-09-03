@@ -3,17 +3,20 @@ pub mod protocol;
 pub mod stream;
 
 pub use client::*;
+use gpui::App;
 pub use protocol::*;
 pub use stream::*;
-
-use gpui::App;
 use tokio::sync::mpsc;
 
 pub fn init(cx: &mut App) {
     let tokio = gpui_tokio::Tokio::handle(cx);
 
-    let mut niri_client = tokio.block_on(NiriClient::try_new()).unwrap();
-    let mut niri_stream = tokio.block_on(NiriStream::try_new()).unwrap();
+    let mut niri_client = tokio
+        .block_on(NiriClient::try_new())
+        .unwrap();
+    let mut niri_stream = tokio
+        .block_on(NiriStream::try_new())
+        .unwrap();
     let mut niri_state = NiriState::default();
 
     // Fetch niri workspaces using niri client

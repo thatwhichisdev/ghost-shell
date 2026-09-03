@@ -20,18 +20,17 @@ pub fn init(cx: &mut App) {
     cx.set_global(LockManager::new());
 
     cx.on_action(|_: &Lock, cx| {
-        match cx.update_global::<LockManager, _>(|lock_manager, cx| {
-            lock_manager.lock(cx)
-        }) {
+        match cx.update_global::<LockManager, _>(|lock_manager, cx| lock_manager.lock(cx))
+        {
             Ok(()) => log::debug!("Locked the session"),
             Err(e) => log::error!("Locking the session failed {e}"),
         }
     });
 
     cx.on_action(|_: &Unlock, cx| {
-        match cx.update_global::<LockManager, _>(|lock_manager, cx| {
-            lock_manager.unlock(cx)
-        }) {
+        match cx
+            .update_global::<LockManager, _>(|lock_manager, cx| lock_manager.unlock(cx))
+        {
             Ok(()) => log::debug!("Unlocked the session"),
             Err(e) => log::error!("Unlocking the session failed {e}"),
         }
