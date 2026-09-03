@@ -63,6 +63,11 @@
         }
       );
 
+      homeManagerModules = rec {
+        ghost-shell = import ./nix/module.nix { inherit self; };
+        default = ghost-shell;
+      };
+
       formatter = forEachSystem (system: (pkgsFor system).nixfmt-tree);
     };
 }
