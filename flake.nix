@@ -31,24 +31,91 @@
             pkgs = import nixpkgs { inherit system; };
           }
         );
+
+      rustToolchainFor =
+        system:
+        fenix.packages.${system}.fromToolchainFile {
+          file = ./rust-toolchain.toml;
+          sha256 = "sha256-gh/xTkxKHL4eiRXzWv8KP7vfjSk61Iq48x47BEDFgfk=";
+        };
+
+      runtimeLibrariesFor =
+        pkgs: with pkgs; [
+          fontconfig
+          freetype
+          libxkbcommon
+          vulkan-loader
+          wayland
+          linux-pam
+        ];
     in
     {
+      packages = forEachSystem (
+        { system, pkgs }:
+        let
+          rustToolchain = rustToolchainFor system;
+
+          rustPlatform = pkgs.makeRustPlatform {
+            cargo = rustToolchain;
+            rustc = rustToolchain;
+          };
+
+          runtimeLibraries = runtimeLibrariesFor pkgs;
+        in
+        rec {
+          ghost-shell = rustPlatform.buildRustPackage {
+            pname = "ghost-shell";
+            version = "0.1.0";
+
+            src = ./.;
+
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              allowBuiltinFetchGit = true;
+            };
+
+            strictDeps = true;
+            buildType = "release";
+
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              makeWrapper
+            ];
+
+            buildInputs = runtimeLibraries;
+
+            cargoBuildFlags = [
+              "--package"
+              "ghost-shell-cli"
+              "--package"
+              "ghost-shell-daemon"
+            ];
+
+            cargoTestFlags = [
+              "--package"
+              "ghost-shell-cli"
+              "--package"
+              "ghost-shell-daemon"
+            ];
+
+            LIBPAMSYS_IMPL = "LinuxPam";
+
+            postFixup = ''
+              wrapProgram $out/bin/ghost-shell-daemon \
+                --set XKB_CONFIG_ROOT "${pkgs.xkeyboard_config}/share/X11/xkb" \
+                --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath runtimeLibraries}"
+            '';
+          };
+
+          default = ghost-shell;
+        }
+      );
+
       devShells = forEachSystem (
         { system, pkgs }:
         let
-          rustToolchain = fenix.packages.${system}.fromToolchainFile {
-            file = ./rust-toolchain.toml;
-            sha256 = "sha256-gh/xTkxKHL4eiRXzWv8KP7vfjSk61Iq48x47BEDFgfk=";
-          };
-
-          runtimeLibraries = with pkgs; [
-            fontconfig
-            freetype
-            libxkbcommon
-            vulkan-loader
-            wayland
-            linux-pam
-          ];
+          rustToolchain = rustToolchainFor system;
+          runtimeLibraries = runtimeLibrariesFor pkgs;
         in
         {
           default = pkgs.mkShell {
