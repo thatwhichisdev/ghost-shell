@@ -39,11 +39,11 @@ pub fn apply_base16(theme: &mut Theme, palette: &Base16Config) {
     theme.colors.ring = base0d;
 
     // Popovers.
-    theme.colors.popover = base01;
+    theme.colors.popover = base00;
     theme.colors.popover_foreground = base05;
 
     // Selection / list states.
-    theme.colors.accent = base02;
+    theme.colors.accent = base01;
     theme.colors.accent_foreground = base05;
 
     theme.colors.selection = base02;

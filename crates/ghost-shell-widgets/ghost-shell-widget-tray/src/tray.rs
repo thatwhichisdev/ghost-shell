@@ -4,13 +4,14 @@ use ghost_shell_dbus::{
     Dbus, ItemEvent, MenuId, StatusNotifierId, StatusNotifierItem, WatcherEvent,
 };
 use gpui::{
-    AppContext as _, Bounds, Context, DismissEvent, MouseDownEvent, ObjectFit, Pixels,
-    Point, Subscription, VisualContext as _, Window, WindowBackgroundAppearance,
-    WindowBounds, WindowKind, WindowOptions, div, img, point,
+    AppContext as _, Bounds, Context, DismissEvent, Entity, MouseDownEvent, ObjectFit,
+    Pixels, Point, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
+    WindowKind, WindowOptions, div, img, point,
     popup::{PopupAnchor, PopupConstraintAdjustment, PopupGravity, PopupOptions},
     prelude::*,
     px, size,
 };
+use gpui_component::menu::PopupMenu;
 
 use crate::{item::TrayItem, menu::TrayMenu};
 
@@ -18,8 +19,22 @@ mod icon;
 mod item;
 mod menu;
 
-const MENU_WIDTH: Pixels = px(260.0);
-const MENU_HEIGHT: Pixels = px(320.0);
+struct TrayMenuSurface(Entity<PopupMenu>);
+
+impl Render for TrayMenuSurface {
+    fn render(
+        &mut self,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .size_full()
+            .flex()
+            .items_start()
+            .justify_end()
+            .child(self.0.clone())
+    }
+}
 
 pub struct TrayWidget {
     items: BTreeMap<StatusNotifierId, TrayItem>,
@@ -173,11 +188,9 @@ impl TrayWidget {
             grab: true,
         };
 
+        let bounds = WindowBounds::Windowed(Bounds::new(Default::default(), menu.size()));
         let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(Bounds::new(
-                Default::default(),
-                size(MENU_WIDTH, MENU_HEIGHT),
-            ))),
+            window_bounds: Some(bounds),
             kind: WindowKind::AnchoredPopup(popup),
             titlebar: None,
             is_movable: false,
@@ -196,7 +209,7 @@ impl TrayWidget {
                 })
                 .detach();
 
-            popup_menu
+            cx.new(|_| TrayMenuSurface { 0: popup_menu })
         }) {
             log::warn!("failed to open tray menu: {error:#}");
         }
