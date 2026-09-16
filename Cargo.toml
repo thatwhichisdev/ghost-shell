@@ -4,6 +4,7 @@ members = [
   "crates/ghost-shell-actions",
   "crates/ghost-shell-app",
   "crates/ghost-shell-assets",
+  "crates/ghost-shell-audio",
   "crates/ghost-shell-bar",
   "crates/ghost-shell-cli",
   "crates/ghost-shell-config",
@@ -39,6 +40,7 @@ publish = false
 ghost-shell-actions = { path = "crates/ghost-shell-actions" }
 ghost-shell-app = { path = "crates/ghost-shell-app" }
 ghost-shell-assets = { path = "crates/ghost-shell-assets" }
+ghost-shell-audio = { path = "crates/ghost-shell-audio" }
 ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-dbus = { path = "crates/ghost-shell-dbus" }
@@ -115,6 +117,7 @@ lz4_flex = "0.14.0"
 neo_frizbee = "0.11.0"
 nonstick = "0.1.2"
 postcard = "1.1.3"
+pipewire = "0.10.1"
 rayon = "1.12.0"
 regex = "1.13.1"
 rust-embed = "8.12.0"

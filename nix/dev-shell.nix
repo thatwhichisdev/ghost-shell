@@ -10,6 +10,7 @@ let
     vulkan-loader
     wayland
     linux-pam
+    pipewire
   ];
 in
 pkgs.mkShell {
@@ -18,6 +19,7 @@ pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     rustToolchain
     pkg-config
+    rustPlatform.bindgenHook
     tombi
   ];
 

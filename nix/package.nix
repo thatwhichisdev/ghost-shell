@@ -12,6 +12,7 @@
   vulkan-loader,
   wayland,
   linux-pam,
+  pipewire,
   xkeyboard_config,
 }:
 let
@@ -27,6 +28,7 @@ let
     vulkan-loader
     wayland
     linux-pam
+    pipewire
   ];
 
   cargoPackageFlags = [
@@ -53,6 +55,7 @@ rustPlatform.buildRustPackage {
   nativeBuildInputs = [
     pkg-config
     makeWrapper
+    rustPlatform.bindgenHook
   ];
 
   buildInputs = runtimeLibraries;
