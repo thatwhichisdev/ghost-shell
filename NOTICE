@@ -1,0 +1,13 @@
+Ghost Shell
+
+Copyright 2026 Ghost Shell contributors
+
+Portions of this software are derived from GPUI, originally developed
+by Zed Industries, Inc. as part of the Zed project.
+
+Original source:
+https://github.com/zed-industries/zed
+
+GPUI-derived portions are licensed under the Apache License, Version 2.0,
+and may contain modifications made for Ghost Shell, including changes
+specific to Linux and Wayland.
