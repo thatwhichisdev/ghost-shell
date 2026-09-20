@@ -69,7 +69,7 @@ impl WgpuContext {
         // Select an adapter by actually testing surface configuration with the real device.
         // This is the only reliable way to determine compatibility on hybrid GPU systems.
         let (adapter, device, queue, dual_source_blending, color_texture_format) =
-            gpui::block_on(Self::select_adapter_and_device(
+            ghost_shell_gpui::block_on(Self::select_adapter_and_device(
                 &instance,
                 device_id_filter,
                 surface,

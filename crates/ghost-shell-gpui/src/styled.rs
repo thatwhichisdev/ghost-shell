@@ -5,12 +5,11 @@ pub use gpui_macros::{
 };
 
 use crate::{
-    self as gpui, AbsoluteLength, AlignContent, AlignItems, AlignSelf, BorderStyle,
-    CursorStyle, DefiniteLength, Display, Fill, FlexDirection, FlexWrap, Font,
-    FontFeatures, FontStyle, FontWeight, GridPlacement, GridTemplate,
-    GridTemplateMinSize, Hsla, JustifyContent, Length, SharedString, StrikethroughStyle,
-    StyleRefinement, TextAlign, TextOverflow, TextStyleRefinement, UnderlineStyle,
-    WhiteSpace, px, relative, rems,
+    AbsoluteLength, AlignContent, AlignItems, AlignSelf, BorderStyle, CursorStyle,
+    DefiniteLength, Display, Fill, FlexDirection, FlexWrap, Font, FontFeatures,
+    FontStyle, FontWeight, GridPlacement, GridTemplate, GridTemplateMinSize, Hsla,
+    JustifyContent, Length, SharedString, StrikethroughStyle, StyleRefinement, TextAlign,
+    TextOverflow, TextStyleRefinement, UnderlineStyle, WhiteSpace, px, relative, rems,
 };
 const ELLIPSIS: SharedString = SharedString::new_static("…");
 

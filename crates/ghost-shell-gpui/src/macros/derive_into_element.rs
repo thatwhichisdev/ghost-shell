@@ -8,20 +8,20 @@ pub fn derive_into_element(input: TokenStream) -> TokenStream {
     let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
 
     let r#gen = quote! {
-        impl #impl_generics gpui::IntoElement for #type_name #type_generics
+        impl #impl_generics ghost_shell_gpui::IntoElement for #type_name #type_generics
         #where_clause
         {
-            type Element = gpui::ViewElement<Self>;
+            type Element = ghost_shell_gpui::ViewElement<Self>;
 
             #[track_caller]
             fn into_element(self) -> Self::Element {
-                gpui::ViewElement::new(self)
+                ghost_shell_gpui::ViewElement::new(self)
             }
 
             #[track_caller]
             #[inline(never)]
-            fn into_any_element(self) -> gpui::AnyElement {
-                gpui::Element::into_any(self.into_element())
+            fn into_any_element(self) -> ghost_shell_gpui::AnyElement {
+                ghost_shell_gpui::Element::into_any(self.into_element())
             }
         }
     };

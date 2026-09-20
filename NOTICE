@@ -11,3 +11,14 @@ https://github.com/zed-industries/zed
 GPUI-derived portions are licensed under the Apache License, Version 2.0,
 and may contain modifications made for Ghost Shell, including changes
 specific to Linux and Wayland.
+
+Portions of ghost-shell-theme and ghost-shell-component-root are adapted
+from GPUI Kit, copyright 2024 - 2026 Longbridge <https://longbridge.com>,
+licensed under the Apache License, Version 2.0.
+
+Original source:
+https://github.com/longbridge/gpui-kit
+Revision: 0e63ea799766c486022a0cecfda6e48c5183a2d7
+
+These portions have been modified for Ghost Shell. Extraction details
+are recorded in crates/ghost-shell-components/UPSTREAM.md.

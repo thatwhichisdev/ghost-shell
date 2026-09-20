@@ -7,7 +7,7 @@ use cosmic_text::{
     FontFeatures as CosmicFontFeatures, FontSystem, ShapeBuffer, ShapeLine, Stretch,
     Style, Weight,
 };
-use gpui::{
+use ghost_shell_gpui::{
     Bounds, DevicePixels, FallbackFontClass, Font, FontFallbacks, FontFeatures, FontId,
     FontMetrics, FontRun, GlyphId, IsZero as _, LineLayout, MissingGlyph,
     MissingGlyphSink, Pixels, PlatformTextSystem, RenderGlyphParams, SUBPIXEL_VARIANTS_X,
@@ -102,7 +102,7 @@ impl CosmicTextSystem {
     pub fn font_weight_and_style(
         &self,
         font_id: FontId,
-    ) -> Result<(gpui::FontWeight, gpui::FontStyle)> {
+    ) -> Result<(ghost_shell_gpui::FontWeight, ghost_shell_gpui::FontStyle)> {
         let state = self.0.read();
         let font = state
             .loaded_fonts
@@ -114,11 +114,11 @@ impl CosmicTextSystem {
             .face(font.font.id())
             .context("font face not found")?;
         let style = match face.style {
-            cosmic_text::Style::Normal => gpui::FontStyle::Normal,
-            cosmic_text::Style::Italic => gpui::FontStyle::Italic,
-            cosmic_text::Style::Oblique => gpui::FontStyle::Oblique,
+            cosmic_text::Style::Normal => ghost_shell_gpui::FontStyle::Normal,
+            cosmic_text::Style::Italic => ghost_shell_gpui::FontStyle::Italic,
+            cosmic_text::Style::Oblique => ghost_shell_gpui::FontStyle::Oblique,
         };
-        Ok((gpui::FontWeight(face.weight.0 as f32), style))
+        Ok((ghost_shell_gpui::FontWeight(face.weight.0 as f32), style))
     }
 
     /// Builds reports for unresolved source indices after an outer text system
@@ -423,7 +423,8 @@ impl CosmicTextSystemState {
             _ => Arc::from(Vec::new()),
         };
 
-        let name = gpui::font_name_with_fallbacks(name, &self.system_font_fallback);
+        let name =
+            ghost_shell_gpui::font_name_with_fallbacks(name, &self.system_font_fallback);
 
         let families = self
             .font_system
@@ -1091,7 +1092,7 @@ fn find_best_match(
     let target_weight = font.weight.0;
     let target_italic = matches!(
         font.style,
-        gpui::FontStyle::Italic | gpui::FontStyle::Oblique
+        ghost_shell_gpui::FontStyle::Italic | ghost_shell_gpui::FontStyle::Oblique
     );
 
     let mut best_index = 0;
@@ -1250,12 +1251,14 @@ fn cosmic_font_features(features: &FontFeatures) -> Result<CosmicFontFeatures> {
 }
 
 #[cfg(feature = "font-kit")]
-fn font_into_properties(font: &gpui::Font) -> font_kit::properties::Properties {
+fn font_into_properties(
+    font: &ghost_shell_gpui::Font,
+) -> font_kit::properties::Properties {
     font_kit::properties::Properties {
         style: match font.style {
-            gpui::FontStyle::Normal => font_kit::properties::Style::Normal,
-            gpui::FontStyle::Italic => font_kit::properties::Style::Italic,
-            gpui::FontStyle::Oblique => font_kit::properties::Style::Oblique,
+            ghost_shell_gpui::FontStyle::Normal => font_kit::properties::Style::Normal,
+            ghost_shell_gpui::FontStyle::Italic => font_kit::properties::Style::Italic,
+            ghost_shell_gpui::FontStyle::Oblique => font_kit::properties::Style::Oblique,
         },
         weight: font_kit::properties::Weight(font.weight.0),
         stretch: Default::default(),
@@ -1312,7 +1315,7 @@ mod tests {
 
     #[test]
     fn all_font_names_tracks_available_families() -> Result<()> {
-        let text_system = gpui::TextSystem::new(Arc::new(
+        let text_system = ghost_shell_gpui::TextSystem::new(Arc::new(
             CosmicTextSystem::new_without_system_fonts("IBM Plex Sans"),
         ));
         assert!(text_system.all_font_names().is_empty());
@@ -1373,12 +1376,21 @@ mod tests {
     #[test]
     fn font_properties_describe_the_selected_face() -> Result<()> {
         let text_system = text_system()?;
-        let regular = gpui::font("IBM Plex Sans");
+        let regular = ghost_shell_gpui::font("IBM Plex Sans");
         let regular_id = text_system.font_id(&regular)?;
         for (weight, style) in [
-            (gpui::FontWeight::MEDIUM, gpui::FontStyle::Normal),
-            (gpui::FontWeight::BOLD, gpui::FontStyle::Italic),
-            (gpui::FontWeight::NORMAL, gpui::FontStyle::Oblique),
+            (
+                ghost_shell_gpui::FontWeight::MEDIUM,
+                ghost_shell_gpui::FontStyle::Normal,
+            ),
+            (
+                ghost_shell_gpui::FontWeight::BOLD,
+                ghost_shell_gpui::FontStyle::Italic,
+            ),
+            (
+                ghost_shell_gpui::FontWeight::NORMAL,
+                ghost_shell_gpui::FontStyle::Oblique,
+            ),
         ] {
             let requested = Font {
                 weight,
@@ -1389,19 +1401,22 @@ mod tests {
             assert_eq!(font_id, regular_id);
             assert_eq!(
                 text_system.font_weight_and_style(font_id)?,
-                (gpui::FontWeight::NORMAL, gpui::FontStyle::Normal)
+                (
+                    ghost_shell_gpui::FontWeight::NORMAL,
+                    ghost_shell_gpui::FontStyle::Normal
+                )
             );
         }
         Ok(())
     }
 
     fn layout_text(text_system: &CosmicTextSystem, text: &str) -> Result<LineLayout> {
-        let font_id = text_system.font_id(&gpui::font("IBM Plex Sans"))?;
+        let font_id = text_system.font_id(&ghost_shell_gpui::font("IBM Plex Sans"))?;
         let runs = [FontRun {
             len: text.len(),
             font_id,
         }];
-        Ok(text_system.layout_line(text, gpui::px(14.0), &runs))
+        Ok(text_system.layout_line(text, ghost_shell_gpui::px(14.0), &runs))
     }
 
     /// Mirrors the original crash: mixed-direction text reaching the shaper
@@ -1409,18 +1424,24 @@ mod tests {
     #[test]
     fn shape_text_with_mixed_direction_paragraphs() -> Result<()> {
         let platform_text_system = Arc::new(text_system()?);
-        let text_system = Arc::new(gpui::TextSystem::new(platform_text_system));
-        let window_text_system = gpui::WindowTextSystem::new(text_system);
+        let text_system =
+            Arc::new(ghost_shell_gpui::TextSystem::new(platform_text_system));
+        let window_text_system = ghost_shell_gpui::WindowTextSystem::new(text_system);
 
         let text: SharedString = "first line\n\u{05d0}\u{001c}A".into();
-        let runs = [gpui::TextRun {
+        let runs = [ghost_shell_gpui::TextRun {
             len: text.len(),
-            font: gpui::font("IBM Plex Sans"),
+            font: ghost_shell_gpui::font("IBM Plex Sans"),
             ..Default::default()
         }];
 
-        let lines =
-            window_text_system.shape_text(text, gpui::px(14.0), &runs, None, None)?;
+        let lines = window_text_system.shape_text(
+            text,
+            ghost_shell_gpui::px(14.0),
+            &runs,
+            None,
+            None,
+        )?;
 
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[1].len(), "\u{05d0}\u{001c}A".len());
@@ -1431,8 +1452,8 @@ mod tests {
     #[test]
     fn reports_graphemes_that_exhaust_font_fallback() -> Result<()> {
         let platform_text_system = Arc::new(text_system()?);
-        let dispatcher = gpui::TestDispatcher::new(0);
-        let cx = gpui::TestAppContext::build_with_text_system(
+        let dispatcher = ghost_shell_gpui::TestDispatcher::new(0);
+        let cx = ghost_shell_gpui::TestAppContext::build_with_text_system(
             dispatcher,
             None,
             platform_text_system,
@@ -1449,13 +1470,14 @@ mod tests {
         let text: SharedString = "界".into();
 
         cx.update(|cx| {
-            let text_system = gpui::WindowTextSystem::new(cx.text_system().clone());
-            let runs = [gpui::TextRun {
+            let text_system =
+                ghost_shell_gpui::WindowTextSystem::new(cx.text_system().clone());
+            let runs = [ghost_shell_gpui::TextRun {
                 len: text.len(),
-                font: gpui::font("IBM Plex Sans"),
+                font: ghost_shell_gpui::font("IBM Plex Sans"),
                 ..Default::default()
             }];
-            text_system.shape_line(text, gpui::px(14.0), &runs, None);
+            text_system.shape_line(text, ghost_shell_gpui::px(14.0), &runs, None);
         });
         cx.run_until_parked();
 
@@ -1464,7 +1486,7 @@ mod tests {
         assert_eq!(observed[0].grapheme(), "界");
         assert_eq!(
             observed[0].font_class(),
-            gpui::FallbackFontClass::Proportional
+            ghost_shell_gpui::FallbackFontClass::Proportional
         );
         Ok(())
     }
@@ -1472,7 +1494,7 @@ mod tests {
     #[test]
     fn combines_missing_glyphs_from_one_grapheme() -> Result<()> {
         let text_system = text_system()?;
-        let font_id = text_system.font_id(&gpui::font("IBM Plex Sans"))?;
+        let font_id = text_system.font_id(&ghost_shell_gpui::font("IBM Plex Sans"))?;
         let text = "x\u{0301}";
         let runs = [FontRun {
             len: text.len(),
@@ -1493,19 +1515,30 @@ mod tests {
     #[test]
     fn adding_fonts_invalidates_cached_line_layouts() -> Result<()> {
         let platform_text_system = Arc::new(text_system()?);
-        let text_system = Arc::new(gpui::TextSystem::new(platform_text_system.clone()));
-        let window_text_system = gpui::WindowTextSystem::new(text_system.clone());
+        let text_system = Arc::new(ghost_shell_gpui::TextSystem::new(
+            platform_text_system.clone(),
+        ));
+        let window_text_system =
+            ghost_shell_gpui::WindowTextSystem::new(text_system.clone());
         let text: SharedString = "cached text".into();
-        let runs = [gpui::TextRun {
+        let runs = [ghost_shell_gpui::TextRun {
             len: text.len(),
-            font: gpui::font("IBM Plex Sans"),
+            font: ghost_shell_gpui::font("IBM Plex Sans"),
             ..Default::default()
         }];
 
-        let first_layout =
-            window_text_system.shape_line(text.clone(), gpui::px(14.0), &runs, None);
-        let cached_layout =
-            window_text_system.shape_line(text.clone(), gpui::px(14.0), &runs, None);
+        let first_layout = window_text_system.shape_line(
+            text.clone(),
+            ghost_shell_gpui::px(14.0),
+            &runs,
+            None,
+        );
+        let cached_layout = window_text_system.shape_line(
+            text.clone(),
+            ghost_shell_gpui::px(14.0),
+            &runs,
+            None,
+        );
         assert!(std::ptr::eq::<LineLayout>(
             &**first_layout,
             &**cached_layout
@@ -1519,7 +1552,7 @@ mod tests {
         text_system.add_fonts(vec![Cow::Borrowed(LILEX)])?;
 
         let refreshed_layout =
-            window_text_system.shape_line(text, gpui::px(14.0), &runs, None);
+            window_text_system.shape_line(text, ghost_shell_gpui::px(14.0), &runs, None);
         assert!(!std::ptr::eq::<LineLayout>(
             &**first_layout,
             &**refreshed_layout
@@ -1616,7 +1649,7 @@ mod tests {
     #[test]
     fn layout_line_with_font_run_straddling_a_separator() -> Result<()> {
         let text_system = text_system()?;
-        let font_id = text_system.font_id(&gpui::font("IBM Plex Sans"))?;
+        let font_id = text_system.font_id(&ghost_shell_gpui::font("IBM Plex Sans"))?;
         let text = "ab\u{001c}\u{05d0}\u{05d1}";
 
         // The run boundary falls inside the trailing RTL paragraph.
@@ -1630,7 +1663,7 @@ mod tests {
                 font_id,
             },
         ];
-        let layout = text_system.layout_line(text, gpui::px(14.0), &runs);
+        let layout = text_system.layout_line(text, ghost_shell_gpui::px(14.0), &runs);
 
         assert_eq!(layout.len, text.len());
         assert!(layout.width > Pixels::ZERO);

@@ -2791,6 +2791,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghost-shell-component-icon"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+]
+
+[[package]]
+name = "ghost-shell-component-input"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+ "log",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "ghost-shell-component-menu"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-component-icon",
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+]
+
+[[package]]
+name = "ghost-shell-component-root"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-component-icon",
+ "ghost-shell-component-input",
+ "ghost-shell-component-menu",
+ "ghost-shell-component-spinner",
+ "ghost-shell-component-virtual-list",
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+]
+
+[[package]]
+name = "ghost-shell-component-spinner"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-component-icon",
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+]
+
+[[package]]
+name = "ghost-shell-component-virtual-list"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-gpui",
+ "smallvec",
+]
+
+[[package]]
 name = "ghost-shell-config"
 version = "0.1.0"
 dependencies = [
@@ -3076,8 +3133,12 @@ name = "ghost-shell-theme"
 version = "0.1.0"
 dependencies = [
  "ghost-shell-config",
+ "ghost-shell-gpui",
  "gpui",
  "gpui-component",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,85 +1,186 @@
-use ghost_shell_config::Base16Config;
-use gpui::{Hsla, rgb};
-use gpui_component::Theme;
+// Adapted from GPUI Kit 0e63ea799766, copyright 2024 - 2026 Longbridge.
+// Modified for Ghost Shell; see LICENSE.md, NOTICE, and crates/ghost-shell-components/UPSTREAM.md.
 
-pub fn apply_base16(theme: &mut Theme, palette: &Base16Config) {
-    let base00 = color(palette.base00);
-    let base01 = color(palette.base01);
-    let base02 = color(palette.base02);
-    let base03 = color(palette.base03);
-    let base04 = color(palette.base04);
-    let base05 = color(palette.base05);
-    let base06 = color(palette.base06);
-    let base07 = color(palette.base07);
-    let base08 = color(palette.base08);
-    let base09 = color(palette.base09);
-    let base0a = color(palette.base0a);
-    let base0b = color(palette.base0b);
-    let base0c = color(palette.base0c);
-    let base0d = color(palette.base0d);
-    let base0e = color(palette.base0e);
-    let base0f = color(palette.base0f);
+mod focus;
+mod sizing;
+mod tokens;
 
-    // Main surfaces.
-    theme.colors.background = base00;
-    theme.colors.foreground = base05;
+#[cfg(feature = "legacy")]
+pub mod legacy;
 
-    // Subdued surfaces and text.
-    theme.colors.muted = base01;
-    theme.colors.muted_foreground = base03;
+use std::ops::{Deref, DerefMut};
 
-    theme.colors.secondary = base01;
-    theme.colors.secondary_foreground = base05;
-    theme.colors.secondary_hover = base02;
-    theme.colors.secondary_active = base02;
+pub use focus::{FocusTrapContainer, FocusTrapElement, active_focus_trap};
+use ghost_shell_gpui::{App, Global, WindowAppearance};
+use serde::{Deserialize, Serialize};
+pub use sizing::{Sizable, Size};
+pub use tokens::*;
 
-    // Borders and inputs.
-    theme.colors.border = base02;
-    theme.colors.input = base01;
-    theme.colors.ring = base0d;
-
-    // Popovers.
-    theme.colors.popover = base00;
-    theme.colors.popover_foreground = base05;
-
-    // Selection / list states.
-    theme.colors.accent = base01;
-    theme.colors.accent_foreground = base05;
-
-    theme.colors.selection = base02;
-
-    theme.colors.list = base00;
-    theme.colors.list_hover = base01;
-    theme.colors.list_active = base02;
-    theme.colors.list_active_border = base03;
-
-    // Primary accent.
-    theme.colors.primary = base0d;
-    theme.colors.primary_foreground = base00;
-
-    // Links / focus-like accent.
-    theme.colors.link = base0d;
-
-    // Semantic states.
-    theme.colors.danger = base08;
-    theme.colors.warning = base0a;
-    theme.colors.success = base0b;
-    theme.colors.info = base0d;
-
-    // Generic named colors used by gpui-component.
-    theme.colors.red = base08;
-    theme.colors.yellow = base0a;
-    theme.colors.green = base0b;
-    theme.colors.cyan = base0c;
-    theme.colors.blue = base0d;
-    theme.colors.magenta = base0e;
-
-    // Keep tokens synchronized with ThemeColor.
-    theme.tokens = (&theme.colors).into();
-
-    let _ = (base04, base06, base07, base09, base0f);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    #[default]
+    Light,
+    Dark,
 }
 
-fn color(value: u32) -> Hsla {
-    rgb(value).into()
+impl From<WindowAppearance> for ThemeMode {
+    fn from(appearance: WindowAppearance) -> Self {
+        match appearance {
+            WindowAppearance::Light | WindowAppearance::VibrantLight => Self::Light,
+            WindowAppearance::Dark | WindowAppearance::VibrantDark => Self::Dark,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Theme {
+    pub mode: ThemeMode,
+    pub tokens: SemanticThemeTokens,
+    pub focus_ring: bool,
+}
+
+impl Global for Theme {}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self::new(ThemeMode::Light)
+    }
+}
+
+impl Theme {
+    pub fn new(mode: ThemeMode) -> Self {
+        let colors = match mode {
+            ThemeMode::Light => ColorTokens::light(),
+            ThemeMode::Dark => ColorTokens::dark(),
+        };
+        Self {
+            mode,
+            tokens: SemanticThemeTokens {
+                colors,
+                ..Default::default()
+            },
+            focus_ring: true,
+        }
+    }
+
+    pub fn global(cx: &App) -> &Self {
+        cx.global::<Self>()
+    }
+
+    pub fn set(theme: Self, cx: &mut App) {
+        cx.set_global(theme);
+        cx.refresh_windows();
+    }
+
+    // Accept palette values instead of AppConfig: config still uses upstream GPUI
+    // until the application migration, and must not enter the component graph.
+    pub fn apply_base16(&mut self, palette: &[u32; 16]) {
+        let color = |index: usize| {
+            ghost_shell_gpui::Hsla::from(ghost_shell_gpui::rgb(palette[index]))
+        };
+        self.tokens.colors = ColorTokens {
+            background: color(0),
+            foreground: color(5),
+            surface: color(0),
+            surface_foreground: color(5),
+            primary: color(13),
+            primary_foreground: color(0),
+            secondary: color(1),
+            secondary_foreground: color(5),
+            muted: color(1),
+            muted_foreground: color(3),
+            accent: color(1),
+            accent_foreground: color(5),
+            destructive: color(8),
+            destructive_foreground: color(0),
+            border: color(2),
+            input: color(1),
+            ring: color(13),
+            selection: color(2),
+        };
+    }
+}
+
+impl Deref for Theme {
+    type Target = ColorTokens;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tokens.colors
+    }
+}
+
+impl DerefMut for Theme {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tokens.colors
+    }
+}
+
+pub trait ActiveTheme {
+    fn theme(&self) -> &Theme;
+}
+
+impl ActiveTheme for App {
+    fn theme(&self) -> &Theme {
+        Theme::global(self)
+    }
+}
+
+pub fn init(cx: &mut App) {
+    if !cx.has_global::<Theme>() {
+        cx.set_global(Theme::new(cx.window_appearance().into()));
+    }
+    focus::init(cx);
+}
+
+#[cfg(test)]
+mod tests {
+    use ghost_shell_gpui::TestAppContext;
+
+    use super::*;
+
+    #[test]
+    fn palettes_and_appearance_are_consistent() {
+        assert_eq!(
+            Theme::new(ThemeMode::Light).tokens.colors,
+            ColorTokens::light()
+        );
+        assert_eq!(
+            Theme::new(ThemeMode::Dark).tokens.colors,
+            ColorTokens::dark()
+        );
+        assert_eq!(ThemeMode::from(WindowAppearance::Dark), ThemeMode::Dark);
+    }
+
+    #[test]
+    fn base16_updates_the_single_source_of_colors() {
+        let mut theme = Theme::new(ThemeMode::Dark);
+        let palette = std::array::from_fn(|index| (index as u32) * 0x101010);
+        theme.apply_base16(&palette);
+        assert_eq!(
+            theme.background,
+            ghost_shell_gpui::Hsla::from(ghost_shell_gpui::rgb(palette[0]))
+        );
+        assert_eq!(
+            theme.foreground,
+            ghost_shell_gpui::Hsla::from(ghost_shell_gpui::rgb(palette[5]))
+        );
+        assert_eq!(
+            theme.primary,
+            ghost_shell_gpui::Hsla::from(ghost_shell_gpui::rgb(palette[13]))
+        );
+        assert_eq!(theme.mode, ThemeMode::Dark);
+    }
+
+    #[ghost_shell_gpui::test]
+    fn initialization_preserves_the_installed_theme(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            let mut theme = Theme::new(ThemeMode::Dark);
+            theme.tokens.typography.sans = "Ghost Test".into();
+            Theme::set(theme.clone(), cx);
+            init(cx);
+            init(cx);
+            assert_eq!(cx.theme(), &theme);
+        });
+    }
 }

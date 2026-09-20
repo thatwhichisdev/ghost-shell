@@ -1,0 +1,27 @@
+[package]
+name = "ghost-shell-component-root"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+license = "Apache-2.0"
+
+[lib]
+path = "src/root.rs"
+
+[dependencies]
+ghost-shell-gpui.workspace = true
+ghost-shell-theme.workspace = true
+
+[dev-dependencies]
+ghost-shell-gpui = { workspace = true, features = ["test-support"] }
+ghost-shell-component-icon.workspace = true
+ghost-shell-component-input.workspace = true
+ghost-shell-component-menu.workspace = true
+ghost-shell-component-spinner.workspace = true
+ghost-shell-component-virtual-list.workspace = true
+
+[[example]]
+name = "hello_components"
+path = "examples/hello_components.rs"

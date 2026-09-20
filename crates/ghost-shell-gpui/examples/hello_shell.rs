@@ -1,5 +1,4 @@
-use ghost_shell_gpui as gpui;
-use gpui::{
+use ghost_shell_gpui::{
     AppContext, Context, IntoElement, Render, Window, WindowOptions, div, prelude::*,
 };
 
@@ -12,14 +11,14 @@ impl Render for HelloShell {
             .flex()
             .items_center()
             .justify_center()
-            .bg(gpui::rgb(0x181818))
-            .text_color(gpui::rgb(0xeeeeee))
+            .bg(ghost_shell_gpui::rgb(0x181818))
+            .text_color(ghost_shell_gpui::rgb(0xeeeeee))
             .child("Ghost GPUI — Wayland")
     }
 }
 
 fn main() {
-    gpui::application().run(|cx| {
+    ghost_shell_gpui::application().run(|cx| {
         if let Err(error) =
             cx.open_window(WindowOptions::default(), |_, cx| cx.new(|_| HelloShell))
         {

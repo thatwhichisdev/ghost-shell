@@ -18,6 +18,20 @@ For a graphical smoke test inside a Wayland session:
 cargo run -p ghost-shell-gpui --example hello_shell
 ```
 
-Use `ghost-shell-gpui` as the public dependency, aliased to `gpui` when retaining
-upstream-style imports and procedural macros. Do not mix its entities with the
-old upstream GPUI or components that still depend on it.
+Use `ghost-shell-gpui` as the public Cargo dependency:
+
+```toml
+[dependencies]
+ghost-shell-gpui.workspace = true
+```
+
+Import it directly under its Rust crate name:
+
+```rust,ignore
+use ghost_shell_gpui::{Context, Render, Window, div, prelude::*};
+```
+
+Derives, actions, and test macros also use `ghost_shell_gpui`; no `gpui` alias
+is needed. Do not mix its entities with upstream GPUI or components that still
+depend on it. Internal renderer/runtime crates depend on the local core under
+the same import name to avoid a dependency cycle through the platform facade.

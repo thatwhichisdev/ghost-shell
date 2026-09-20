@@ -21,7 +21,7 @@ ghost-shell-ipc.workspace = true
 ghost-shell-launcher.workspace = true
 ghost-shell-lockscreen.workspace = true
 ghost-shell-niri.workspace = true
-ghost-shell-theme.workspace = true
+ghost-shell-theme = { workspace = true, features = ["legacy"] }
 ghost-shell-wallpaper.workspace = true
 
 gpui.workspace = true

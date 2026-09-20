@@ -1,0 +1,18 @@
+[package]
+name = "ghost-shell-component-virtual-list"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+license = "Apache-2.0"
+
+[lib]
+path = "src/virtual_list.rs"
+
+[dependencies]
+ghost-shell-gpui.workspace = true
+smallvec.workspace = true
+
+[dev-dependencies]
+ghost-shell-gpui = { workspace = true, features = ["test-support"] }

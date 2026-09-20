@@ -122,17 +122,17 @@ pub(crate) fn derive_action(input: TokenStream) -> TokenStream {
 
     let build_fn_body = if no_json {
         let error_msg = format!("{} cannot be built from JSON", full_name);
-        quote! { Err(gpui::private::anyhow::anyhow!(#error_msg)) }
+        quote! { Err(ghost_shell_gpui::private::anyhow::anyhow!(#error_msg)) }
     } else if is_unit_struct {
         quote! { Ok(Box::new(Self)) }
     } else {
-        quote! { Ok(Box::new(gpui::private::serde_json::from_value::<Self>(_value)?)) }
+        quote! { Ok(Box::new(ghost_shell_gpui::private::serde_json::from_value::<Self>(_value)?)) }
     };
 
     let json_schema_fn_body = if no_json || is_unit_struct {
         quote! { None }
     } else {
-        quote! { Some(<Self as gpui::private::schemars::JsonSchema>::json_schema(_generator)) }
+        quote! { Some(<Self as ghost_shell_gpui::private::schemars::JsonSchema>::json_schema(_generator)) }
     };
 
     let deprecated_aliases_fn_body = if deprecated_aliases.is_empty() {
@@ -164,7 +164,7 @@ pub(crate) fn derive_action(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #registration
 
-        impl gpui::Action for #struct_name {
+        impl ghost_shell_gpui::Action for #struct_name {
             fn name(&self) -> &'static str {
                 #full_name
             }
@@ -176,24 +176,24 @@ pub(crate) fn derive_action(input: TokenStream) -> TokenStream {
                 #full_name
             }
 
-            fn partial_eq(&self, action: &dyn gpui::Action) -> bool {
+            fn partial_eq(&self, action: &dyn ghost_shell_gpui::Action) -> bool {
                 action
                     .as_any()
                     .downcast_ref::<Self>()
                     .map_or(false, |a| self == a)
             }
 
-            fn boxed_clone(&self) -> Box<dyn gpui::Action> {
+            fn boxed_clone(&self) -> Box<dyn ghost_shell_gpui::Action> {
                 Box::new(self.clone())
             }
 
-            fn build(_value: gpui::private::serde_json::Value) -> gpui::Result<Box<dyn gpui::Action>> {
+            fn build(_value: ghost_shell_gpui::private::serde_json::Value) -> ghost_shell_gpui::Result<Box<dyn ghost_shell_gpui::Action>> {
                 #build_fn_body
             }
 
             fn action_json_schema(
-                _generator: &mut gpui::private::schemars::SchemaGenerator,
-            ) -> Option<gpui::private::schemars::Schema> {
+                _generator: &mut ghost_shell_gpui::private::schemars::SchemaGenerator,
+            ) -> Option<ghost_shell_gpui::private::schemars::Schema> {
                 #json_schema_fn_body
             }
 

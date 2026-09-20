@@ -1,5 +1,7 @@
 //! Ghost's Wayland-only GPUI entry point.
 
+extern crate self as ghost_shell_gpui;
+
 #[cfg(not(target_os = "linux"))]
 compile_error!("ghost-shell-gpui supports Linux with Wayland only");
 

@@ -13,6 +13,7 @@ A file for [guiding coding agents](https://agents.md/).
 - readme assets: `assets/`
 - app crates: `crates/`
 - widget crates: `crates/ghost-shell-widgets/`
+- ui components crates: `crates/ghost-shell-components/`
 
 ## Development Guidelines
 
@@ -250,9 +251,9 @@ propagation, image processing, and future extension dispatch.
 ## References and Inspiration
 
 - Use the repository's existing code and architecture as the first reference.
-- Use Zed and GPUI as implementation references for GPUI patterns, rendering,
+- Use self-contained Zed's GPUI fork as references for GPUI patterns, rendering,
   input, window lifecycle, and platform integration.
-- Use GPUI Component for reusable UI patterns where applicable.
+- Use self-contained gpui kit fork for reusable UI patterns where applicable.
 - Use Niri's source, IPC definitions, and documentation as the authority for
   Niri behavior.
 - Use official Wayland protocol specifications and `wayland-rs` generated APIs

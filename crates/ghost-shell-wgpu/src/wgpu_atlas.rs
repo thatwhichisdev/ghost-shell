@@ -2,7 +2,7 @@ use std::{borrow::Cow, ops, sync::Arc};
 
 use anyhow::{Context as _, Result};
 use etagere::{BucketedAtlasAllocator, size2};
-use gpui::{
+use ghost_shell_gpui::{
     AtlasBackend, AtlasKey, AtlasState, AtlasTextureId, AtlasTextureKind,
     AtlasTextureList, AtlasTile, Bounds, DevicePixels, PlatformAtlas, Point, Size,
 };
@@ -422,8 +422,8 @@ fn swizzle_upload_data(bytes: &[u8], format: wgpu::TextureFormat) -> Vec<u8> {
 mod tests {
     use std::sync::Arc;
 
-    use gpui::block_on;
-    use gpui::{ImageId, RenderImageParams};
+    use ghost_shell_gpui::block_on;
+    use ghost_shell_gpui::{ImageId, RenderImageParams};
 
     use super::*;
 

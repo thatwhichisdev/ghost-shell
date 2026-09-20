@@ -25,45 +25,45 @@ pub fn derive_visual_context(input: TokenStream) -> TokenStream {
     let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
 
     let r#gen = quote! {
-        impl #impl_generics gpui::VisualContext for #type_name #type_generics
+        impl #impl_generics ghost_shell_gpui::VisualContext for #type_name #type_generics
         #where_clause
         {
             type Result<T> = T;
 
-            fn window_handle(&self) -> gpui::AnyWindowHandle {
+            fn window_handle(&self) -> ghost_shell_gpui::AnyWindowHandle {
                 self.#window_variable.window_handle()
             }
 
             fn update_window_entity<T: 'static, R>(
                 &mut self,
-                entity: &gpui::Entity<T>,
-                update: impl FnOnce(&mut T, &mut gpui::Window, &mut gpui::Context<T>) -> R,
+                entity: &ghost_shell_gpui::Entity<T>,
+                update: impl FnOnce(&mut T, &mut ghost_shell_gpui::Window, &mut ghost_shell_gpui::Context<T>) -> R,
             ) -> R {
-                gpui::AppContext::update_entity(self.#app_variable, entity, |entity, cx| update(entity, self.#window_variable, cx))
+                ghost_shell_gpui::AppContext::update_entity(self.#app_variable, entity, |entity, cx| update(entity, self.#window_variable, cx))
             }
 
             fn new_window_entity<T: 'static>(
                 &mut self,
-                build_entity: impl FnOnce(&mut gpui::Window, &mut gpui::Context<'_, T>) -> T,
-            ) -> gpui::Entity<T> {
-                gpui::AppContext::new(self.#app_variable, |cx| build_entity(self.#window_variable, cx))
+                build_entity: impl FnOnce(&mut ghost_shell_gpui::Window, &mut ghost_shell_gpui::Context<'_, T>) -> T,
+            ) -> ghost_shell_gpui::Entity<T> {
+                ghost_shell_gpui::AppContext::new(self.#app_variable, |cx| build_entity(self.#window_variable, cx))
             }
 
             fn replace_root_view<V>(
                 &mut self,
-                build_view: impl FnOnce(&mut gpui::Window, &mut gpui::Context<V>) -> V,
-            ) -> gpui::Entity<V>
+                build_view: impl FnOnce(&mut ghost_shell_gpui::Window, &mut ghost_shell_gpui::Context<V>) -> V,
+            ) -> ghost_shell_gpui::Entity<V>
             where
-                V: 'static + gpui::Render,
+                V: 'static + ghost_shell_gpui::Render,
             {
                 self.#window_variable.replace_root(self.#app_variable, build_view)
             }
 
-            fn focus<V>(&mut self, entity: &gpui::Entity<V>)
+            fn focus<V>(&mut self, entity: &ghost_shell_gpui::Entity<V>)
             where
-                V: gpui::Focusable,
+                V: ghost_shell_gpui::Focusable,
             {
-                let focus_handle = gpui::Focusable::focus_handle(entity, self.#app_variable);
+                let focus_handle = ghost_shell_gpui::Focusable::focus_handle(entity, self.#app_variable);
                 self.#window_variable.focus(&focus_handle, self.#app_variable);
             }
         }

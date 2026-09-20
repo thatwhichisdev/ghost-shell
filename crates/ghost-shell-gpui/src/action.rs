@@ -14,7 +14,7 @@ use serde_json::json;
 /// For example:
 ///
 /// ```
-/// use gpui::actions;
+/// use ghost_shell_gpui::actions;
 /// actions!(editor, [MoveUp, MoveDown, MoveLeft, MoveRight, Newline]);
 /// ```
 ///
@@ -25,7 +25,7 @@ use serde_json::json;
 macro_rules! actions {
     ($namespace:path, [ $( $(#[$attr:meta])* $name:ident),* $(,)? ]) => {
         $(
-            #[derive(::std::clone::Clone, ::std::cmp::PartialEq, ::std::default::Default, ::std::fmt::Debug, gpui::Action)]
+            #[derive(::std::clone::Clone, ::std::cmp::PartialEq, ::std::default::Default, ::std::fmt::Debug, ghost_shell_gpui::Action)]
             #[action(namespace = $namespace)]
             $(#[$attr])*
             pub struct $name;
@@ -33,7 +33,7 @@ macro_rules! actions {
     };
     ([ $( $(#[$attr:meta])* $name:ident),* $(,)? ]) => {
         $(
-            #[derive(::std::clone::Clone, ::std::cmp::PartialEq, ::std::default::Default, ::std::fmt::Debug, gpui::Action)]
+            #[derive(::std::clone::Clone, ::std::cmp::PartialEq, ::std::default::Default, ::std::fmt::Debug, ghost_shell_gpui::Action)]
             $(#[$attr])*
             pub struct $name;
         )*
@@ -47,7 +47,7 @@ macro_rules! actions {
 /// struct action for each listed action name in the given namespace.
 ///
 /// ```
-/// use gpui::actions;
+/// use ghost_shell_gpui::actions;
 /// actions!(editor, [MoveUp, MoveDown, MoveLeft, MoveRight, Newline]);
 /// ```
 ///
@@ -58,7 +58,7 @@ macro_rules! actions {
 /// More complex data types can also be actions, by using the derive macro for `Action`:
 ///
 /// ```
-/// use gpui::Action;
+/// use ghost_shell_gpui::Action;
 /// #[derive(Clone, PartialEq, serde::Deserialize, schemars::JsonSchema, Action)]
 /// #[action(namespace = editor)]
 /// pub struct SelectNext {
@@ -97,18 +97,18 @@ macro_rules! actions {
 /// `main`.
 ///
 /// ```
-/// use gpui::{SharedString, register_action};
+/// use ghost_shell_gpui::{SharedString, register_action};
 /// #[derive(Clone, PartialEq, Eq, serde::Deserialize, schemars::JsonSchema)]
 /// pub struct Paste {
 ///     pub content: SharedString,
 /// }
 ///
-/// impl gpui::Action for Paste {
-///     # fn boxed_clone(&self) -> Box<dyn gpui::Action> { unimplemented!()}
-///     # fn partial_eq(&self, other: &dyn gpui::Action) -> bool { unimplemented!() }
+/// impl ghost_shell_gpui::Action for Paste {
+///     # fn boxed_clone(&self) -> Box<dyn ghost_shell_gpui::Action> { unimplemented!()}
+///     # fn partial_eq(&self, other: &dyn ghost_shell_gpui::Action) -> bool { unimplemented!() }
 ///     # fn name(&self) -> &'static str { "Paste" }
 ///     # fn name_for_type() -> &'static str { "Paste" }
-///     # fn build(value: serde_json::Value) -> anyhow::Result<Box<dyn gpui::Action>> {
+///     # fn build(value: serde_json::Value) -> anyhow::Result<Box<dyn ghost_shell_gpui::Action>> {
 ///     #     unimplemented!()
 ///     # }
 /// }
@@ -431,8 +431,6 @@ mod no_action {
     use schemars::JsonSchema;
     use serde::Deserialize;
 
-    use crate as gpui;
-
     actions!(
         zed,
         [
@@ -448,17 +446,19 @@ mod no_action {
     /// In keymap JSON this is written as:
     ///
     /// `["zed::Unbind", "editor::NewLine"]`
-    #[derive(Clone, Debug, PartialEq, Deserialize, JsonSchema, gpui::Action)]
+    #[derive(
+        Clone, Debug, PartialEq, Deserialize, JsonSchema, ghost_shell_gpui::Action,
+    )]
     #[action(namespace = zed)]
-    pub struct Unbind(pub gpui::SharedString);
+    pub struct Unbind(pub ghost_shell_gpui::SharedString);
 
     /// Returns whether or not this action represents a removed key binding.
-    pub fn is_no_action(action: &dyn gpui::Action) -> bool {
+    pub fn is_no_action(action: &dyn ghost_shell_gpui::Action) -> bool {
         action.as_any().is::<NoAction>()
     }
 
     /// Returns whether or not this action represents an unbind marker.
-    pub fn is_unbind(action: &dyn gpui::Action) -> bool {
+    pub fn is_unbind(action: &dyn ghost_shell_gpui::Action) -> bool {
         action.as_any().is::<Unbind>()
     }
 }

@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context as _, Result};
 use bytemuck::{Pod, Zeroable};
-use gpui::{
+use ghost_shell_gpui::{
     AtlasTextureId, Background, Bounds, DevicePixels, GpuSpecs, Path, Point,
     PrimitiveBatch, ScaledPixels, Scene, Size, get_gamma_correction_ratios,
 };
@@ -1826,9 +1826,9 @@ impl WgpuRenderer {
         };
 
         let config = WgpuSurfaceConfig {
-            size: gpui::Size {
-                width: gpui::DevicePixels(self.surface_config.width as i32),
-                height: gpui::DevicePixels(self.surface_config.height as i32),
+            size: ghost_shell_gpui::Size {
+                width: ghost_shell_gpui::DevicePixels(self.surface_config.width as i32),
+                height: ghost_shell_gpui::DevicePixels(self.surface_config.height as i32),
             },
             transparent: self.surface_config.alpha_mode
                 != wgpu::CompositeAlphaMode::Opaque,
