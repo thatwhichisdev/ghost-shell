@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     fs::File,
     io::BufReader,
@@ -8,13 +9,13 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use ghost_shell_app::GhostShell;
 use ghost_shell_config::AppConfig;
 use ghost_shell_gpui::{
-    App, AppContext as _, Bounds, Context, DevicePixels, Entity, Global, IntoElement,
-    ObjectFit, Point, Render, RenderImage, Rgba, Size, Styled as _, StyledImage as _,
-    Subscription, Task, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
-    WindowKind, WindowOptions, div, img,
+    App, AppContext as _, BorrowAppContext as _, Bounds, Context, DevicePixels,
+    DisplayId, Entity, Global, IntoElement, ObjectFit, Pixels, Point, Render,
+    RenderImage, Rgba, Size, Styled as _, StyledImage as _, Subscription, Task, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
+    div, img,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
     px, rgba,
 };
@@ -29,11 +30,20 @@ pub fn init(cx: &mut App) {
     manager.open(cx);
 
     cx.set_global(manager);
+    cx.on_displays_changed(|cx| {
+        cx.update_global::<WallpaperManager, _>(|manager, cx| manager.open(cx));
+    })
+    .detach();
 }
 
 pub struct WallpaperManager {
     pub source: WallpaperSource,
-    windows: Vec<WindowHandle<Wallpaper>>,
+    windows: HashMap<DisplayId, WallpaperWindow>,
+}
+
+struct WallpaperWindow {
+    handle: WindowHandle<Wallpaper>,
+    size: Size<Pixels>,
 }
 
 #[derive(Clone)]
@@ -107,7 +117,7 @@ impl WallpaperManager {
 
         Self {
             source,
-            windows: Vec::new(),
+            windows: HashMap::new(),
         }
     }
 
@@ -210,11 +220,29 @@ impl WallpaperManager {
     }
 
     pub fn open(&mut self, cx: &mut App) {
-        if !self.windows.is_empty() {
-            return;
-        }
+        let displays = cx.displays();
+        let windows = cx.windows();
+        self.windows.retain(|display_id, wallpaper| {
+            let is_open = windows.contains(&wallpaper.handle.into());
+            if is_open && displays.iter().any(|display| {
+                display.id() == *display_id && display.bounds().size == wallpaper.size
+            }) {
+                return true;
+            }
+            // The compositor may have already closed the disconnected output's surface.
+            if is_open {
+                if let Err(error) = wallpaper.handle.update(cx, |_, window, _| window.remove_window()) {
+                    log::error!("Failed to close wallpaper surface on display {display_id:?}: {error:#}");
+                    return true;
+                }
+            }
+            false
+        });
 
-        for display in cx.global::<GhostShell>().get_displays() {
+        for display in displays {
+            if self.windows.contains_key(&display.id()) {
+                continue;
+            }
             let window_options = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(display.bounds())),
                 titlebar: None,
@@ -241,7 +269,15 @@ impl WallpaperManager {
             match cx
                 .open_window(window_options, move |window, cx| source.entity(window, cx))
             {
-                Ok(handle) => self.windows.push(handle),
+                Ok(handle) => {
+                    self.windows.insert(
+                        display.id(),
+                        WallpaperWindow {
+                            handle,
+                            size: display.bounds().size,
+                        },
+                    );
+                }
                 Err(error) => {
                     log::error!(
                         "Failed to open wallpaper surface on display {:?}: {error:#}",
@@ -636,5 +672,162 @@ impl FrameDelta {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::rc::Rc;
+
+    use ghost_shell_gpui::{PlatformDisplay, QuitMode, TestAppContext, accesskit::Uuid};
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct Display {
+        id: DisplayId,
+        size: Size<Pixels>,
+    }
+
+    impl PlatformDisplay for Display {
+        fn id(&self) -> DisplayId {
+            self.id
+        }
+        fn uuid(&self) -> Result<Uuid> {
+            Ok(Uuid::from_u128(u64::from(self.id).into()))
+        }
+        fn bounds(&self) -> Bounds<Pixels> {
+            Bounds::new(Point::default(), self.size)
+        }
+    }
+
+    fn display(id: u64, width: f32) -> Rc<dyn PlatformDisplay> {
+        Rc::new(Display {
+            id: DisplayId::new(id),
+            size: Size::new(px(width), px(1080.0)),
+        })
+    }
+
+    fn start(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            cx.set_quit_mode(QuitMode::Explicit);
+            cx.set_global(AppConfig::default());
+            init(cx);
+        });
+    }
+
+    fn handle(cx: &mut TestAppContext, id: u64) -> WindowHandle<Wallpaper> {
+        cx.update(|cx| {
+            cx.global::<WallpaperManager>().windows[&DisplayId::new(id)].handle
+        })
+    }
+
+    #[ghost_shell_gpui::test]
+    fn reconnect_creates_a_new_wallpaper_without_replacing_other_windows(
+        cx: &mut TestAppContext,
+    ) {
+        let internal = display(1, 1920.0);
+        let external = display(2, 2560.0);
+        cx.set_displays(vec![internal.clone(), external.clone()]);
+        start(cx);
+        let internal_window = handle(cx, 1);
+        let old_external_window = handle(cx, 2);
+        let old_wallpaper = old_external_window
+            .entity(cx)
+            .unwrap()
+            .downgrade();
+
+        cx.set_displays(vec![internal.clone(), external]);
+        assert_eq!(handle(cx, 1), internal_window);
+        assert_eq!(handle(cx, 2), old_external_window);
+        assert_eq!(cx.update(|cx| cx.windows().len()), 2);
+
+        cx.set_displays(vec![internal.clone()]);
+        assert_eq!(handle(cx, 1), internal_window);
+        assert_eq!(cx.update(|cx| cx.windows().len()), 1);
+        assert!(old_wallpaper.upgrade().is_none());
+
+        cx.set_displays(vec![internal, display(3, 2560.0)]);
+        assert_eq!(handle(cx, 1), internal_window);
+        assert_ne!(handle(cx, 3), old_external_window);
+        assert_eq!(cx.update(|cx| cx.windows().len()), 2);
+        handle(cx, 3)
+            .update(cx, |wallpaper, window, cx| {
+                assert!(matches!(wallpaper, Wallpaper::Solid(_)));
+                assert_eq!(window.display(cx).unwrap().id(), DisplayId::new(3));
+            })
+            .unwrap();
+    }
+
+    #[ghost_shell_gpui::test]
+    fn closed_windows_and_changed_sizes_are_reconciled(cx: &mut TestAppContext) {
+        let initial = display(1, 1920.0);
+        cx.set_displays(vec![initial.clone()]);
+        start(cx);
+        let closed = handle(cx, 1);
+        cx.update(|cx| {
+            closed
+                .update(cx, |_, window, _| window.remove_window())
+                .unwrap()
+        });
+        cx.set_displays(vec![initial]);
+        let replacement = handle(cx, 1);
+        assert_ne!(replacement, closed);
+
+        cx.set_displays(vec![display(1, 2560.0)]);
+        assert_ne!(handle(cx, 1), replacement);
+        assert_eq!(cx.update(|cx| cx.windows().len()), 1);
+        cx.set_displays(Vec::new());
+        cx.update(|cx| {
+            assert!(cx.windows().is_empty());
+            assert!(
+                cx.global::<WallpaperManager>()
+                    .windows
+                    .is_empty()
+            );
+        });
+        cx.set_displays(Vec::new());
+        cx.set_displays(vec![display(4, 1920.0)]);
+        assert_eq!(cx.update(|cx| cx.windows().len()), 1);
+    }
+
+    #[ghost_shell_gpui::test]
+    fn animated_wallpaper_is_released_and_recreated_from_the_loaded_source(
+        cx: &mut TestAppContext,
+    ) {
+        cx.set_displays(Vec::new());
+        start(cx);
+        let source = Arc::new(Animation {
+            width: 1,
+            height: 1,
+            initial: Frame {
+                pixels: vec![0, 0, 0, 255].into_boxed_slice(),
+                delay: Duration::from_secs(60),
+            },
+            deltas: Vec::new(),
+        });
+        cx.update(|cx| {
+            cx.update_global::<WallpaperManager, _>(|manager, _| {
+                manager.source = WallpaperSource::Animated(source.clone());
+            })
+        });
+        cx.set_displays(vec![display(1, 1920.0)]);
+        let original = handle(cx, 1);
+        let original_entity = original.entity(cx).unwrap().downgrade();
+        cx.set_displays(Vec::new());
+        assert!(original_entity.upgrade().is_none());
+        cx.set_displays(vec![display(2, 1920.0)]);
+        let replacement = handle(cx, 2);
+        assert_ne!(replacement, original);
+        replacement
+            .read_with(cx, |wallpaper, _| {
+                let Wallpaper::Animated(animation) = wallpaper else {
+                    panic!("expected animated wallpaper")
+                };
+                assert!(Arc::ptr_eq(&animation.source, &source));
+                assert!(animation._task.is_some());
+            })
+            .unwrap();
+        cx.set_displays(Vec::new());
     }
 }

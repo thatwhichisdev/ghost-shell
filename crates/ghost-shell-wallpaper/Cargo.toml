@@ -10,7 +10,6 @@ publish.workspace = true
 path = "src/wallpaper.rs"
 
 [dependencies]
-ghost-shell-app.workspace = true
 ghost-shell-config.workspace = true
 
 ghost-shell-gpui.workspace = true
@@ -27,3 +26,6 @@ postcard = { workspace = true, features = ["use-std"] }
 rayon.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
+
+[dev-dependencies]
+ghost-shell-gpui = { workspace = true, features = ["test-support"] }
