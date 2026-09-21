@@ -1,7 +1,7 @@
 # Ghost GPUI
 
 Ghost's local Linux/Wayland UI framework, with Vulkan and OpenGL rendering.
-The application still uses upstream GPUI until its separate migration.
+The shell and its UI components use this framework directly.
 
 See [ORIGIN.md](ORIGIN.md) for the source revision, internal crate boundaries,
 removed functionality, and verification commands.
@@ -32,6 +32,5 @@ use ghost_shell_gpui::{Context, Render, Window, div, prelude::*};
 ```
 
 Derives, actions, and test macros also use `ghost_shell_gpui`; no `gpui` alias
-is needed. Do not mix its entities with upstream GPUI or components that still
-depend on it. Internal renderer/runtime crates depend on the local core under
+is needed. Internal renderer/runtime crates depend on the local core under
 the same import name to avoid a dependency cycle through the platform facade.

@@ -3,7 +3,9 @@ mod state;
 
 use anyhow::{Result, bail};
 use backend::{AudioCommand, Backend};
-use gpui::{App, AppContext as _, Context, Entity, EventEmitter, Global, Task};
+use ghost_shell_gpui::{
+    App, AppContext as _, Context, Entity, EventEmitter, Global, Task,
+};
 use state::AudioUpdate;
 pub use state::{
     AudioCommandError, AudioConnectionStatus, AudioDirection, AudioEndpoint,

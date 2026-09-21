@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt};
 
 use anyhow::{Context as _, Result, bail};
 use client::StatusNotifierItemClient;
-use gpui::{App, AppContext as _, Context, Entity, EventEmitter, Task};
+use ghost_shell_gpui::{App, AppContext as _, Context, Entity, EventEmitter, Task};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -165,7 +165,7 @@ pub(crate) fn init(cx: &mut App) -> Entity<Item> {
 
     let item = cx.new(|_| Item { commands });
 
-    gpui_tokio::Tokio::spawn(cx, async move {
+    ghost_shell_tokio::Tokio::spawn(cx, async move {
         if let Err(error) = run(command_receiver, events).await {
             log::error!(
                 "status notifier item client stopped: \

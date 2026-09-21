@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use ghost_shell_config::AppConfig;
-use gpui::{Context, SharedString, Window, div, prelude::*, px};
+use ghost_shell_gpui::{Context, SharedString, Window, div, prelude::*, px};
 use jiff::Zoned;
 
 pub struct ClockWidget {

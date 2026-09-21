@@ -7,7 +7,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-gpui.workspace = true
+ghost-shell-gpui.workspace = true
 
 anyhow.workspace = true
-rust-embed.workspace = true
+rust-embed = { workspace = true, features = ["include-exclude"] }

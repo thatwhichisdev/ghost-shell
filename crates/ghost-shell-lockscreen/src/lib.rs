@@ -9,11 +9,11 @@ mod lockscreen;
 mod view;
 
 use ghost_shell_actions::Lock;
-use gpui::{App, BorrowAppContext as _};
+use ghost_shell_gpui::{App, BorrowAppContext as _};
 
 use crate::lockscreen::LockManager;
 
-gpui::actions!(lockscreen, [Authenticate, Unlock]);
+ghost_shell_gpui::actions!(lockscreen, [Authenticate, Unlock]);
 
 /// Initializes lockscreen state and action handlers.
 pub fn init(cx: &mut App) {

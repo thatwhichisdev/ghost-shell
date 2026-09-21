@@ -13,9 +13,8 @@ path = "src/wallpaper.rs"
 ghost-shell-app.workspace = true
 ghost-shell-config.workspace = true
 
-gpui.workspace = true
-gpui_platform.workspace = true
-gpui_tokio.workspace = true
+ghost-shell-gpui.workspace = true
+ghost-shell-tokio.workspace = true
 
 anyhow.workspace = true
 image = {

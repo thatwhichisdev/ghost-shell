@@ -10,12 +10,12 @@ publish.workspace = true
 path = "src/tray.rs"
 
 [dependencies]
+ghost-shell-component-menu.workspace = true
 ghost-shell-dbus.workspace = true
 
-gpui-component.workspace = true
 
 anyhow.workspace = true
 freedesktop-icons.workspace = true
-gpui.workspace = true
+ghost-shell-gpui.workspace = true
 image.workspace = true
 log.workspace = true

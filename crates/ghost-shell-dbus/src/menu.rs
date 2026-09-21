@@ -2,7 +2,7 @@ mod client;
 
 use anyhow::{Context as _, Result};
 use client::DbusMenuClient;
-use gpui::{App, AppContext as _, Context, Entity, Task};
+use ghost_shell_gpui::{App, AppContext as _, Context, Entity, Task};
 use tokio::sync::{mpsc, oneshot};
 use zbus::Connection;
 
@@ -156,7 +156,7 @@ pub(crate) fn init(cx: &mut App) -> Entity<Menu> {
 
     let menu = cx.new(|_| Menu { commands });
 
-    gpui_tokio::Tokio::spawn(cx, async move {
+    ghost_shell_tokio::Tokio::spawn(cx, async move {
         if let Err(error) = run(command_receiver).await {
             log::error!("D-Bus menu client stopped: {error:#}");
         }

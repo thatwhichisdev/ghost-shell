@@ -1,12 +1,12 @@
 use anyhow::{Context as _, Result};
 use ghost_shell_actions::{LauncherClose, LauncherToggle};
 use ghost_shell_app::GhostShell;
-use gpui::{
+use ghost_shell_component_root::Root;
+use ghost_shell_gpui::{
     App, AppContext as _, BorrowAppContext as _, Bounds, Global, KeyBinding,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
     px, size,
 };
-use gpui_component::Root;
 
 use crate::{actions::EntrySpawn, view::View};
 
@@ -74,7 +74,7 @@ impl Launcher {
 
         let handle = cx.open_window(window_options, |window, cx| {
             let view = cx.new(|cx| View::new(window, cx));
-            cx.new(|cx| Root::new(view, window, cx).bordered(false))
+            cx.new(|cx| Root::new(view, window, cx))
         })?;
 
         self.handle = Some(handle);

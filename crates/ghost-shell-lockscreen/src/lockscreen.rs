@@ -1,11 +1,11 @@
 //! Session-lock window lifecycle.
 use anyhow::Result;
 use ghost_shell_app::GhostShell;
-use gpui::{
+use ghost_shell_component_root::Root;
+use ghost_shell_gpui::{
     App, AppContext as _, Global, WindowBackgroundAppearance, WindowBounds, WindowHandle,
     WindowKind, WindowOptions,
 };
-use gpui_component::Root;
 
 use crate::view::LockView;
 
@@ -57,7 +57,7 @@ impl LockManager {
 
             let handle = cx.open_window(window_options, |window, cx| {
                 let view = cx.new(|cx| LockView::new(window, cx));
-                cx.new(|cx| Root::new(view, window, cx).bordered(false))
+                cx.new(|cx| Root::new(view, window, cx))
             })?;
 
             self.windows.push(handle);

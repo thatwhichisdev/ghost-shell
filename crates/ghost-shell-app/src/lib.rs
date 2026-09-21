@@ -2,8 +2,8 @@ pub mod app;
 
 pub use app::*;
 use ghost_shell_config::AppConfig;
+use ghost_shell_gpui::{App, BorrowAppContext, accesskit::Uuid};
 use ghost_shell_niri::NiriState;
-use gpui::{App, BorrowAppContext, accesskit::Uuid};
 
 pub fn init(cx: &mut App) {
     let output_focused = cx.global::<NiriState>().focused_output();

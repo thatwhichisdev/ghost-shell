@@ -1,16 +1,14 @@
 use std::rc::Rc;
 
 use ghost_shell_actions::LauncherClose;
-use ghost_shell_niri::NiriClient;
-use gpui::{
+use ghost_shell_component_input::{Input, InputEvent, InputState, MoveDown, MoveUp};
+use ghost_shell_component_virtual_list::{VirtualListScrollHandle, v_virtual_list};
+use ghost_shell_gpui::{
     App, Context, Div, Entity, IntoElement, ObjectFit, Pixels, Render, ScrollStrategy,
     Size, Stateful, Subscription, Window, div, img, prelude::*, px, size,
 };
-use gpui_component::{
-    ActiveTheme as _, StyledExt, VirtualListScrollHandle,
-    input::{Input, InputEvent, InputState, MoveDown, MoveUp},
-    v_virtual_list,
-};
+use ghost_shell_niri::NiriClient;
+use ghost_shell_theme::ActiveTheme as _;
 use neo_frizbee::Config;
 
 use crate::{
@@ -189,7 +187,7 @@ impl View {
             entry.command.clone()
         };
 
-        let spawn_task = gpui_tokio::Tokio::spawn_result(cx, async move {
+        let spawn_task = ghost_shell_tokio::Tokio::spawn_result(cx, async move {
             let mut niri_client = NiriClient::try_new().await?;
             niri_client.spawn(command).await
         });
@@ -270,7 +268,7 @@ impl View {
                     .w_full()
                     .min_w_0()
                     .text_size(px(TEXT_SIZE))
-                    .font_semibold()
+                    .font_weight(ghost_shell_gpui::FontWeight::SEMIBOLD)
                     .truncate()
                     .child(entry.name.clone()),
             )
@@ -310,8 +308,8 @@ impl View {
                         .gap(px(ENTRY_GAP))
                         .px(px(6.0))
                         .rounded_sm()
-                        .when(selected, |this| this.bg(cx.theme().list_active))
-                        .hover(|style| style.bg(cx.theme().list_hover))
+                        .when(selected, |this| this.bg(cx.theme().selection))
+                        .hover(|style| style.bg(cx.theme().muted))
                         .child(icon)
                         .child(body),
                 ),

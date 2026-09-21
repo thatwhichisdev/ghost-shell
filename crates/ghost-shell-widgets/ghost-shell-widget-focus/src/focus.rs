@@ -1,5 +1,5 @@
+use ghost_shell_gpui::{Context, SharedString, Subscription, Window, div, prelude::*};
 use ghost_shell_niri::NiriState;
-use gpui::{Context, SharedString, Subscription, Window, div, prelude::*};
 
 pub struct FocusWidget {
     pub title: SharedString,

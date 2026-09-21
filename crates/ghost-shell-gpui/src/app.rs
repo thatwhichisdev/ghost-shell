@@ -1343,6 +1343,11 @@ impl App {
         self.platform.compositor_name()
     }
 
+    /// Releases the active session lock after confirmation from the compositor.
+    pub fn unlock_session(&self) -> Result<()> {
+        self.platform.unlock_session()
+    }
+
     /// Returns the file URL of the executable with the specified name in the application bundle
     pub fn path_for_auxiliary_executable(&self, name: &str) -> Result<PathBuf> {
         self.platform

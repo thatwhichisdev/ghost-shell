@@ -7,7 +7,7 @@ use ghost_shell_gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, EntityInputHandler, EventEmitter,
     FocusHandle, Focusable, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Point, Render, Role, ShapedLine, SharedString, Subscription,
-    Task, UTF16Selection, Window, div, point, prelude::*, px,
+    Task, UTF16Selection, Window, div, point, px,
 };
 use unicode_segmentation::UnicodeSegmentation;
 

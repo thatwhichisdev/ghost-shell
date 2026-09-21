@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use gpui::Global;
+use ghost_shell_gpui::Global;
 use serde::Deserialize;
 
 #[derive(Default, Debug, Clone, Deserialize)]

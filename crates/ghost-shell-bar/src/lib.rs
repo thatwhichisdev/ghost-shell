@@ -2,13 +2,13 @@ pub mod bar;
 
 pub use bar::*;
 use ghost_shell_config::AppConfig;
+use ghost_shell_gpui::{App, AppContext, accesskit::Uuid};
 use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
 use ghost_shell_widget_power::PowerWidget;
 use ghost_shell_widget_tray::TrayWidget;
 use ghost_shell_widget_workspaces::WorkspacesWidget;
-use gpui::{App, AppContext, accesskit::Uuid};
 
 pub fn init(cx: &mut App) {
     let config = cx.global::<AppConfig>().clone();

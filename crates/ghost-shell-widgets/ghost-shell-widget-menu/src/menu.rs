@@ -1,5 +1,6 @@
-use gpui::{Context, Window, div, prelude::*, px};
-use gpui_component::{ActiveTheme as _, Icon, Sizable};
+use ghost_shell_component_icon::Icon;
+use ghost_shell_gpui::{Context, Window, div, prelude::*, px};
+use ghost_shell_theme::{ActiveTheme as _, Sizable};
 
 pub struct MenuWidget;
 
@@ -18,7 +19,7 @@ impl Render for MenuWidget {
                 Icon::empty()
                     .path("icons/nixos.svg")
                     .with_size(px(18.0))
-                    .text_color(cx.theme().colors.foreground),
+                    .text_color(cx.theme().foreground),
             )
     }
 }

@@ -19,6 +19,21 @@ The extracted portions remain Apache-2.0 licensed; see the repository
 | `../ghost-shell-theme/src/sizing.rs` | `crates/component/src/sizing.rs` | Size, Sizable, input padding and row height only. |
 | `../ghost-shell-theme/src/focus.rs` | `crates/base/src/focus_trap.rs` | Idempotent initialization, checked layout ID, innermost trap selection. |
 | `ghost-shell-component-root/src/root.rs` | `crates/component/src/root.rs` | Theme styling and tab traversal; restore focus if bounded traversal cannot stay in a trap. |
+| `ghost-shell-component-icon` | `crates/component/src/icon.rs`, `crates/assets` | SVG paths/data and a small embedded icon set; no asset-loader dependency. |
+| `ghost-shell-component-spinner` | `crates/component/src/spinner.rs` | Local icons and GPUI animation, including reduced-motion behavior. |
+| `ghost-shell-component-menu` | `crates/component/src/menu/popup_menu.rs`, `menu_item.rs` | Local theme and icons, GPUI layout tracking, keyboard/submenu dismissal; no native menus, shortcut badges, or external scrollbar component. |
+| `ghost-shell-component-virtual-list` | `crates/base/src/virtual_list.rs` | Variable-size virtualization and deferred scrolling; no toolkit scrollbar trait. |
+| `ghost-shell-component-input` | `crates/component/src/input/input.rs`, `crates/base/src/input/base/{state,selection,blink_cursor,element}.rs` | Single-line editing, password protection, UTF-16 IME bridge and bounded undo history; no code editor, LSP, textarea, native menu or touch-input dependencies. |
+
+Input's low-level element implementation also adapts the GPUI input example
+from Zed revision `916fc2b8cb3a815cbef4a3b40e13081be72036b6`
+(`crates/gpui/examples/input.rs`, Apache-2.0). It uses the local framework's
+text shaping and input-handler APIs. This is a narrowed adaptation, not the
+complete GPUI Kit input API. Password values are excluded from clipboard,
+accessibility values, and undo history.
+
+Embedded SVGs retain the upstream Lucide/Feather notices in
+`ghost-shell-component-icon/LICENSE-LUCIDE`.
 
 These crates depend on `ghost-shell-gpui` and import it as
 `ghost_shell_gpui`. Its public facade re-exports the local core types.
@@ -35,13 +50,12 @@ legacy component-specific color catalogue. `Theme::set` refreshes windows;
 Root also observes global theme changes. Base16 palette values can be
 applied without depending on the application's configuration crate.
 
-## Transitional application support
+## Application integration
 
-The daemon still uses upstream GPUI and toolkit components. Only it enables
-`ghost-shell-theme/legacy`, which preserves the previous theme initializer
-in `legacy.rs`. This adapter is existing Ghost code, not the new extraction.
-It is not a bridge between GPUI entity types and must be removed when the
-daemon and remaining widgets migrate. New components must not enable it.
+The daemon and widgets now use the local framework and component crates.
+The temporary `ghost-shell-theme/legacy` adapter has been removed.
+The daemon applies its configured font and Base16 palette to the local Theme;
+components remain independent of application configuration.
 
 The unused old `src/lib.rs` theme entry point was replaced by `src/theme.rs`.
 The public local GPUI manifest was also repaired to use the existing
@@ -53,10 +67,12 @@ Run these inside Ghost's development environment:
 
 ```sh
 cargo test -p ghost-shell-theme -p ghost-shell-component-root
+cargo test -p ghost-shell-component-input -p ghost-shell-component-menu -p ghost-shell-component-icon -p ghost-shell-component-spinner -p ghost-shell-component-virtual-list
 cargo check -p ghost-shell-component-root --example hello_components
 cargo check -p ghost-shell-daemon
 cargo run -p ghost-shell-component-root --example hello_components
 ```
 
-The example opens a normal Wayland window; it does not start or replace
-the running shell.
+The example shows inputs, password masking, a spinner, icons, a nested menu,
+and a variable-height list in a normal Wayland window; it does not start or
+replace the running shell.

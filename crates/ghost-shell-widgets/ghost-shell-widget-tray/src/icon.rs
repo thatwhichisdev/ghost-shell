@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use ghost_shell_dbus::IconPixmap;
-use gpui::RenderImage;
+use ghost_shell_gpui::RenderImage;
 use image::{Frame, ImageReader, RgbaImage};
 
 pub(crate) struct TrayIcon(Arc<RenderImage>);

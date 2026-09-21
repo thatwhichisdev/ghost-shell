@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use gpui::{App, Global};
+use ghost_shell_gpui::{App, Global};
 
 #[derive(Debug, Clone)]
 pub struct DesktopEntry {

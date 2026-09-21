@@ -11,17 +11,10 @@ license = "Apache-2.0"
 [lib]
 path = "src/theme.rs"
 
-[features]
-default = []
-legacy = ["dep:legacy-gpui", "dep:gpui-component", "dep:ghost-shell-config"]
-
 [dependencies]
 ghost-shell-gpui.workspace = true
 schemars.workspace = true
 serde.workspace = true
-legacy-gpui = { package = "gpui", git = "https://github.com/thatwhichisdev/zed", rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52", optional = true }
-gpui-component = { workspace = true, optional = true }
-ghost-shell-config = { workspace = true, optional = true }
 
 [dev-dependencies]
 ghost-shell-gpui = { workspace = true, features = ["test-support"] }

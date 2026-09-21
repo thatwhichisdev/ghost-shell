@@ -42,10 +42,20 @@ libraries remain ordinary dependencies, including the pinned zed-font-kit fork
 and the proptest fork used for tests. The imported sum_tree uses tracing directly,
 without Zed's ztracing/zlog dependency chain.
 
-The existing application's upstream gpui/gpui_platform/gpui_tokio and component
-dependencies are deliberately unchanged. Their entity types are distinct from
-the local framework: migrate each consuming dependency together later.
-Custom fork patches and ghost-shell-components are not part of this stage.
+The shell now uses the local framework, Tokio integration, theme, and component
+crates throughout. No upstream GPUI or GPUI Kit dependency remains.
+
+The application migration also ports these Ghost fork patches from
+`thatwhichisdev/zed` (previous dependency revision `3c0656db8f7fd19f1d7422db7eeafd3b8d491d52`):
+
+- `aa0c1b6acd`: discover initial Wayland outputs before shell startup.
+- `aab23cce3c`, `b127471ed9`: session-lock surfaces and deferred unlock cleanup,
+  adapted to the local frame scheduling API.
+- `7abb543947`: in-place wallpaper atlas updates, adapted to `AtlasState` and
+  strengthened with checked bounds and byte-length validation.
+
+Session locking still requires compositor-level testing; headless tests do not
+establish lockscreen security or multi-output behavior.
 
 ## Verification
 

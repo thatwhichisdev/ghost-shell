@@ -3,13 +3,13 @@ pub mod protocol;
 pub mod stream;
 
 pub use client::*;
-use gpui::App;
+use ghost_shell_gpui::App;
 pub use protocol::*;
 pub use stream::*;
 use tokio::sync::mpsc;
 
 pub fn init(cx: &mut App) {
-    let tokio = gpui_tokio::Tokio::handle(cx);
+    let tokio = ghost_shell_tokio::Tokio::handle(cx);
 
     let mut niri_client = tokio
         .block_on(NiriClient::try_new())
@@ -68,7 +68,7 @@ pub fn init(cx: &mut App) {
     let (event_sender, mut event_receiver) = mpsc::channel(256);
 
     // Spawn niri stream reader task on tokio runtime
-    gpui_tokio::Tokio::spawn(cx, async move {
+    ghost_shell_tokio::Tokio::spawn(cx, async move {
         loop {
             match niri_stream.read().await {
                 Ok(Some(event)) => {

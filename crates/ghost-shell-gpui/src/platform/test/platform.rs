@@ -681,6 +681,10 @@ impl Platform for TestPlatform {
     fn open_with_system(&self, _path: &Path) {
         unimplemented!()
     }
+
+    fn unlock_session(&self) -> Result<()> {
+        anyhow::bail!("session locking requires a Wayland compositor")
+    }
 }
 
 struct TestKeyboardLayout;

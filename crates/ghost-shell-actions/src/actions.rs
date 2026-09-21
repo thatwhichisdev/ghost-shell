@@ -1,4 +1,4 @@
-gpui::actions!(
+ghost_shell_gpui::actions!(
     ghost_shell,
     [
         /// Action to open finder window

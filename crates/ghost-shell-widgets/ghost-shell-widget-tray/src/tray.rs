@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
+use ghost_shell_component_menu::PopupMenu;
 use ghost_shell_dbus::{
     Dbus, ItemEvent, MenuId, StatusNotifierId, StatusNotifierItem, WatcherEvent,
 };
-use gpui::{
+use ghost_shell_gpui::{
     AppContext as _, Bounds, Context, DismissEvent, Entity, MouseDownEvent, ObjectFit,
     Pixels, Point, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
     WindowKind, WindowOptions, div, img, point,
@@ -11,7 +12,6 @@ use gpui::{
     prelude::*,
     px, size,
 };
-use gpui_component::menu::PopupMenu;
 
 use crate::{item::TrayItem, menu::TrayMenu};
 
@@ -243,7 +243,7 @@ impl Render for TrayWidget {
                             .object_fit(ObjectFit::Contain),
                     )
                     .on_mouse_down(
-                        gpui::MouseButton::Left,
+                        ghost_shell_gpui::MouseButton::Left,
                         cx.listener(move |tray, event: &MouseDownEvent, window, cx| {
                             if let Some(menu) = menu.clone() {
                                 tray.open_menu(menu, event.position, window, cx);

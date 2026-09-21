@@ -1,6 +1,6 @@
+use ghost_shell_component_menu::{PopupMenu, PopupMenuItem};
 use ghost_shell_dbus::{Dbus, Menu, MenuId, MenuItem, MenuItemType, MenuLayout};
-use gpui::{App, Context, Entity, Pixels, Size, Window, px, size};
-use gpui_component::menu::{PopupMenu, PopupMenuItem};
+use ghost_shell_gpui::{App, Context, Entity, Pixels, Size, Window, px, size};
 
 const MENU_WIDTH: f32 = 250.0;
 const MENU_ITEM_HEIGHT: f32 = 26.0;

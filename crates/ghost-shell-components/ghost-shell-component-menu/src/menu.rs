@@ -1529,6 +1529,7 @@ mod tests {
 
     #[ghost_shell_gpui::test]
     fn disabled_selection_cannot_be_confirmed(cx: &mut ghost_shell_gpui::TestAppContext) {
+        cx.update(ghost_shell_theme::init);
         let clicked = Rc::new(Cell::new(0));
         let (menu, window) = cx.add_window_view({
             let clicked = clicked.clone();

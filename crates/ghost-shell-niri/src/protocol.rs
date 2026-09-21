@@ -1,6 +1,6 @@
 use std::collections::{HashMap, hash_map::Entry};
 
-use gpui::{Global, accesskit::Uuid};
+use ghost_shell_gpui::{Global, accesskit::Uuid};
 use serde::{Deserialize, Serialize};
 
 pub type Reply = std::result::Result<Response, String>;

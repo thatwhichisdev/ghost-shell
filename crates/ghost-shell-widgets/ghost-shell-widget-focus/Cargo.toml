@@ -9,8 +9,8 @@ publish.workspace = true
 [dependencies]
 ghost-shell-niri.workspace = true
 
-gpui.workspace = true
-gpui_tokio.workspace = true
+ghost-shell-gpui.workspace = true
+ghost-shell-tokio.workspace = true
 
 anyhow.workspace = true
 tokio = {

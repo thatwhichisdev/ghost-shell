@@ -89,33 +89,7 @@ ghost-shell-widget-workspaces = {
   path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces"
 }
 
-gpui = {
-  git = "https://github.com/thatwhichisdev/zed",
-  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
-  features = [
-    "wayland",
-  ]
-}
-
-gpui_platform = {
-  git = "https://github.com/thatwhichisdev/zed",
-  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
-  features = [
-    "wayland",
-  ]
-}
-
-gpui_tokio = {
-  git = "https://github.com/thatwhichisdev/zed",
-  rev = "3c0656db8f7fd19f1d7422db7eeafd3b8d491d52",
-}
-
 futures-util = "0.3.32"
-
-gpui-component = {
-  git = "https://github.com/thatwhichisdev/gpui-component",
-  rev = "5c74aaa5d8967b129e725c65fed27306d582540f",
-}
 
 tokio = {
   version = "1.53.1",

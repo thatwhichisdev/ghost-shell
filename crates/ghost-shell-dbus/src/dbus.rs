@@ -3,7 +3,7 @@ mod menu;
 mod notifications;
 mod watcher;
 
-use gpui::{App, Entity, Global};
+use ghost_shell_gpui::{App, Entity, Global};
 
 use crate::{item::Item, watcher::Watcher};
 pub use crate::{

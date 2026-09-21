@@ -1,6 +1,8 @@
+use ghost_shell_gpui::{
+    Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, svg,
+};
 use ghost_shell_niri::NiriState;
-use gpui::{Context, Subscription, Window, accesskit::Uuid, div, prelude::*, px, svg};
-use gpui_component::ActiveTheme as _;
+use ghost_shell_theme::ActiveTheme as _;
 
 pub struct WorkspacesWidget {
     display_uuid: Uuid,
@@ -69,12 +71,12 @@ impl Render for WorkspacesWidget {
                     svg()
                         .path("icons/circle-filled.svg")
                         .size(px(18.0))
-                        .text_color(cx.theme().colors.foreground)
+                        .text_color(cx.theme().foreground)
                 } else {
                     svg()
                         .path("icons/circle.svg")
                         .size(px(18.0))
-                        .text_color(cx.theme().colors.foreground)
+                        .text_color(cx.theme().foreground)
                 }
             }))
     }

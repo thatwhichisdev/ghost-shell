@@ -5161,6 +5161,27 @@ impl Window {
         Ok(())
     }
 
+    /// Updates packed image bytes in an existing sprite atlas tile.
+    /// Returns false if the image is not cached and must be uploaded normally.
+    pub fn update_image_region(
+        &mut self,
+        data: &Arc<RenderImage>,
+        frame_index: usize,
+        bounds: Bounds<DevicePixels>,
+        bytes: &[u8],
+    ) -> Result<bool> {
+        anyhow::ensure!(
+            frame_index < data.frame_count(),
+            "invalid image frame index"
+        );
+        let key = RenderImageParams {
+            image_id: data.id,
+            frame_index,
+        };
+        self.sprite_atlas
+            .update(&key.into(), bounds, bytes)
+    }
+
     /// Removes an image from the sprite atlas.
     pub fn drop_image(&mut self, data: Arc<RenderImage>) -> Result<()> {
         for frame_index in 0..data.frame_count() {

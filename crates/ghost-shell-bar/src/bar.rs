@@ -1,13 +1,8 @@
 use std::rc::Rc;
 
+use ghost_shell_component_root::Root;
 use ghost_shell_config::BarConfig;
-use ghost_shell_widget_clock::ClockWidget;
-use ghost_shell_widget_focus::FocusWidget;
-use ghost_shell_widget_menu::MenuWidget;
-use ghost_shell_widget_power::PowerWidget;
-use ghost_shell_widget_tray::TrayWidget;
-use ghost_shell_widget_workspaces::WorkspacesWidget;
-use gpui::{
+use ghost_shell_gpui::{
     AnyWindowHandle, App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
     layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions},
@@ -15,7 +10,12 @@ use gpui::{
     prelude::*,
     px,
 };
-use gpui_component::Root;
+use ghost_shell_widget_clock::ClockWidget;
+use ghost_shell_widget_focus::FocusWidget;
+use ghost_shell_widget_menu::MenuWidget;
+use ghost_shell_widget_power::PowerWidget;
+use ghost_shell_widget_tray::TrayWidget;
+use ghost_shell_widget_workspaces::WorkspacesWidget;
 
 pub struct Bar {
     config: BarConfig,
@@ -69,7 +69,7 @@ impl Bar {
             let size = Size::new(size.width, px(self.config.height));
 
             WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(gpui::Bounds {
+                window_bounds: Some(WindowBounds::Windowed(ghost_shell_gpui::Bounds {
                     origin: point(px(0.0), px(0.0)),
                     size,
                 })),
@@ -88,6 +88,7 @@ impl Bar {
                 app_owns_titlebar_drag: false,
                 is_resizable: false,
                 is_minimizable: false,
+                inactive_frame_interval: Default::default(),
                 display_id: Some(self.display.id()),
                 window_background: WindowBackgroundAppearance::Transparent,
                 app_id: Some(app_id),
@@ -100,7 +101,7 @@ impl Bar {
 
         let handle = cx
             .open_window(window_options, |window, cx| {
-                cx.new(|cx| Root::new(self.view.clone(), window, cx).bordered(false))
+                cx.new(|cx| Root::new(self.view.clone(), window, cx))
             })
             .unwrap();
 
@@ -112,7 +113,7 @@ impl Render for BarView {
     fn render(
         &mut self,
         _window: &mut Window,
-        _cx: &mut gpui::Context<Self>,
+        _cx: &mut ghost_shell_gpui::Context<Self>,
     ) -> impl IntoElement {
         div()
             .size_full()

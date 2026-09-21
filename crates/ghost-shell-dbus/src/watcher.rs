@@ -2,7 +2,7 @@ mod service;
 
 use std::collections::HashSet;
 
-use gpui::{App, AppContext as _, Context, Entity, EventEmitter};
+use ghost_shell_gpui::{App, AppContext as _, Context, Entity, EventEmitter};
 use tokio::sync::mpsc;
 
 const EVENT_CHANNEL_CAPACITY: usize = 64;
@@ -53,7 +53,7 @@ pub(crate) fn init(cx: &mut App) -> Entity<Watcher> {
     let watcher = cx.new(|_| Watcher::default());
     let (event_sender, mut event_receiver) = mpsc::channel(EVENT_CHANNEL_CAPACITY);
 
-    gpui_tokio::Tokio::spawn(cx, async move {
+    ghost_shell_tokio::Tokio::spawn(cx, async move {
         if let Err(error) = service::run(event_sender).await {
             log::error!("status notifier watcher stopped: {error:#}");
         }

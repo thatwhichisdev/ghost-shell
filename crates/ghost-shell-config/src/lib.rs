@@ -1,7 +1,7 @@
 pub mod config;
 
 pub use config::*;
-use gpui::App;
+use ghost_shell_gpui::App;
 
 pub fn init(cx: &mut App) {
     let config = config::load()

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use gpui::{Global, PlatformDisplay, accesskit::Uuid};
+use ghost_shell_gpui::{Global, PlatformDisplay, accesskit::Uuid};
 
 /// Struct that represets state of the shell
 pub struct GhostShell {

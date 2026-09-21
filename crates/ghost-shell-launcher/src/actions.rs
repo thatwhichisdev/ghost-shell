@@ -1,1 +1,1 @@
-gpui::actions!(launcher, [EntrySpawn]);
+ghost_shell_gpui::actions!(launcher, [EntrySpawn]);

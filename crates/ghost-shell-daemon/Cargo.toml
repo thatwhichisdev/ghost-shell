@@ -11,6 +11,9 @@ name = "ghost-shell-daemon"
 path = "src/main.rs"
 
 [dependencies]
+ghost-shell-component-root.workspace = true
+ghost-shell-component-input.workspace = true
+ghost-shell-component-menu.workspace = true
 ghost-shell-app.workspace = true
 ghost-shell-assets.workspace = true
 ghost-shell-bar.workspace = true
@@ -21,13 +24,11 @@ ghost-shell-ipc.workspace = true
 ghost-shell-launcher.workspace = true
 ghost-shell-lockscreen.workspace = true
 ghost-shell-niri.workspace = true
-ghost-shell-theme = { workspace = true, features = ["legacy"] }
+ghost-shell-theme.workspace = true
 ghost-shell-wallpaper.workspace = true
 
-gpui.workspace = true
-gpui-component.workspace = true
-gpui_platform.workspace = true
-gpui_tokio.workspace = true
+ghost-shell-gpui.workspace = true
+ghost-shell-tokio.workspace = true
 
 anyhow.workspace = true
 env_logger.workspace = true

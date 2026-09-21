@@ -37,8 +37,8 @@ use wayland_client::{
         wl_shm_pool, wl_surface,
     },
 };
-use wayland_protocols::wp::pointer_gestures::zv1::client::{
-    zwp_pointer_gesture_pinch_v1, zwp_pointer_gestures_v1,
+use wayland_protocols::ext::session_lock::v1::client::{
+    ext_session_lock_surface_v1, ext_session_lock_v1,
 };
 use wayland_protocols::wp::primary_selection::zv1::client::zwp_primary_selection_offer_v1::{
     self, ZwpPrimarySelectionOfferV1,
@@ -62,6 +62,10 @@ use wayland_protocols::xdg::shell::client::{
     xdg_popup, xdg_positioner, xdg_surface, xdg_toplevel, xdg_wm_base,
 };
 use wayland_protocols::xdg::system_bell::v1::client::xdg_system_bell_v1;
+use wayland_protocols::{
+    ext::session_lock::v1::client::ext_session_lock_manager_v1,
+    wp::pointer_gestures::zv1::client::{zwp_pointer_gesture_pinch_v1, zwp_pointer_gestures_v1},
+};
 use wayland_protocols::{
     wp::cursor_shape::v1::client::{wp_cursor_shape_device_v1, wp_cursor_shape_manager_v1},
     xdg::dialog::v1::client::xdg_wm_dialog_v1::{self, XdgWmDialogV1},
@@ -222,6 +226,8 @@ pub struct Globals {
         Option<wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1>,
     pub decoration_manager: Option<zxdg_decoration_manager_v1::ZxdgDecorationManagerV1>,
     pub layer_shell: Option<zwlr_layer_shell_v1::ZwlrLayerShellV1>,
+    pub session_lock_manager:
+        Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
     pub blur_manager: Option<org_kde_kwin_blur_manager::OrgKdeKwinBlurManager>,
     pub text_input_manager: Option<zwp_text_input_manager_v3::ZwpTextInputManagerV3>,
     pub gesture_manager: Option<zwp_pointer_gestures_v1::ZwpPointerGesturesV1>,
@@ -268,6 +274,7 @@ impl Globals {
             fractional_scale_manager: globals.bind(&qh, 1..=1, ()).ok(),
             decoration_manager: globals.bind(&qh, 1..=1, ()).ok(),
             layer_shell: globals.bind(&qh, 1..=5, ()).ok(),
+            session_lock_manager: globals.bind(&qh, 1..=1, ()).ok(),
             blur_manager: globals.bind(&qh, 1..=1, ()).ok(),
             text_input_manager: globals.bind(&qh, 1..=1, ()).ok(),
             gesture_manager: globals.bind(&qh, 1..=3, ()).ok(),
@@ -284,6 +291,7 @@ impl Globals {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InProgressOutput {
+    global_name: u32,
     name: Option<String>,
     scale: Option<i32>,
     position: Option<Point<DevicePixels>>,
@@ -296,6 +304,7 @@ impl InProgressOutput {
         if let Some((position, size)) = self.position.zip(self.size) {
             let scale = self.scale.unwrap_or(1);
             Some(Output {
+                global_name: self.global_name,
                 name: self.name.clone(),
                 scale,
                 bounds: Bounds::new(position, size),
@@ -309,10 +318,42 @@ impl InProgressOutput {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Output {
+    pub global_name: u32,
     pub name: Option<String>,
     pub scale: i32,
     pub bounds: Bounds<DevicePixels>,
     pub subpixel: Option<wl_output::Subpixel>,
+}
+
+/// Lifecycle state of an `ext_session_lock_v1` object.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SessionLockStatus {
+    /// The session lock has been requested, but the compositor has not yet
+    /// confirmed that the session is locked.
+    Locking,
+
+    /// The compositor has confirmed that the session is securely locked.
+    ///
+    /// While in this state, the client is responsible for displaying the
+    /// lock-screen UI and deciding when the session should be unlocked.
+    Locked,
+}
+
+/// State associated with an active `ext_session_lock_v1` object and its
+/// per-output lock surfaces.
+pub struct SessionLockState {
+    /// The protocol object representing the current session-lock request.
+    lock: ext_session_lock_v1::ExtSessionLockV1,
+
+    /// Current lifecycle state of the session-lock object.
+    status: SessionLockStatus,
+
+    /// Maps a `wl_output` object ID to the `wl_surface` object ID backing its
+    /// session-lock surface.
+    ///
+    /// The mapping is used to enforce the protocol requirement that no more than
+    /// one session-lock surface may exist for a given output.
+    surfaces: HashMap<ObjectId, ObjectId>,
 }
 
 pub(crate) struct WaylandClientState {
@@ -372,6 +413,7 @@ pub(crate) struct WaylandClientState {
     event_loop: Option<EventLoop<'static, WaylandClientStatePtr>>,
     pub common: LinuxCommon,
     ime_enabled: Option<bool>,
+    session_lock: Option<SessionLockState>,
 }
 
 struct DragState<DataOffer = wl_data_offer::WlDataOffer, Window = WaylandWindowStatePtr> {
@@ -868,7 +910,7 @@ impl WaylandClient {
         let startup_activation_token = take_startup_activation_token_from_environment();
         let conn = Connection::connect_to_env().unwrap();
 
-        let (globals, event_queue) =
+        let (globals, mut event_queue) =
             registry_queue_init::<WaylandClientStatePtr>(&conn).unwrap();
         let qh = event_queue.handle();
 
@@ -901,8 +943,13 @@ impl WaylandClient {
                                 &qh,
                                 (),
                             );
-                        in_progress_outputs
-                            .insert(output.id(), InProgressOutput::default());
+                        in_progress_outputs.insert(
+                            output.id(),
+                            InProgressOutput {
+                                global_name: global.name,
+                                ..Default::default()
+                            },
+                        );
                         wl_outputs.insert(output.id(), output);
                     }
                     _ => {}
@@ -1103,7 +1150,14 @@ impl WaylandClient {
             startup_activation_token,
             event_loop: Some(event_loop),
             ime_enabled: None,
+            session_lock: None,
         }));
+
+        // Shell startup needs the initial outputs before constructing its windows.
+        let mut state_ptr = WaylandClientStatePtr(Rc::downgrade(&state));
+        if let Err(error) = event_queue.roundtrip(&mut state_ptr) {
+            log::error!("Failed to discover initial Wayland outputs: {error:#}");
+        }
 
         WaylandSource::new(conn, event_queue)
             .insert(handle)
@@ -1187,6 +1241,9 @@ impl LinuxClient for WaylandClient {
                 });
                 (Some(parent), popup_grab.flatten())
             }
+            // Session-lock surfaces are associated with outputs rather than
+            // parent windows and never participate in popup grabs.
+            WindowKind::SessionLock => (None, None),
             _ => (state.keyboard_focused_window.clone(), None),
         };
 
@@ -1199,10 +1256,64 @@ impl LinuxClient for WaylandClient {
                 .map(|(_, output)| output.clone())
         });
 
+        let (session_lock, session_lock_output_id, session_lock_to_rollback) =
+            match &params.kind {
+                WindowKind::SessionLock => {
+                    let target_output = target_output.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!("session lock window requires a valid display_id")
+                    })?;
+
+                    let output_id = target_output.id();
+
+                    match state.session_lock.as_ref() {
+                        Some(session_lock) => {
+                            // ext-session-lock-v1 allows at most one lock surface for a
+                            // given output. Creating another one would cause a
+                            // duplicate_output protocol error.
+                            anyhow::ensure!(
+                                !session_lock
+                                    .surfaces
+                                    .contains_key(&output_id),
+                                "output already has an active session lock surface"
+                            );
+
+                            (Some(session_lock.lock.clone()), Some(output_id), None)
+                        }
+
+                        None => {
+                            let manager = state
+                                .globals
+                                .session_lock_manager
+                                .clone()
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!(
+                                        "compositor does not support ext-session-lock-v1"
+                                    )
+                                })?;
+
+                            // The first session-lock window starts a new lock attempt.
+                            // Additional outputs created during the same attempt reuse
+                            // this ext_session_lock_v1 object.
+                            let lock = manager.lock(&state.globals.qh, ());
+
+                            state.session_lock = Some(SessionLockState {
+                                lock: lock.clone(),
+                                status: SessionLockStatus::Locking,
+                                surfaces: HashMap::default(),
+                            });
+
+                            (Some(lock.clone()), Some(output_id), Some(lock))
+                        }
+                    }
+                }
+
+                _ => (None, None, None),
+            };
+
         let appearance = state.common.appearance;
         let compositor_gpu = state.compositor_gpu.take();
 
-        let (window, surface_id) = WaylandWindow::new(
+        let window_result = WaylandWindow::new(
             handle,
             state.globals.clone(),
             state.gpu_context.clone(),
@@ -1213,7 +1324,42 @@ impl LinuxClient for WaylandClient {
             parent,
             popup_grab,
             target_output,
-        )?;
+            session_lock,
+        );
+
+        let (window, surface_id) = match window_result {
+            Ok(window) => window,
+            Err(error) => {
+                // If this call created the global session-lock object but failed to
+                // create its first window, abandon the lock attempt. The `locked`
+                // event has not been processed while `WaylandClientState` is
+                // mutably borrowed here, so `destroy()` is the appropriate
+                // destructor rather than `unlock_and_destroy()`.
+                if let Some(lock) = session_lock_to_rollback {
+                    state.session_lock = None;
+                    lock.destroy();
+                }
+
+                return Err(error);
+            }
+        };
+
+        if let Some(output_id) = session_lock_output_id {
+            let session_lock = state.session_lock.as_mut().ok_or_else(|| {
+                anyhow::anyhow!(
+                    "session lock state is missing after creating a session lock window"
+                )
+            })?;
+
+            let previous = session_lock
+                .surfaces
+                .insert(output_id, surface_id.clone());
+
+            debug_assert!(
+                previous.is_none(),
+                "session lock surface was registered twice for the same output"
+            );
+        }
 
         if window.0.toplevel().is_some() {
             state.consume_startup_activation_token(&window.0.surface());
@@ -1439,6 +1585,55 @@ impl LinuxClient for WaylandClient {
         let active_window = client_state.keyboard_focused_window.as_ref();
         inner(active_window.map(|aw| aw.surface()))
     }
+
+    fn unlock_session(&self) -> anyhow::Result<()> {
+        let (lock, windows, executor) = {
+            let mut state = self.0.borrow_mut();
+
+            let session_lock = state
+                .session_lock
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("no active Wayland session lock"))?;
+
+            anyhow::ensure!(
+                session_lock.status == SessionLockStatus::Locked,
+                "Wayland session lock has not been confirmed as locked"
+            );
+
+            let session_lock = state
+                .session_lock
+                .take()
+                .ok_or_else(|| anyhow::anyhow!("no active Wayland session lock"))?;
+
+            let windows = session_lock
+                .surfaces
+                .values()
+                .filter_map(|surface_id| state.windows.get(surface_id).cloned())
+                .collect::<Vec<_>>();
+
+            (session_lock.lock, windows, state.globals.executor.clone())
+        };
+
+        // The compositor has confirmed the lock with the `locked` event, so
+        // `unlock_and_destroy()` is the required destructor. This releases the
+        // session lock and destroys the ext_session_lock_v1 object.
+        lock.unlock_and_destroy();
+
+        // Closing a GPUI platform window invokes callbacks which re-enter the App.
+        // Schedule cleanup after the current App/input update has unwound instead
+        // of calling `window.close()` synchronously.
+        executor
+            .spawn(async move {
+                for window in windows {
+                    window.close();
+                }
+            })
+            .detach();
+
+        log::info!("Wayland session unlocked");
+
+        Ok(())
+    }
 }
 
 struct DmabufProbeState {
@@ -1549,15 +1744,61 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandClientStat
                         (),
                     );
 
-                    state
-                        .in_progress_outputs
-                        .insert(output.id(), InProgressOutput::default());
+                    state.in_progress_outputs.insert(
+                        output.id(),
+                        InProgressOutput {
+                            global_name: name,
+                            ..Default::default()
+                        },
+                    );
                     state.wl_outputs.insert(output.id(), output);
                 }
                 _ => {}
             },
-            wl_registry::Event::GlobalRemove { name: _ } => {
-                // TODO: handle global removal
+            wl_registry::Event::GlobalRemove { name } => {
+                let output_id = state
+                    .outputs
+                    .iter()
+                    .find_map(|(id, output)| {
+                        (output.global_name == name).then(|| id.clone())
+                    })
+                    .or_else(|| {
+                        state
+                            .in_progress_outputs
+                            .iter()
+                            .find_map(|(id, output)| {
+                                (output.global_name == name).then(|| id.clone())
+                            })
+                    });
+
+                let Some(output_id) = output_id else {
+                    return;
+                };
+
+                state.in_progress_outputs.remove(&output_id);
+                state.outputs.remove(&output_id);
+
+                if let Some(output) = state.wl_outputs.remove(&output_id) {
+                    if output.version() >= wl_output::REQ_RELEASE_SINCE {
+                        output.release();
+                    }
+                }
+
+                let lock_surface_id = state
+                    .session_lock
+                    .as_mut()
+                    .and_then(|session_lock| session_lock.surfaces.remove(&output_id));
+
+                let lock_window = lock_surface_id
+                    .as_ref()
+                    .and_then(|surface_id| state.windows.get(surface_id))
+                    .cloned();
+
+                drop(state);
+
+                if let Some(window) = lock_window {
+                    window.close();
+                }
             }
             _ => {}
         }
@@ -1578,6 +1819,7 @@ delegate_noop!(WaylandClientStatePtr: ignore wl_region::WlRegion);
 delegate_noop!(WaylandClientStatePtr: ignore wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1);
 delegate_noop!(WaylandClientStatePtr: ignore zxdg_decoration_manager_v1::ZxdgDecorationManagerV1);
 delegate_noop!(WaylandClientStatePtr: ignore zwlr_layer_shell_v1::ZwlrLayerShellV1);
+delegate_noop!(WaylandClientStatePtr: ignore ext_session_lock_manager_v1::ExtSessionLockManagerV1);
 delegate_noop!(WaylandClientStatePtr: ignore xdg_positioner::XdgPositioner);
 delegate_noop!(WaylandClientStatePtr: ignore org_kde_kwin_blur_manager::OrgKdeKwinBlurManager);
 delegate_noop!(WaylandClientStatePtr: ignore zwp_text_input_manager_v3::ZwpTextInputManagerV3);
@@ -1754,6 +1996,134 @@ impl Dispatch<zwlr_layer_surface_v1::ZwlrLayerSurfaceV1, ObjectId>
         if should_close {
             // Close logic will be handled in drop_window()
             window.close();
+        }
+    }
+}
+
+impl Dispatch<ext_session_lock_surface_v1::ExtSessionLockSurfaceV1, ObjectId>
+    for WaylandClientStatePtr
+{
+    fn event(
+        this: &mut Self,
+        lock_surface: &ext_session_lock_surface_v1::ExtSessionLockSurfaceV1,
+        event: ext_session_lock_surface_v1::Event,
+        surface_id: &ObjectId,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        match event {
+            ext_session_lock_surface_v1::Event::Configure {
+                serial,
+                width,
+                height,
+            } => {
+                let client = this.get_client();
+                let mut state = client.borrow_mut();
+
+                let Some(window) = get_window(&mut state, surface_id) else {
+                    log::warn!(
+                        "received configure for unknown Wayland session-lock surface"
+                    );
+                    return;
+                };
+
+                drop(state);
+
+                let size = size(px(width as f32), px(height as f32));
+
+                // The compositor-provided dimensions are exact requirements.
+                // The next committed buffer after acknowledging this configure
+                // must have exactly this surface-local size.
+                lock_surface.ack_configure(serial);
+
+                // Resize GPUI/WGPU to the compositor-required dimensions.
+                window.resize(size);
+
+                // Start GPUI's frame lifecycle. The first rendered frame will
+                // attach and commit the initial non-null buffer.
+                if !window.is_configured() {
+                    window.frame();
+                } else {
+                    window.request_redraw();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Dispatch<ext_session_lock_v1::ExtSessionLockV1, ()> for WaylandClientStatePtr {
+    fn event(
+        this: &mut Self,
+        lock: &ext_session_lock_v1::ExtSessionLockV1,
+        event: ext_session_lock_v1::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        let client = this.get_client();
+        let mut state = client.borrow_mut();
+
+        if state
+            .session_lock
+            .as_ref()
+            .is_none_or(|session_lock| session_lock.lock.id() != lock.id())
+        {
+            log::warn!("received event for an unknown Wayland session lock");
+            return;
+        }
+
+        match event {
+            ext_session_lock_v1::Event::Locked => {
+                let Some(session_lock) = state.session_lock.as_mut() else {
+                    return;
+                };
+
+                if session_lock.status == SessionLockStatus::Locked {
+                    log::warn!(
+                        "received duplicate locked event for Wayland session lock"
+                    );
+                    return;
+                }
+
+                session_lock.status = SessionLockStatus::Locked;
+                log::info!("Wayland session locked");
+            }
+
+            ext_session_lock_v1::Event::Finished => {
+                let Some(session_lock) = state.session_lock.take() else {
+                    return;
+                };
+
+                let windows = session_lock
+                    .surfaces
+                    .values()
+                    .filter_map(|surface_id| state.windows.get(surface_id).cloned())
+                    .collect::<Vec<_>>();
+
+                drop(state);
+
+                match session_lock.status {
+                    SessionLockStatus::Locking => {
+                        session_lock.lock.destroy();
+                    }
+
+                    SessionLockStatus::Locked => {
+                        session_lock.lock.unlock_and_destroy();
+                    }
+                }
+
+                // Lock surfaces are no longer used by the compositor once
+                // the session-lock object has finished. Close their GPUI
+                // windows so the per-output lock surfaces are destroyed.
+                for window in windows {
+                    window.close();
+                }
+
+                log::info!("Wayland session lock finished");
+            }
+
+            _ => {}
         }
     }
 }

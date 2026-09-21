@@ -2,12 +2,12 @@
 use std::{ffi::OsString, time::Duration};
 
 use anyhow::Result;
-use ghost_shell_wallpaper::{Wallpaper, WallpaperManager};
-use gpui::{
+use ghost_shell_component_input::{Input, InputContentType, InputEvent, InputState};
+use ghost_shell_gpui::{
     Context, Entity, FontWeight, IntoElement, Render, SharedString, Subscription, Task,
     Window, div, prelude::*, px, relative, rgb,
 };
-use gpui_component::input::{Input, InputContentType, InputEvent, InputState};
+use ghost_shell_wallpaper::{Wallpaper, WallpaperManager};
 use jiff::Zoned;
 
 use crate::{Authenticate, Unlock, auth};
@@ -83,7 +83,7 @@ impl LockView {
         password: OsString,
         cx: &mut Context<Self>,
     ) -> Task<Result<()>> {
-        gpui_tokio::Tokio::spawn_result(cx, async move {
+        ghost_shell_tokio::Tokio::spawn_result(cx, async move {
             auth::authenticate(&username, &password)
                 .map_err(|e| anyhow::Error::msg(e.to_string()))
         })

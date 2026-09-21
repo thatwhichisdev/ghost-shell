@@ -10,13 +10,18 @@ publish.workspace = true
 path = "src/finder.rs"
 
 [dependencies]
+ghost-shell-component-root.workspace = true
+ghost-shell-theme.workspace = true
+ghost-shell-component-icon.workspace = true
+ghost-shell-component-spinner.workspace = true
+ghost-shell-component-virtual-list.workspace = true
+ghost-shell-component-input.workspace = true
 ghost-shell-actions.workspace = true
 ghost-shell-app.workspace = true
 ghost-shell-ipc.workspace = true
 ghost-shell-niri.workspace = true
 
-gpui.workspace = true
-gpui-component.workspace = true
+ghost-shell-gpui.workspace = true
 
 anyhow.workspace = true
 fff-search.workspace = true

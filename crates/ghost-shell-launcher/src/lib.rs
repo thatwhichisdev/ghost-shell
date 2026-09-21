@@ -3,7 +3,7 @@ mod entries;
 mod launcher;
 mod view;
 
-use gpui::App;
+use ghost_shell_gpui::App;
 
 /// Entry point for launcher initialization.
 /// Responsible for dekstop entries discovery and basic launcher initialization.

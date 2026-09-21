@@ -28,6 +28,9 @@ use wayland_client::{
     Proxy,
     protocol::{wl_callback, wl_output, wl_seat, wl_surface},
 };
+use wayland_protocols::ext::session_lock::v1::client::{
+    ext_session_lock_surface_v1, ext_session_lock_v1,
+};
 use wayland_protocols::wp::viewporter::client::wp_viewport;
 use wayland_protocols::xdg::decoration::zv1::client::zxdg_toplevel_decoration_v1;
 use wayland_protocols::xdg::shell::client::xdg_popup;
@@ -140,6 +143,7 @@ pub struct WaylandWindowState {
 pub enum WaylandSurfaceState {
     Xdg(WaylandXdgSurfaceState),
     LayerShell(WaylandLayerSurfaceState),
+    SessionLock(WaylandSessionLockSurfaceState),
     Popup(WaylandPopupSurfaceState),
 }
 
@@ -151,7 +155,25 @@ impl WaylandSurfaceState {
         parent: Option<WaylandWindowStatePtr>,
         popup_grab: Option<(u32, wl_seat::WlSeat)>,
         target_output: Option<wl_output::WlOutput>,
+        session_lock: Option<ext_session_lock_v1::ExtSessionLockV1>,
     ) -> anyhow::Result<Self> {
+        if let WindowKind::SessionLock = &params.kind {
+            let lock = session_lock
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("session lock is not active"))?;
+
+            let output = target_output.as_ref().ok_or_else(|| {
+                anyhow::anyhow!("session lock window requires an output")
+            })?;
+
+            let lock_surface =
+                lock.get_lock_surface(surface, output, &globals.qh, surface.id());
+
+            return Ok(Self::SessionLock(WaylandSessionLockSurfaceState {
+                lock_surface,
+            }));
+        }
+
         // For layer_shell windows, create a layer surface instead of an xdg surface
         if let WindowKind::LayerShell(options) = &params.kind {
             let Some(layer_shell) = globals.layer_shell.as_ref() else {
@@ -324,6 +346,10 @@ pub struct WaylandLayerSurfaceState {
     anchor: Anchor,
 }
 
+pub struct WaylandSessionLockSurfaceState {
+    lock_surface: ext_session_lock_surface_v1::ExtSessionLockSurfaceV1,
+}
+
 pub struct WaylandPopupSurfaceState {
     xdg_surface: xdg_surface::XdgSurface,
     xdg_popup: xdg_popup::XdgPopup,
@@ -397,6 +423,9 @@ impl WaylandSurfaceState {
             }) => {
                 layer_surface.ack_configure(serial);
             }
+            WaylandSurfaceState::SessionLock(state) => {
+                state.lock_surface.ack_configure(serial)
+            }
             WaylandSurfaceState::Popup(WaylandPopupSurfaceState {
                 xdg_surface, ..
             }) => {
@@ -433,6 +462,7 @@ impl WaylandSurfaceState {
                 xdg_surface, ..
             }) => Some(xdg_surface),
             WaylandSurfaceState::LayerShell(_) => None,
+            WaylandSurfaceState::SessionLock(_) => None,
         }
     }
 
@@ -460,6 +490,7 @@ impl WaylandSurfaceState {
                 // cannot set window position of a layer surface
                 layer_surface.set_size(width as u32, height as u32);
             }
+            WaylandSurfaceState::SessionLock(_) => {}
             WaylandSurfaceState::Popup(WaylandPopupSurfaceState {
                 xdg_surface, ..
             }) => {
@@ -563,6 +594,7 @@ impl WaylandSurfaceState {
             }) => {
                 layer_surface.destroy();
             }
+            WaylandSurfaceState::SessionLock(state) => state.lock_surface.destroy(),
             WaylandSurfaceState::Popup(WaylandPopupSurfaceState {
                 xdg_surface,
                 xdg_popup,
@@ -876,18 +908,29 @@ impl WaylandWindow {
         parent: Option<WaylandWindowStatePtr>,
         popup_grab: Option<(u32, wl_seat::WlSeat)>,
         target_output: Option<wl_output::WlOutput>,
+        session_lock: Option<ext_session_lock_v1::ExtSessionLockV1>,
     ) -> anyhow::Result<(Self, ObjectId)> {
         let surface = globals
             .compositor
             .create_surface(&globals.qh, ());
-        let surface_state = WaylandSurfaceState::new(
+        let surface_state = match WaylandSurfaceState::new(
             &surface,
             &globals,
             &params,
             parent.clone(),
             popup_grab,
             target_output,
-        )?;
+            session_lock,
+        ) {
+            Ok(surface_state) => surface_state,
+            Err(error) => {
+                surface.destroy();
+                return Err(error);
+            }
+        };
+        // A lock surface's first commit must include a buffer of the configured size.
+        let requires_initial_commit =
+            !matches!(&surface_state, WaylandSurfaceState::SessionLock(_));
 
         if let Some(fractional_scale_manager) = globals.fractional_scale_manager.as_ref()
         {
@@ -923,8 +966,9 @@ impl WaylandWindow {
             frame_ping,
         });
 
-        // Kick things off
-        surface.commit();
+        if requires_initial_commit {
+            surface.commit();
+        }
 
         Ok((this, surface.id()))
     }
@@ -1110,7 +1154,7 @@ impl WaylandWindowStatePtr {
         }
     }
 
-    fn request_redraw(&self) {
+    pub(super) fn request_redraw(&self) {
         self.state.borrow_mut().redraw_requested = true;
         self.schedule_frame();
     }

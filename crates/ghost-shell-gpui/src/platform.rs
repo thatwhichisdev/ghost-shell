@@ -317,6 +317,9 @@ pub trait Platform: 'static {
 
     fn write_to_primary(&self, item: ClipboardItem);
 
+    /// Releases a compositor-confirmed Wayland session lock.
+    fn unlock_session(&self) -> Result<()>;
+
     fn keyboard_layout(&self) -> Box<dyn PlatformKeyboardLayout>;
     fn keyboard_mapper(&self) -> Rc<dyn PlatformKeyboardMapper>;
     fn on_keyboard_layout_change(&self, callback: Box<dyn FnMut()>);
@@ -1308,6 +1311,15 @@ pub trait PlatformAtlas {
     ) -> Result<Option<AtlasTile>>;
     fn remove(&self, key: &AtlasKey);
 
+    fn update(
+        &self,
+        _key: &AtlasKey,
+        _bounds: Bounds<DevicePixels>,
+        _bytes: &[u8],
+    ) -> Result<bool> {
+        Ok(false)
+    }
+
     #[cfg(any(test, feature = "test-support", feature = "bench-support"))]
     fn contains(&self, _key: &AtlasKey) -> bool {
         false
@@ -1342,6 +1354,10 @@ impl<Backend> AtlasState<Backend> {
 
     pub fn contains(&self, key: &AtlasKey) -> bool {
         self.tiles_by_key.contains_key(key)
+    }
+
+    pub fn tile(&self, key: &AtlasKey) -> Option<AtlasTile> {
+        self.tiles_by_key.get(key).copied()
     }
 
     pub fn clear(&mut self, reset_backend: impl FnOnce(&mut Backend)) {
@@ -2296,6 +2312,9 @@ pub enum WindowKind {
     /// A Wayland LayerShell window, used to draw overlays or backgrounds for applications such as
     /// docks, notifications or wallpapers.
     LayerShell(layer_shell::LayerShellOptions),
+
+    /// A per-output surface belonging to an ext-session-lock-v1 session lock.
+    SessionLock,
 
     /// A window that appears on top of its parent window and blocks interaction with it
     /// until the modal window is closed

@@ -1,6 +1,7 @@
 use anyhow::{Context as _, Result};
-use gpui::{Context, Window, div, prelude::*, px};
-use gpui_component::{ActiveTheme, Icon, Sizable};
+use ghost_shell_component_icon::Icon;
+use ghost_shell_gpui::{Context, Window, div, prelude::*, px};
+use ghost_shell_theme::{ActiveTheme, Sizable};
 use starship_battery::{Battery, Manager, State, units::ratio::percent};
 
 pub struct PowerWidget {
@@ -59,7 +60,7 @@ impl Render for PowerWidget {
                 Icon::empty()
                     .path(icon)
                     .with_size(px(24.0))
-                    .text_color(cx.theme().colors.foreground),
+                    .text_color(cx.theme().foreground),
             )
     }
 }

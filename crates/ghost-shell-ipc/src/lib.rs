@@ -9,7 +9,7 @@ use ghost_shell_actions::{
     FinderClose, FinderOpen, FinderToggle, LauncherClose, LauncherOpen, LauncherToggle,
     Lock,
 };
-use gpui::App;
+use ghost_shell_gpui::App;
 pub use protocol::*;
 pub use server::*;
 use tokio::sync::mpsc::{self};
@@ -22,11 +22,11 @@ pub fn init(cx: &mut App) {
         .unwrap()
         .join("ghost-shell-daemon");
 
-    let server = gpui_tokio::Tokio::handle(cx)
+    let server = ghost_shell_tokio::Tokio::handle(cx)
         .block_on(Server::bind(socket_path, sender))
         .unwrap();
 
-    gpui_tokio::Tokio::spawn(cx, server.run()).detach();
+    ghost_shell_tokio::Tokio::spawn(cx, server.run()).detach();
 
     cx.spawn(async move |cx| {
         while let Some(request) = receiver.recv().await {

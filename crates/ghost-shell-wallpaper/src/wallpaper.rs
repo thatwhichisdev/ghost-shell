@@ -10,7 +10,7 @@ use std::{
 use anyhow::{Context as _, Result};
 use ghost_shell_app::GhostShell;
 use ghost_shell_config::AppConfig;
-use gpui::{
+use ghost_shell_gpui::{
     App, AppContext as _, Bounds, Context, DevicePixels, Entity, Global, IntoElement,
     ObjectFit, Point, Render, RenderImage, Rgba, Size, Styled as _, StyledImage as _,
     Subscription, Task, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
@@ -313,10 +313,7 @@ impl AnimatedWallpaper {
             },
         };
 
-        if !window
-            .update_image_region(&self.image, 0, bounds, &self.frame)
-            .unwrap()
-        {
+        if !window.update_image_region(&self.image, 0, bounds, &self.frame)? {
             let next = Self::render(self.source.width, self.source.height, &self.frame);
             let _ = std::mem::replace(&mut self.image, next);
         }

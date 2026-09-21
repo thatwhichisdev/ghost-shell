@@ -114,6 +114,70 @@ impl PlatformAtlas for WgpuAtlas {
     fn remove(&self, key: &AtlasKey) {
         self.0.lock().remove(key);
     }
+
+    fn update(
+        &self,
+        key: &AtlasKey,
+        bounds: Bounds<DevicePixels>,
+        bytes: &[u8],
+    ) -> Result<bool> {
+        let mut state = self.0.lock();
+        let Some(tile) = state.tile(key) else {
+            return Ok(false);
+        };
+        validate_update(tile, bounds, bytes.len())?;
+        let bounds = Bounds {
+            origin: Point {
+                x: DevicePixels(tile.bounds.origin.x.0 + bounds.origin.x.0),
+                y: DevicePixels(tile.bounds.origin.y.0 + bounds.origin.y.0),
+            },
+            size: bounds.size,
+        };
+        state
+            .backend
+            .upload_texture(tile.texture_id, bounds, bytes);
+        Ok(true)
+    }
+}
+
+fn validate_update(
+    tile: AtlasTile,
+    bounds: Bounds<DevicePixels>,
+    byte_count: usize,
+) -> Result<()> {
+    let width = bounds.size.width.0;
+    let height = bounds.size.height.0;
+    anyhow::ensure!(
+        width > 0
+            && height > 0
+            && bounds.origin.x.0 >= 0
+            && bounds.origin.y.0 >= 0
+            && bounds
+                .origin
+                .x
+                .0
+                .checked_add(width)
+                .is_some_and(|right| right <= tile.bounds.size.width.0)
+            && bounds
+                .origin
+                .y
+                .0
+                .checked_add(height)
+                .is_some_and(|bottom| bottom <= tile.bounds.size.height.0),
+        "atlas update is outside tile bounds"
+    );
+    let channels = match tile.texture_id.kind {
+        AtlasTextureKind::Monochrome => 1,
+        _ => 4,
+    };
+    anyhow::ensure!(
+        (width as usize)
+            .checked_mul(height as usize)
+            .and_then(|pixels| pixels.checked_mul(channels))
+            == Some(byte_count),
+        "atlas update byte length does not match its dimensions"
+    );
+    Ok(())
 }
 
 impl AtlasBackend for WgpuAtlasTextures {
@@ -426,6 +490,95 @@ mod tests {
     use ghost_shell_gpui::{ImageId, RenderImageParams};
 
     use super::*;
+
+    #[test]
+    fn atlas_update_validates_dimensions_and_buffer_length() {
+        let tile = AtlasTile {
+            texture_id: AtlasTextureId {
+                index: 0,
+                kind: AtlasTextureKind::Polychrome,
+            },
+            tile_id: ghost_shell_gpui::TileId(0),
+            padding: 0,
+            bounds: Bounds {
+                origin: Point::default(),
+                size: Size {
+                    width: DevicePixels(16),
+                    height: DevicePixels(16),
+                },
+            },
+        };
+        let region = Bounds {
+            origin: Point {
+                x: DevicePixels(4),
+                y: DevicePixels(4),
+            },
+            size: Size {
+                width: DevicePixels(8),
+                height: DevicePixels(8),
+            },
+        };
+        assert!(validate_update(tile, region, 256).is_ok());
+        assert!(validate_update(tile, region, 255).is_err());
+        for origin in [-1, 9, i32::MAX] {
+            let region = Bounds {
+                origin: Point {
+                    x: DevicePixels(origin),
+                    ..region.origin
+                },
+                ..region
+            };
+            assert!(validate_update(tile, region, 256).is_err());
+        }
+        for width in [0, -1, i32::MAX] {
+            let region = Bounds {
+                size: Size {
+                    width: DevicePixels(width),
+                    ..region.size
+                },
+                ..region
+            };
+            assert!(validate_update(tile, region, 256).is_err());
+        }
+    }
+
+    #[test]
+    fn atlas_update_reuses_tile_and_returns_false_after_removal() -> anyhow::Result<()> {
+        let (device, queue) = test_device_and_queue()?;
+        let atlas = WgpuAtlas::new(device, queue, wgpu::TextureFormat::Bgra8Unorm);
+        let key = AtlasKey::Image(RenderImageParams {
+            image_id: ImageId(42),
+            frame_index: 0,
+        });
+        let bounds = Bounds {
+            origin: Point::default(),
+            size: Size {
+                width: DevicePixels(1),
+                height: DevicePixels(1),
+            },
+        };
+        assert!(!atlas.update(&key, bounds, &[1, 2, 3, 255])?);
+        let tile = atlas.get_or_insert_with(key.clone(), &mut || {
+            Ok(Some((bounds.size, Cow::Borrowed(&[0, 0, 0, 255]))))
+        })?;
+        assert!(atlas.update(&key, bounds, &[1, 2, 3, 255])?);
+        {
+            let state = atlas.0.lock();
+            assert_eq!(state.tile(&key), tile);
+            assert_eq!(
+                state
+                    .backend
+                    .pending_uploads
+                    .last()
+                    .map(|upload| upload.data.as_slice()),
+                Some([1, 2, 3, 255].as_slice())
+            );
+        }
+        atlas.before_frame();
+        atlas.remove(&key);
+        assert!(!atlas.update(&key, bounds, &[1, 2, 3, 255])?);
+        Ok(())
+    }
 
     fn test_device_and_queue() -> anyhow::Result<(Arc<wgpu::Device>, Arc<wgpu::Queue>)> {
         block_on(async {

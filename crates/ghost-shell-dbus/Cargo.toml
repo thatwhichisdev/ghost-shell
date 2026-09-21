@@ -10,8 +10,8 @@ publish.workspace = true
 path = "src/dbus.rs"
 
 [dependencies]
-gpui.workspace = true
-gpui_tokio.workspace = true
+ghost-shell-gpui.workspace = true
+ghost-shell-tokio.workspace = true
 
 anyhow.workspace = true
 futures-util.workspace = true

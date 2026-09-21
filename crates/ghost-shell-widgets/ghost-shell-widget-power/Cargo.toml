@@ -7,8 +7,9 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-gpui.workspace = true
-gpui-component.workspace = true
+ghost-shell-theme.workspace = true
+ghost-shell-component-icon.workspace = true
+ghost-shell-gpui.workspace = true
 
 anyhow.workspace = true
 starship-battery.workspace = true

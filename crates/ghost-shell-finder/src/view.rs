@@ -1,15 +1,14 @@
 use std::{rc::Rc, sync::Arc, time::Duration};
 
-use gpui::{
+use ghost_shell_component_icon::IconName;
+use ghost_shell_component_input::{Input, InputEvent, InputState, MoveDown, MoveUp};
+use ghost_shell_component_spinner::Spinner;
+use ghost_shell_component_virtual_list::{VirtualListScrollHandle, v_virtual_list};
+use ghost_shell_gpui::{
     Context, Div, Entity, IntoElement, Pixels, Render, ScrollStrategy, Size, Stateful,
     Task, Window, div, prelude::*, px, size,
 };
-use gpui_component::{
-    ActiveTheme as _, IconName, Sizable, VirtualListScrollHandle,
-    input::{Input, InputEvent, InputState, MoveDown, MoveUp},
-    spinner::Spinner,
-    v_virtual_list,
-};
+use ghost_shell_theme::{ActiveTheme as _, Sizable};
 
 use crate::{
     FinderOpenSelected,
@@ -265,7 +264,7 @@ impl FinderView {
                         view.entries_sizes = Rc::new(vec![
                             size(
                                 px(0.0),
-                                gpui_component::Size::XSmall.table_row_height(),
+                                ghost_shell_theme::Size::XSmall.row_height(),
                             );
                             view.entries.len()
                         ]);
@@ -331,9 +330,9 @@ impl FinderView {
         let is_hovered = self.entry_hovered == Some(index);
 
         let background = if is_selected {
-            cx.theme().list_active
+            cx.theme().selection
         } else if is_hovered {
-            cx.theme().list_hover
+            cx.theme().muted
         } else {
             cx.theme().background
         };
@@ -443,8 +442,8 @@ impl Render for FinderView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(cx.theme().colors.background)
-            .text_color(cx.theme().colors.foreground)
+            .bg(cx.theme().background)
+            .text_color(cx.theme().foreground)
             .child(self.render_input(cx))
             .when(is_loading, |this| this.child(self.render_loading(cx)))
             .when(!is_loading, |this| this.child(self.render_entries(cx)))

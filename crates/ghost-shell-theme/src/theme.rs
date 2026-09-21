@@ -5,9 +5,6 @@ mod focus;
 mod sizing;
 mod tokens;
 
-#[cfg(feature = "legacy")]
-pub mod legacy;
-
 use std::ops::{Deref, DerefMut};
 
 pub use focus::{FocusTrapContainer, FocusTrapElement, active_focus_trap};
@@ -73,8 +70,7 @@ impl Theme {
         cx.refresh_windows();
     }
 
-    // Accept palette values instead of AppConfig: config still uses upstream GPUI
-    // until the application migration, and must not enter the component graph.
+    // Keep application configuration outside the reusable component graph.
     pub fn apply_base16(&mut self, palette: &[u32; 16]) {
         let color = |index: usize| {
             ghost_shell_gpui::Hsla::from(ghost_shell_gpui::rgb(palette[index]))

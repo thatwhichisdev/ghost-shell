@@ -1,32 +1,18 @@
-/// Entry point for the daemon.
-///
-/// Initializes shell application assets, required to load *.svg icons.
-///
-/// Initializes tokio runtime using `gpui_tokio`,
-/// required to for inter-components communication using synchronization primitives,
-/// also used to create async IPC server and clients.
-///
-/// Initializes gpui-component components using `gpui_component`,
-/// required for building UI compontens.
-///
-/// Initializes niri ipc client and event stream,
-/// required niri related widgets to send events to niri and also receive niri state over event stream.
-///
-/// Initializes shell application itself, which loads bars and initializes all widgets.
-///
 fn main() {
     let env = env_logger::Env::default().default_filter_or("info");
 
     env_logger::Builder::from_env(env).init();
 
-    let app = gpui_platform::application().with_assets(ghost_shell_assets::Assets);
+    let app = ghost_shell_gpui::application().with_assets(ghost_shell_assets::Assets);
 
-    app.run(|cx: &mut gpui::App| {
-        gpui_tokio::init(cx);
-        gpui_component::init(cx);
+    app.run(|cx: &mut ghost_shell_gpui::App| {
+        ghost_shell_tokio::init(cx);
+        ghost_shell_component_root::init(cx);
+        ghost_shell_component_input::init(cx);
+        ghost_shell_component_menu::init(cx);
 
         ghost_shell_config::init(cx);
-        ghost_shell_theme::legacy::init(cx);
+        configure_theme(cx);
 
         ghost_shell_dbus::init(cx);
         ghost_shell_niri::init(cx);
@@ -42,4 +28,42 @@ fn main() {
 
         cx.activate(true);
     });
+}
+
+fn configure_theme(cx: &mut ghost_shell_gpui::App) {
+    use ghost_shell_config::{AppConfig, ThemeMode as ConfigThemeMode};
+    use ghost_shell_theme::{Theme, ThemeMode};
+
+    let config = cx.global::<AppConfig>();
+    let mode = match config.theme.mode {
+        ConfigThemeMode::Dark => ThemeMode::Dark,
+        ConfigThemeMode::Light => ThemeMode::Light,
+        ConfigThemeMode::System => cx.window_appearance().into(),
+    };
+    let palette = match mode {
+        ThemeMode::Dark => &config.theme.dark,
+        ThemeMode::Light => &config.theme.light,
+    };
+    let mut theme = Theme::new(mode);
+    theme.tokens.typography.sans = config.general.font_family.clone().into();
+    theme.tokens.typography.md.size = ghost_shell_gpui::px(config.general.font_size);
+    theme.apply_base16(&[
+        palette.base00,
+        palette.base01,
+        palette.base02,
+        palette.base03,
+        palette.base04,
+        palette.base05,
+        palette.base06,
+        palette.base07,
+        palette.base08,
+        palette.base09,
+        palette.base0a,
+        palette.base0b,
+        palette.base0c,
+        palette.base0d,
+        palette.base0e,
+        palette.base0f,
+    ]);
+    Theme::set(theme, cx);
 }
