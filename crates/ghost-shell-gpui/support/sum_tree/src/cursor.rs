@@ -476,7 +476,7 @@ where
 
     /// Returns whether we found the item you were seeking for.
     #[track_caller]
-    #[instrument(skip_all)]
+    #[instrument(level = "trace", skip_all)]
     fn seek_internal(
         &mut self,
         target: &dyn SeekTarget<'a, T::Summary, D>,

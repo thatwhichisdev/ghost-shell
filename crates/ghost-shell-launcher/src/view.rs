@@ -79,11 +79,16 @@ impl View {
         &mut self,
         input: &Entity<InputState>,
         event: &InputEvent,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !matches!(event, InputEvent::Change) {
-            return;
+        match event {
+            InputEvent::PressEnter { .. } => {
+                window.dispatch_action(Box::new(EntrySpawn), cx);
+                return;
+            }
+            InputEvent::Change => {}
+            InputEvent::Focus | InputEvent::Blur => return,
         }
 
         let query = input.read(cx).value();
