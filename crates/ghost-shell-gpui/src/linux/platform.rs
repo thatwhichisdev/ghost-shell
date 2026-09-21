@@ -97,6 +97,7 @@ pub(crate) struct PlatformHandlers {
     pub(crate) will_open_app_menu: Option<Box<dyn FnMut()>>,
     pub(crate) validate_app_menu_command: Option<Box<dyn FnMut(&dyn Action) -> bool>>,
     pub(crate) keyboard_layout_change: Option<Box<dyn FnMut()>>,
+    pub(crate) displays_changed: Option<Box<dyn FnMut()>>,
     pub(crate) system_sleep: Option<Box<dyn FnMut()>>,
     pub(crate) system_wake: Option<Box<dyn FnMut()>>,
 }
@@ -380,6 +381,12 @@ impl<P: LinuxClient + 'static> Platform for LinuxPlatform<P> {
 
     fn displays(&self) -> Vec<Rc<dyn PlatformDisplay>> {
         self.inner.displays()
+    }
+
+    fn on_displays_changed(&self, callback: Box<dyn FnMut()>) {
+        self.inner.with_common(|common| {
+            common.callbacks.displays_changed = Some(callback);
+        });
     }
 
     fn active_window(&self) -> Option<AnyWindowHandle> {

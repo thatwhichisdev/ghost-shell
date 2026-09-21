@@ -132,6 +132,11 @@ impl AppContext for TestAppContext {
 }
 
 impl TestAppContext {
+    /// Replaces the display snapshot and delivers a platform display-change notification.
+    pub fn set_displays(&mut self, displays: Vec<Rc<dyn crate::PlatformDisplay>>) {
+        self.test_platform.set_displays(displays);
+    }
+
     /// Creates a new `TestAppContext`. Usually you can rely on `#[gpui::test]` to do this for you.
     pub fn build(dispatcher: TestDispatcher, fn_name: Option<&'static str>) -> Self {
         let arc_dispatcher = Arc::new(dispatcher.clone());
@@ -1313,6 +1318,69 @@ mod tests {
         PathPromptOptions, SystemNotification, SystemNotificationAction,
         SystemNotificationResponse, TestAppContext,
     };
+
+    #[gpui::test]
+    fn display_changes_publish_current_snapshot_and_unsubscribe(cx: &mut TestAppContext) {
+        let displays = cx.update(|cx| cx.displays());
+        let counts = Rc::new(RefCell::new(Vec::new()));
+        let subscription = cx.update(|cx| {
+            let counts = counts.clone();
+            cx.on_displays_changed(move |cx| {
+                counts.borrow_mut().push(cx.displays().len());
+                // Updates queued by subscribers must be flushed before returning.
+                let counts = counts.clone();
+                cx.defer(move |_| counts.borrow_mut().push(99));
+            })
+        });
+        assert!(counts.borrow().is_empty());
+        cx.set_displays(Vec::new());
+        cx.set_displays(displays.clone());
+        assert_eq!(*counts.borrow(), [0, 99, 1, 99]);
+        drop(subscription);
+        cx.set_displays(Vec::new());
+        assert_eq!(*counts.borrow(), [0, 99, 1, 99]);
+        cx.set_displays(displays);
+    }
+
+    #[gpui::test]
+    fn display_observers_can_close_and_recreate_windows(cx: &mut TestAppContext) {
+        use crate::{AppContext, Empty, QuitMode, WindowOptions};
+
+        let displays = cx.update(|cx| {
+            cx.set_quit_mode(QuitMode::Explicit);
+            cx.displays()
+        });
+        let subscription = cx.update(|cx| {
+            cx.on_displays_changed(|cx| {
+                for handle in cx.windows() {
+                    handle
+                        .update(cx, |_, window, _| window.remove_window())
+                        .unwrap();
+                }
+                for display in cx.displays() {
+                    cx.open_window(
+                        WindowOptions {
+                            display_id: Some(display.id()),
+                            ..Default::default()
+                        },
+                        |_, cx| cx.new(|_| Empty),
+                    )
+                    .unwrap();
+                }
+            })
+        });
+        cx.set_displays(Vec::new());
+        cx.set_displays(displays.clone());
+        let old = cx.update(|cx| cx.windows());
+        assert_eq!(old.len(), 1);
+        cx.set_displays(Vec::new());
+        assert!(cx.update(|cx| cx.windows().is_empty()));
+        cx.set_displays(displays);
+        let new = cx.update(|cx| cx.windows());
+        assert_eq!(new.len(), 1);
+        assert_ne!(old, new);
+        drop(subscription);
+    }
 
     #[gpui::test]
     async fn test_system_notifications_require_identity_and_replace_matching_tags(

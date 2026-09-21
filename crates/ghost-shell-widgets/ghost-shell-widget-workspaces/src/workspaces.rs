@@ -22,35 +22,38 @@ impl WorkspacesWidget {
     #[must_use]
     pub fn new(cx: &mut Context<Self>, display_uuid: Uuid) -> Self {
         let subscription = cx.observe_global::<NiriState>(|widget, cx| {
-            let mut state: Vec<Workspace> = cx
-                .global::<NiriState>()
-                .workspaces
-                .values()
-                .filter(|workspace| {
-                    let output_name = workspace.output.as_ref().unwrap();
-                    let output_uuid =
-                        Uuid::new_v5(&Uuid::NAMESPACE_DNS, output_name.as_bytes());
-
-                    output_uuid == widget.display_uuid
-                })
-                .map(|workspace| Workspace {
-                    idx: workspace.idx,
-                    is_active: workspace.is_active,
-                })
-                .collect();
-
-            state.sort_by_key(|workspace| workspace.idx);
-
-            widget.state = state;
-
+            widget.state =
+                Self::workspaces(cx.global::<NiriState>(), widget.display_uuid);
             cx.notify();
         });
 
         Self {
             display_uuid,
-            state: Vec::default(),
+            state: Self::workspaces(cx.global::<NiriState>(), display_uuid),
             subscription,
         }
+    }
+
+    fn workspaces(state: &NiriState, display_uuid: Uuid) -> Vec<Workspace> {
+        let mut workspaces: Vec<_> = state
+            .workspaces
+            .values()
+            .filter(|workspace| {
+                workspace
+                    .output
+                    .as_ref()
+                    .is_some_and(|output| {
+                        Uuid::new_v5(&Uuid::NAMESPACE_DNS, output.as_bytes())
+                            == display_uuid
+                    })
+            })
+            .map(|workspace| Workspace {
+                idx: workspace.idx,
+                is_active: workspace.is_active,
+            })
+            .collect();
+        workspaces.sort_by_key(|workspace| workspace.idx);
+        workspaces
     }
 }
 
@@ -79,5 +82,33 @@ impl Render for WorkspacesWidget {
                         .text_color(cx.theme().foreground)
                 }
             }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workspaces_without_an_output_are_ignored() {
+        let state = NiriState {
+            workspaces: [(
+                1,
+                ghost_shell_niri::Workspace {
+                    id: 1,
+                    idx: 1,
+                    name: None,
+                    output: None,
+                    is_urgent: false,
+                    is_active: true,
+                    is_focused: true,
+                    active_window_id: None,
+                },
+            )]
+            .into(),
+            ..Default::default()
+        };
+        let display_uuid = Uuid::new_v5(&Uuid::NAMESPACE_DNS, b"DP-1");
+        assert!(WorkspacesWidget::workspaces(&state, display_uuid).is_empty());
     }
 }

@@ -139,6 +139,7 @@ pub trait Platform: 'static {
     fn unhide_other_apps(&self);
 
     fn displays(&self) -> Vec<Rc<dyn PlatformDisplay>>;
+    fn on_displays_changed(&self, callback: Box<dyn FnMut()>);
     fn primary_display(&self) -> Option<Rc<dyn PlatformDisplay>>;
     fn active_window(&self) -> Option<AnyWindowHandle>;
     fn window_stack(&self) -> Option<Vec<AnyWindowHandle>> {

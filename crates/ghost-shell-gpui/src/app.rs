@@ -478,6 +478,7 @@ pub struct App {
     pub(crate) keystroke_observers: SubscriberSet<(), KeystrokeObserver>,
     pub(crate) keystroke_interceptors: SubscriberSet<(), KeystrokeObserver>,
     pub(crate) keyboard_layout_observers: SubscriberSet<(), Handler>,
+    display_observers: SubscriberSet<(), Handler>,
     missing_glyph_callback: Rc<MissingGlyphCallbackSlot>,
     pub(crate) thermal_state_observers: SubscriberSet<(), Handler>,
     pub(crate) system_sleep_observers: SubscriberSet<(), Handler>,
@@ -611,6 +612,7 @@ impl App {
                 keystroke_observers: SubscriberSet::new(),
                 keystroke_interceptors: SubscriberSet::new(),
                 keyboard_layout_observers: SubscriberSet::new(),
+                display_observers: SubscriberSet::new(),
                 missing_glyph_callback: Rc::default(),
                 thermal_state_observers: SubscriberSet::new(),
                 system_sleep_observers: SubscriberSet::new(),
@@ -648,6 +650,19 @@ impl App {
         init_app_menus(platform.as_ref(), &app.borrow());
         #[cfg(feature = "profiler")]
         crate::profiler::journal::observe_power(&app.borrow());
+
+        platform.on_displays_changed(Box::new({
+            let app = Rc::downgrade(&app);
+            move || {
+                if let Some(app) = app.upgrade() {
+                    app.borrow_mut().update(|cx| {
+                        cx.display_observers
+                            .clone()
+                            .retain(&(), |callback| callback(cx));
+                    });
+                }
+            }
+        }));
 
         platform.on_keyboard_layout_change(Box::new({
             let app = Rc::downgrade(&app);
@@ -1119,6 +1134,23 @@ impl App {
     /// Returns the list of currently active displays.
     pub fn displays(&self) -> Vec<Rc<dyn PlatformDisplay>> {
         self.platform.displays()
+    }
+
+    /// Subscribes to changes in the connected displays or their properties.
+    /// Read the current snapshot with `displays`. The callback is not called on subscription.
+    pub fn on_displays_changed(
+        &self,
+        mut callback: impl FnMut(&mut App) + 'static,
+    ) -> Subscription {
+        let (subscription, activate) = self.display_observers.insert(
+            (),
+            Box::new(move |cx| {
+                callback(cx);
+                true
+            }),
+        );
+        activate();
+        subscription
     }
 
     /// Returns the primary display that will be used for new windows.

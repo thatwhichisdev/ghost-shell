@@ -300,6 +300,33 @@ pub struct InProgressOutput {
 }
 
 impl InProgressOutput {
+    fn apply_event(&mut self, event: wl_output::Event) -> Option<Output> {
+        match event {
+            wl_output::Event::Name { name } => self.name = Some(name),
+            wl_output::Event::Scale { factor } => self.scale = Some(factor),
+            wl_output::Event::Geometry { x, y, subpixel, .. } => {
+                self.position = Some(point(DevicePixels(x), DevicePixels(y)));
+                if let WEnum::Value(subpixel) = subpixel {
+                    self.subpixel = Some(subpixel);
+                }
+            }
+            wl_output::Event::Mode {
+                width,
+                height,
+                flags,
+                ..
+            } => {
+                if matches!(flags, WEnum::Value(flags) if flags.contains(wl_output::Mode::Current))
+                {
+                    self.size = Some(size(DevicePixels(width), DevicePixels(height)));
+                }
+            }
+            wl_output::Event::Done => return self.complete(),
+            _ => {}
+        }
+        None
+    }
+
     fn complete(&self) -> Option<Output> {
         if let Some((position, size)) = self.position.zip(self.size) {
             let scale = self.scale.unwrap_or(1);
@@ -732,6 +759,25 @@ impl WaylandClientStatePtr {
             &mut state.last_ime_cursor_rectangle,
             bounds,
         );
+    }
+
+    fn notify_displays_changed(&self) {
+        let client = self.get_client();
+        let callback = client
+            .borrow_mut()
+            .common
+            .callbacks
+            .displays_changed
+            .take();
+        if let Some(mut callback) = callback {
+            // Subscribers can query displays and create windows, borrowing the client again.
+            callback();
+            client
+                .borrow_mut()
+                .common
+                .callbacks
+                .displays_changed = Some(callback);
+        }
     }
 
     pub fn handle_keyboard_layout_change(&self) {
@@ -1776,7 +1822,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandClientStat
                 };
 
                 state.in_progress_outputs.remove(&output_id);
-                state.outputs.remove(&output_id);
+                let was_published = state.outputs.remove(&output_id).is_some();
 
                 if let Some(output) = state.wl_outputs.remove(&output_id) {
                     if output.version() >= wl_output::REQ_RELEASE_SINCE {
@@ -1798,6 +1844,9 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandClientStat
 
                 if let Some(window) = lock_window {
                     window.close();
+                }
+                if was_published {
+                    this.notify_displays_changed();
                 }
             }
             _ => {}
@@ -1898,33 +1947,13 @@ impl Dispatch<wl_output::WlOutput, ()> for WaylandClientStatePtr {
             return;
         };
 
-        match event {
-            wl_output::Event::Name { name } => {
-                in_progress_output.name = Some(name);
+        if let Some(complete) = in_progress_output.apply_event(event) {
+            if state.outputs.get(&output.id()) == Some(&complete) {
+                return;
             }
-            wl_output::Event::Scale { factor } => {
-                in_progress_output.scale = Some(factor);
-            }
-            wl_output::Event::Geometry { x, y, subpixel, .. } => {
-                in_progress_output.position =
-                    Some(point(DevicePixels(x), DevicePixels(y)));
-                if let WEnum::Value(subpixel) = subpixel {
-                    in_progress_output.subpixel = Some(subpixel);
-                }
-            }
-            wl_output::Event::Mode { width, height, .. } => {
-                in_progress_output.size =
-                    Some(size(DevicePixels(width), DevicePixels(height)))
-            }
-            wl_output::Event::Done => {
-                if let Some(complete) = in_progress_output.complete() {
-                    state.outputs.insert(output.id(), complete);
-                }
-                state
-                    .in_progress_outputs
-                    .remove(&output.id());
-            }
-            _ => {}
+            state.outputs.insert(output.id(), complete);
+            drop(state);
+            this.notify_displays_changed();
         }
     }
 }
@@ -3494,6 +3523,67 @@ mod tests {
     use std::cell::Cell;
 
     use super::*;
+
+    #[test]
+    fn output_changes_are_published_on_done_and_keep_previous_properties() {
+        let mut output = InProgressOutput {
+            global_name: 7,
+            position: Some(point(DevicePixels(0), DevicePixels(0))),
+            ..Default::default()
+        };
+        assert!(
+            output
+                .apply_event(wl_output::Event::Done)
+                .is_none()
+        );
+        assert!(
+            output
+                .apply_event(wl_output::Event::Name {
+                    name: "DP-1".into()
+                })
+                .is_none()
+        );
+        assert!(
+            output
+                .apply_event(wl_output::Event::Mode {
+                    flags: WEnum::Value(wl_output::Mode::Current),
+                    width: 1920,
+                    height: 1080,
+                    refresh: 60000,
+                })
+                .is_none()
+        );
+        assert!(
+            output
+                .apply_event(wl_output::Event::Mode {
+                    flags: WEnum::Value(wl_output::Mode::Preferred),
+                    width: 3840,
+                    height: 2160,
+                    refresh: 60000,
+                })
+                .is_none()
+        );
+        let initial = output
+            .apply_event(wl_output::Event::Done)
+            .unwrap();
+        assert_eq!(
+            initial.bounds.size,
+            size(DevicePixels(1920), DevicePixels(1080))
+        );
+        assert_eq!(initial.scale, 1);
+        assert!(
+            output
+                .apply_event(wl_output::Event::Scale { factor: 2 })
+                .is_none()
+        );
+        let changed = output
+            .apply_event(wl_output::Event::Done)
+            .unwrap();
+        assert_eq!(changed.scale, 2);
+        assert_eq!(changed.name.as_deref(), Some("DP-1"));
+        assert_eq!(changed.bounds, initial.bounds);
+        assert_eq!(output.apply_event(wl_output::Event::Done), Some(changed));
+    }
 
     #[derive(Clone)]
     struct FakeDataOffer {

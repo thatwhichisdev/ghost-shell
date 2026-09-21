@@ -55,12 +55,7 @@ impl Bar {
         })
     }
 
-    /// Opens bar and draws it's view
-    ///
-    /// # Panics
-    /// Panics with fails to open the bar.
-    ///
-    pub fn open(&mut self, cx: &mut App) {
+    pub fn open(&mut self, cx: &mut App) -> anyhow::Result<()> {
         let window_options = {
             let app_id: String = "dev.thatwhichis.ghost-shell".to_string();
             let namespace: String = "ghost-shell-bar".to_string();
@@ -99,13 +94,30 @@ impl Bar {
             }
         };
 
-        let handle = cx
-            .open_window(window_options, |window, cx| {
-                cx.new(|cx| Root::new(self.view.clone(), window, cx))
-            })
-            .unwrap();
+        let handle = cx.open_window(window_options, |window, cx| {
+            cx.new(|cx| Root::new(self.view.clone(), window, cx))
+        })?;
 
         self.window = Some(handle.into());
+        Ok(())
+    }
+
+    pub(crate) fn is_current(&self, display: &dyn PlatformDisplay, cx: &App) -> bool {
+        self.display.id() == display.id()
+            && self.display.bounds().size.width == display.bounds().size.width
+            && self
+                .window
+                .is_some_and(|window| cx.windows().contains(&window))
+    }
+
+    pub(crate) fn close(&mut self, cx: &mut App) -> anyhow::Result<()> {
+        if let Some(handle) = self.window.take() {
+            // The compositor may already have closed this output's layer surface.
+            if cx.windows().contains(&handle) {
+                handle.update(cx, |_, window, _| window.remove_window())?;
+            }
+        }
+        Ok(())
     }
 }
 

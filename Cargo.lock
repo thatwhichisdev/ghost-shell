@@ -2206,6 +2206,7 @@ dependencies = [
  "ghost-shell-widget-power",
  "ghost-shell-widget-tray",
  "ghost-shell-widget-workspaces",
+ "log",
 ]
 
 [[package]]

@@ -56,7 +56,10 @@ impl Launcher {
     }
 
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        let output = cx.global::<GhostShell>().get_output();
+        let output = cx
+            .global::<GhostShell>()
+            .get_output()
+            .context("cannot open launcher without a connected display")?;
 
         let window_size = size(px(540.0), px(450.0));
         let window_bounds = Bounds::centered(Some(output.display.id()), window_size, cx);

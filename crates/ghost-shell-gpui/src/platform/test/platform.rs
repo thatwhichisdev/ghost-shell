@@ -34,7 +34,8 @@ pub(crate) struct TestPlatform {
     foreground_executor: ForegroundExecutor,
 
     pub(crate) active_window: RefCell<Option<TestWindow>>,
-    active_display: Rc<dyn PlatformDisplay>,
+    displays: RefCell<Vec<Rc<dyn PlatformDisplay>>>,
+    displays_changed: RefCell<Option<Box<dyn FnMut()>>>,
     active_cursor: Mutex<CursorStyle>,
     current_clipboard_item: Mutex<Option<ClipboardItem>>,
 
@@ -85,6 +86,15 @@ pub(crate) struct TestPrompts {
 }
 
 impl TestPlatform {
+    pub(crate) fn set_displays(&self, displays: Vec<Rc<dyn PlatformDisplay>>) {
+        *self.displays.borrow_mut() = displays;
+        let callback = self.displays_changed.borrow_mut().take();
+        if let Some(mut callback) = callback {
+            callback();
+            *self.displays_changed.borrow_mut() = Some(callback);
+        }
+    }
+
     #[cfg(any(test, feature = "test-support"))]
     pub fn new(
         executor: BackgroundExecutor,
@@ -115,13 +125,15 @@ impl TestPlatform {
             Box<dyn Fn() -> Option<Box<dyn PlatformHeadlessRenderer>>>,
         >,
     ) -> Rc<Self> {
+        let active_display: Rc<dyn PlatformDisplay> = Rc::new(TestDisplay::new());
         Rc::new_cyclic(|weak| TestPlatform {
             background_executor: executor,
             foreground_executor,
             #[cfg(any(test, feature = "test-support"))]
             prompts: Default::default(),
             active_cursor: Default::default(),
-            active_display: Rc::new(TestDisplay::new()),
+            displays: RefCell::new(vec![active_display.clone()]),
+            displays_changed: RefCell::new(None),
             active_window: Default::default(),
             expect_restart: Default::default(),
             current_clipboard_item: Mutex::new(None),
@@ -446,11 +458,15 @@ impl Platform for TestPlatform {
     }
 
     fn displays(&self) -> Vec<std::rc::Rc<dyn crate::PlatformDisplay>> {
-        vec![self.active_display.clone()]
+        self.displays.borrow().clone()
+    }
+
+    fn on_displays_changed(&self, callback: Box<dyn FnMut()>) {
+        *self.displays_changed.borrow_mut() = Some(callback);
     }
 
     fn primary_display(&self) -> Option<std::rc::Rc<dyn crate::PlatformDisplay>> {
-        Some(self.active_display.clone())
+        self.displays.borrow().first().cloned()
     }
 
     fn active_window(&self) -> Option<crate::AnyWindowHandle> {
@@ -465,17 +481,21 @@ impl Platform for TestPlatform {
         handle: AnyWindowHandle,
         params: WindowParams,
     ) -> anyhow::Result<Box<dyn crate::PlatformWindow>> {
+        let display = {
+            let displays = self.displays.borrow();
+            displays
+                .iter()
+                .find(|display| Some(display.id()) == params.display_id)
+                .or_else(|| displays.first())
+                .cloned()
+                .ok_or_else(|| anyhow::anyhow!("no connected test displays"))?
+        };
         let renderer = self
             .headless_renderer_factory
             .as_ref()
             .and_then(|f| f());
-        let window = TestWindow::new(
-            handle,
-            params,
-            self.weak.clone(),
-            self.active_display.clone(),
-            renderer,
-        );
+        let window =
+            TestWindow::new(handle, params, self.weak.clone(), display, renderer);
         Ok(Box::new(window))
     }
 

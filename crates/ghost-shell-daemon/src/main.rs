@@ -3,7 +3,9 @@ fn main() {
 
     env_logger::Builder::from_env(env).init();
 
-    let app = ghost_shell_gpui::application().with_assets(ghost_shell_assets::Assets);
+    let app = ghost_shell_gpui::application()
+        .with_quit_mode(ghost_shell_gpui::QuitMode::Explicit)
+        .with_assets(ghost_shell_assets::Assets);
 
     app.run(|cx: &mut ghost_shell_gpui::App| {
         ghost_shell_tokio::init(cx);

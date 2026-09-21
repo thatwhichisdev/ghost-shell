@@ -25,3 +25,4 @@ ghost-shell-widget-workspaces.workspace = true
 ghost-shell-gpui.workspace = true
 
 anyhow.workspace = true
+log.workspace = true

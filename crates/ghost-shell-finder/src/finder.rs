@@ -83,7 +83,10 @@ impl Finder {
     ///
     /// Returns an error if GPUI fails to create the window.
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
-        let output = cx.global::<GhostShell>().get_output();
+        let output = cx
+            .global::<GhostShell>()
+            .get_output()
+            .context("cannot open finder without a connected display")?;
 
         let window_size = size(px(900.0), px(700.0));
         let window_bounds = Bounds::centered(Some(output.display.id()), window_size, cx);
