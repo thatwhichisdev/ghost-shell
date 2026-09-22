@@ -6,9 +6,9 @@ use std::{
 };
 
 use anyhow::Result;
-use collections::FxHashSet;
-use refineable::Refineable;
 
+use crate::collections::FxHashSet;
+use crate::refineable::Refineable;
 use crate::{
     AnyElement, AnyEntity, AnyWeakEntity, App, AvailableSpace, Bounds, ContentMask,
     Context, Element, ElementId, Entity, EntityId, GlobalElementId, InspectorElementId,

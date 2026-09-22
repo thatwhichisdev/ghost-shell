@@ -15,11 +15,11 @@ use image::{
     AnimationDecoder, ImageError, ImageFormat, Rgba,
     codecs::{gif::GifDecoder, webp::WebPDecoder},
 };
-use scheduler::Instant;
 use smallvec::SmallVec;
 use thiserror::Error;
 
 use super::{Stateful, StatefulInteractiveElement};
+use crate::scheduler::Instant;
 use crate::{
     AnyElement, AnyImageCache, App, Asset, AssetLogger, Bounds, DefiniteLength, Element,
     ElementId, Entity, GlobalElementId, Hitbox, Image, ImageCache, InspectorElementId,

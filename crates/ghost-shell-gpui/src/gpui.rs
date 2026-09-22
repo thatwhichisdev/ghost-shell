@@ -6,6 +6,43 @@
 
 extern crate self as ghost_shell_gpui;
 extern crate self as gpui;
+
+#[cfg(not(target_os = "linux"))]
+compile_error!("ghost-shell-gpui supports Linux with Wayland only");
+
+#[allow(missing_docs)]
+pub mod collections;
+mod linux;
+#[allow(missing_docs)]
+pub mod refineable;
+mod renderer;
+#[allow(missing_docs)]
+pub mod scheduler;
+#[allow(missing_docs)]
+pub mod sum_tree;
+
+pub use linux::current_platform;
+
+/// Creates an application using the Wayland backend.
+pub fn application() -> Application {
+    Application::with_platform(current_platform(false))
+}
+
+/// Creates an application without a display connection.
+pub fn headless() -> Application {
+    Application::with_platform(current_platform(true))
+}
+
+/// Creates a background executor without opening a display connection.
+pub fn background_executor() -> BackgroundExecutor {
+    current_platform(true).background_executor()
+}
+
+/// Native offscreen GPU rendering is not implemented by this backend.
+#[cfg(any(feature = "bench-support", feature = "test-support"))]
+pub fn current_headless_renderer() -> Option<Box<dyn PlatformHeadlessRenderer>> {
+    None
+}
 #[macro_use]
 mod action;
 mod app;
@@ -98,11 +135,11 @@ pub use elements::*;
 pub use executor::*;
 pub use geometry::*;
 pub use gestures::*;
-pub use global::*;
-pub use gpui_macros::{
+pub use ghost_shell_gpui_macros::{
     AppContext, IntoElement, Render, VisualContext, bench, property_test,
     register_action, test,
 };
+pub use global::*;
 pub use spring::*;
 
 /// Defines a Criterion benchmark group for benchmarks annotated with [`gpui::bench`].
@@ -143,7 +180,6 @@ pub use platform::*;
 pub use pollster::block_on;
 pub use profiler::*;
 pub use queue::{PriorityQueueReceiver, PriorityQueueSender};
-pub use refineable::*;
 pub use scene::*;
 pub use shared_uri::*;
 pub use style::*;
@@ -159,6 +195,8 @@ pub use text_system::*;
 pub use util::{FutureExt, Timeout};
 pub use view::*;
 pub use window::*;
+
+pub use crate::refineable::*;
 
 /// The context trait, allows the different contexts in GPUI to be used
 /// interchangeably for certain operations.

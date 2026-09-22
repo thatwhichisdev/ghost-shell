@@ -14,14 +14,14 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use collections::FxHashSet;
-#[cfg(any(test, feature = "leak-detection"))]
-use collections::HashMap;
 use derive_more::{Deref, DerefMut};
 use parking_lot::{RwLock, RwLockUpgradableReadGuard};
 use slotmap::{KeyData, SecondaryMap, SlotMap};
 
 use super::Context;
+use crate::collections::FxHashSet;
+#[cfg(any(test, feature = "leak-detection"))]
+use crate::collections::HashMap;
 use crate::util::atomic_incr_if_not_zero;
 use crate::{App, AppContext, GpuiBorrow, VisualContext, Window, seal::Sealed};
 
@@ -1018,7 +1018,7 @@ pub(crate) struct LeakDetector {
 /// handles remain between the snapshot and the current state.
 #[cfg(any(test, feature = "leak-detection"))]
 pub struct LeakDetectorSnapshot {
-    entity_ids: collections::HashSet<EntityId>,
+    entity_ids: crate::collections::HashSet<EntityId>,
 }
 
 #[cfg(any(test, feature = "leak-detection"))]
@@ -1235,7 +1235,7 @@ impl fmt::Debug for BacktraceFormatter {
             {
                 match filename {
                     "test::run_test_in_process"
-                    | "scheduler::executor::spawn_local_with_source_location::impl$1::poll<core::pin::Pin<alloc::boxed::Box<dyn$<core::future::future::Future<assoc$<Output,enum2$<core::result::Result<workspace::OpenResult,anyhow::Error> > > > >,alloc::alloc::Global> > >" => {
+                    | "crate::scheduler::executor::spawn_local_with_source_location::impl$1::poll<core::pin::Pin<alloc::boxed::Box<dyn$<core::future::future::Future<assoc$<Output,enum2$<core::result::Result<workspace::OpenResult,anyhow::Error> > > > >,alloc::alloc::Global> > >" => {
                         strip = true
                     }
                     "gpui::app::entity_map::LeakDetector::handle_created" => {

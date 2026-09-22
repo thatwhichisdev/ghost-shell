@@ -90,6 +90,7 @@ pub fn init(cx: &mut App) {
             return;
         }
     };
+
     let mut manager = BarManager {
         bars: HashMap::new(),
         menu: cx.new(|_| MenuWidget {}),
@@ -99,7 +100,9 @@ pub fn init(cx: &mut App) {
         tray: cx.new(TrayWidget::new),
     };
     manager.reconcile(cx);
+
     cx.set_global(manager);
+
     cx.on_displays_changed(|cx| {
         cx.update_global::<BarManager, _>(|manager, cx| manager.reconcile(cx));
     })

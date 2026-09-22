@@ -1,15 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/ghost-shell-gpui/core",
   "crates/ghost-shell-gpui",
-  "crates/ghost-shell-gpui/macros",
-  "crates/ghost-shell-gpui/support/collections",
-  "crates/ghost-shell-gpui/support/scheduler",
-  "crates/ghost-shell-gpui/support/sum_tree",
-  "crates/ghost-shell-gpui/support/refineable",
-  "crates/ghost-shell-gpui/support/derive_refineable",
-  "crates/ghost-shell-wgpu",
+  "crates/ghost-shell-gpui-macros",
   "crates/ghost-shell-tokio",
   "crates/ghost-shell-util",
   "crates/ghost-shell-actions",
@@ -130,15 +123,8 @@ zbus = {
 }
 
 gpui_util = { package = "ghost-shell-util", path = "crates/ghost-shell-util" }
-gpui_wgpu = { package = "ghost-shell-wgpu", path = "crates/ghost-shell-wgpu" }
-gpui_macros = { package = "ghost-shell-gpui-macros", path = "crates/ghost-shell-gpui/macros" }
-collections = { package = "ghost-shell-collections", path = "crates/ghost-shell-gpui/support/collections" }
-scheduler = { package = "ghost-shell-scheduler", path = "crates/ghost-shell-gpui/support/scheduler" }
-sum_tree = { package = "ghost-shell-sum-tree", path = "crates/ghost-shell-gpui/support/sum_tree" }
-refineable = { package = "ghost-shell-refineable", path = "crates/ghost-shell-gpui/support/refineable" }
-derive_refineable = { package = "ghost-shell-derive-refineable", path = "crates/ghost-shell-gpui/support/derive_refineable" }
+ghost-shell-gpui-macros = { path = "crates/ghost-shell-gpui-macros" }
 ghost-shell-gpui = { path = "crates/ghost-shell-gpui" }
-ghost-shell-wgpu = { path = "crates/ghost-shell-wgpu" }
 ghost-shell-tokio = { path = "crates/ghost-shell-tokio" }
 ghost-shell-util = { path = "crates/ghost-shell-util" }
 accesskit = { version = "0.24.0", features = ["enumn"] }

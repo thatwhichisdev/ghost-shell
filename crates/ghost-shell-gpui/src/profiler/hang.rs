@@ -12,8 +12,9 @@
 
 use std::time::Duration;
 
-use scheduler::Instant;
 use serde::Serialize;
+
+use crate::scheduler::Instant;
 
 /// Version of the power/visibility-aware measurement rules.
 pub const MEASUREMENT_VERSION: u32 = 2;
@@ -482,7 +483,6 @@ mod tests {
 
     use proptest::prelude::*;
     use rand::prelude::*;
-    use scheduler::SpawnTime;
 
     use super::super::journal::{
         FRAME_DEADLINE, ForegroundEvent, ForegroundJournalEntry, FrameSnapshot,
@@ -496,6 +496,7 @@ mod tests {
     use crate::profiler::{
         ActionTiming, FrameTiming, PresentTiming, TaskTiming, YieldTime,
     };
+    use crate::scheduler::SpawnTime;
     use crate::{
         self as gpui, Context, FocusHandle, InteractiveElement, IntoElement, Modifiers,
         MouseButton, Render, Styled, TestAppContext, VisualTestContext, Window, WindowId,
@@ -517,7 +518,7 @@ mod tests {
     /// dirty-to-present association.
     #[test]
     fn a_hang_outliving_the_frame_deadline_keeps_its_frame_association() {
-        let start = scheduler::Instant::now();
+        let start = crate::scheduler::Instant::now();
         let window_id = WindowId::from(0x51E17);
         let hang_end = start + FRAME_DEADLINE * 5;
         let presented_at = hang_end + Duration::from_millis(16);
@@ -564,7 +565,7 @@ mod tests {
 
     #[test]
     fn serialized_incident_reports_presented_seal_fields() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let window_id = WindowId::from(0xF1E1D);
 
@@ -651,7 +652,7 @@ mod tests {
 
     #[test]
     fn serialized_incident_reports_idle_seal_fields() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
 
         let idle = FrameSnapshot {
@@ -677,7 +678,7 @@ mod tests {
 
     #[test]
     fn phase_is_startup_until_the_first_present() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let snapshot = FrameSnapshot {
             interval_start: at(500),
@@ -715,7 +716,7 @@ mod tests {
         let mut detector = HangDetector::new(journal, HANG_THRESHOLD, FRAME_BUDGET);
         let window_id = WindowId::from(0x1A7C4);
 
-        let first_present_end = scheduler::Instant::now();
+        let first_present_end = crate::scheduler::Instant::now();
         record_present(
             presentation(window_id, first_present_end),
             Some(frame(window_id, first_present_end)),
@@ -743,7 +744,7 @@ mod tests {
     /// (PR #62779 review finding 5).
     #[test]
     fn busy_fraction_excludes_small_polls_outside_the_active_window() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let snapshot = FrameSnapshot {
             interval_start: at(0),
@@ -777,7 +778,7 @@ mod tests {
     /// what filled the interval.
     #[test]
     fn an_interval_of_small_work_over_budget_is_an_incident() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let window_id = WindowId::from(0xB0D6E7);
         let snapshot = FrameSnapshot {
@@ -825,7 +826,7 @@ mod tests {
 
     #[test]
     fn a_journal_gap_suppresses_budget_inference_but_retains_observed_hangs() {
-        let start = scheduler::Instant::now();
+        let start = crate::scheduler::Instant::now();
         let at = |ms: u64| start + Duration::from_millis(ms);
         let mut sealer = super::super::journal::IntervalSealer::new(start);
         let snapshots = sealer.push_entries([
@@ -869,7 +870,7 @@ mod tests {
     /// the budget measures foreground spend, not dirty-to-present time.
     #[test]
     fn a_slow_frame_with_little_foreground_spend_is_not_an_incident() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let window_id = WindowId::from(0xFA57);
         let snapshot = FrameSnapshot {
@@ -903,7 +904,7 @@ mod tests {
     /// with accumulated sub-threshold work.
     #[test]
     fn an_idle_sealed_interval_over_budget_is_an_incident() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let snapshot = FrameSnapshot {
             interval_start: at(0),
@@ -933,7 +934,7 @@ mod tests {
     /// blocks of equal wall time.
     #[test]
     fn serialized_contributors_are_chronological_with_nesting_depths() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let window_id = WindowId::from(0x2E57ED);
         let snapshot = FrameSnapshot {
@@ -985,7 +986,7 @@ mod tests {
     /// has no contributors and the small-poll summary carries the story.
     #[test]
     fn small_poll_spend_alone_can_reach_the_budget() {
-        let startup = scheduler::Instant::now();
+        let startup = crate::scheduler::Instant::now();
         let at = |ms: u64| startup + Duration::from_millis(ms);
         let window_id = WindowId::from(0xDE1A7);
         let snapshot = FrameSnapshot {
@@ -1043,7 +1044,7 @@ mod tests {
             frame_budget_ms in 0u16..=500,
             small_poll_total_ms in 0u16..=100,
         ) {
-            let origin = scheduler::Instant::now();
+            let origin = crate::scheduler::Instant::now();
             let mut cursor_ms = 0u64;
             let events = durations_ms
                 .iter()
@@ -1309,7 +1310,7 @@ mod tests {
     fn simulate_blocked_foreground_poll(duration: Duration) {
         let location = std::panic::Location::caller();
         crate::profiler::update_running_task(
-            SpawnTime(scheduler::Instant::now()),
+            SpawnTime(crate::scheduler::Instant::now()),
             location,
         );
         thread::sleep(duration);
@@ -1317,8 +1318,8 @@ mod tests {
     }
 
     fn task_poll_event(
-        start: scheduler::Instant,
-        end: scheduler::Instant,
+        start: crate::scheduler::Instant,
+        end: crate::scheduler::Instant,
     ) -> ForegroundEvent {
         ForegroundEvent::TaskPoll(TaskTiming {
             location: std::panic::Location::caller(),
@@ -1330,7 +1331,7 @@ mod tests {
 
     fn presentation(
         window_id: WindowId,
-        present_end: scheduler::Instant,
+        present_end: crate::scheduler::Instant,
     ) -> PresentTiming {
         PresentTiming {
             window_id,
@@ -1340,7 +1341,7 @@ mod tests {
         }
     }
 
-    fn frame(window_id: WindowId, draw_end: scheduler::Instant) -> FrameTiming {
+    fn frame(window_id: WindowId, draw_end: crate::scheduler::Instant) -> FrameTiming {
         FrameTiming {
             window_id,
             dirty_at: Some(draw_end - Duration::from_millis(2)),

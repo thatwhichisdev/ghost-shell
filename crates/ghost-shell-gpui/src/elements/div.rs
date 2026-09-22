@@ -27,12 +27,12 @@ use std::{
     time::Duration,
 };
 
-use collections::HashMap;
 use gpui_util::ResultExt;
-use refineable::Refineable;
 use smallvec::SmallVec;
 
 use super::ImageCacheProvider;
+use crate::collections::HashMap;
+use crate::refineable::Refineable;
 use crate::{
     Action, AnyDrag, AnyElement, AnyTooltip, AnyView, App, Bounds, ClickEvent,
     DispatchPhase, Display, Element, ElementId, Entity, EntityId, ExternalDragPayload,

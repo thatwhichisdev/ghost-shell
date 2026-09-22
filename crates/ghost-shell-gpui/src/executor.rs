@@ -4,20 +4,20 @@ use std::{mem, pin::Pin};
 use futures::channel::mpsc;
 use futures::prelude::*;
 use gpui_util::{TryFutureExt, TryFutureExtBacktrace};
-use scheduler::Instant;
-use scheduler::Scheduler;
-pub use scheduler::{
+
+use crate::scheduler::Instant;
+use crate::scheduler::Scheduler;
+pub use crate::scheduler::{
     DedicatedExecutor, FallibleTask, LocalExecutor as SchedulerLocalExecutor, Priority,
     Task,
 };
-
 use crate::{ActivityGuard, App, PlatformDispatcher, PlatformScheduler};
 
 /// A pointer to the executor that is currently running,
 /// for spawning background tasks.
 #[derive(Clone)]
 pub struct BackgroundExecutor {
-    inner: scheduler::BackgroundExecutor,
+    inner: crate::scheduler::BackgroundExecutor,
     dispatcher: Arc<dyn PlatformDispatcher>,
 }
 
@@ -25,7 +25,7 @@ pub struct BackgroundExecutor {
 /// for spawning tasks on the main thread.
 #[derive(Clone)]
 pub struct ForegroundExecutor {
-    inner: scheduler::LocalExecutor,
+    inner: crate::scheduler::LocalExecutor,
     dispatcher: Arc<dyn PlatformDispatcher>,
     #[cfg(feature = "profiler")]
     foreground_runnables: Option<crate::profiler::journal::ForegroundRunnableCounter>,
@@ -81,15 +81,15 @@ impl BackgroundExecutor {
             Arc::new(PlatformScheduler::new(dispatcher.clone()));
 
         Self {
-            inner: scheduler::BackgroundExecutor::new(scheduler),
+            inner: crate::scheduler::BackgroundExecutor::new(scheduler),
             dispatcher,
         }
     }
 
-    /// Returns the underlying scheduler::BackgroundExecutor.
+    /// Returns the underlying crate::scheduler::BackgroundExecutor.
     ///
     /// This is used by Ex to pass the executor to thread/worktree code.
-    pub fn scheduler_executor(&self) -> scheduler::BackgroundExecutor {
+    pub fn scheduler_executor(&self) -> crate::scheduler::BackgroundExecutor {
         self.inner.clone()
     }
 
@@ -274,7 +274,7 @@ impl BackgroundExecutor {
 
     /// In tests, returns the rng used by the dispatcher.
     #[cfg(any(test, feature = "test-support"))]
-    pub fn rng(&self) -> scheduler::SharedRng {
+    pub fn rng(&self) -> crate::scheduler::SharedRng {
         self.dispatcher
             .as_test()
             .unwrap()
@@ -347,7 +347,7 @@ impl ForegroundExecutor {
         #[cfg(any(test, feature = "test-support"))]
         let inner = {
             let scheduler_for_dispatch = Arc::downgrade(&scheduler);
-            scheduler::LocalExecutor::new(session_id, scheduler, move |runnable| {
+            crate::scheduler::LocalExecutor::new(session_id, scheduler, move |runnable| {
                 if let Some(scheduler) = scheduler_for_dispatch.upgrade() {
                     scheduler.schedule_local(session_id, runnable);
                 }

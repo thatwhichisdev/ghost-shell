@@ -14,7 +14,7 @@ use calloop::{
     timer::{TimeoutAction, Timer},
 };
 use calloop_wayland_source::WaylandSource;
-use collections::HashMap;
+use crate::collections::HashMap;
 use filedescriptor::Pipe;
 use gpui_util::ResultExt as _;
 use url::Url;
@@ -107,7 +107,7 @@ use gpui::{
     PlatformKeyboardLayout, PlatformWindow, Point, ScrollDelta, ScrollWheelEvent, SharedString,
     Size, TouchPhase, WindowButtonLayout, WindowKind, WindowParams, point, profiler, px, size,
 };
-use gpui_wgpu::{CompositorGpuHint, GpuContext};
+use crate::renderer::{CompositorGpuHint, GpuContext};
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_dmabuf_feedback_v1, zwp_linux_dmabuf_v1,
 };

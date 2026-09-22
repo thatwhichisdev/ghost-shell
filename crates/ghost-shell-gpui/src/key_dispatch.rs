@@ -57,9 +57,9 @@ use std::{
     rc::Rc,
 };
 
-use collections::FxHashMap;
 use smallvec::SmallVec;
 
+use crate::collections::FxHashMap;
 use crate::{
     Action, ActionRegistry, App, DispatchPhase, EntityId, FocusId, KeyBinding,
     KeyContext, Keymap, Keystroke, ModifiersChangedEvent, Window,

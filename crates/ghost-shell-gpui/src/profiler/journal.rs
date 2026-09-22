@@ -22,9 +22,9 @@ use std::sync::{
 use std::time::Duration;
 
 use gpui_util::ResultExt;
-use scheduler::Instant;
 
 use super::{ActionTiming, FrameTiming, PresentTiming, TaskTiming};
+use crate::scheduler::Instant;
 use crate::{App, WindowId, WindowVisibility};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1286,9 +1286,9 @@ impl IntervalSealer {
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
-    use scheduler::SpawnTime;
 
     use super::*;
+    use crate::scheduler::SpawnTime;
     use crate::{WindowId, profiler::YieldTime};
 
     #[gpui::test]

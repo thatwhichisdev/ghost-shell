@@ -4,10 +4,11 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use collections::{HashMap, TypeIdHashMap};
-pub use gpui_macros::Action;
+pub use ghost_shell_gpui_macros::Action;
 pub use no_action::{NoAction, Unbind, is_no_action, is_unbind};
 use serde_json::json;
+
+use crate::collections::{HashMap, TypeIdHashMap};
 
 /// Defines and registers unit structs that can be used as actions. For more complex data types, derive `Action`.
 ///

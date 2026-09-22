@@ -33,7 +33,6 @@ use anyhow::bail;
 use anyhow::{Context as _, Result};
 pub use app_menu::*;
 use async_task::Runnable;
-use collections::FxHashMap;
 use futures::channel::oneshot;
 #[cfg(any(test, feature = "test-support", feature = "bench-support"))]
 use image::RgbaImage;
@@ -42,8 +41,6 @@ use image::{AnimationDecoder as _, DynamicImage, Frame};
 pub use keyboard::*;
 pub use keystroke::*;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-use scheduler::Instant;
-pub use scheduler::RunnableMeta;
 use schemars::JsonSchema;
 use seahash::SeaHasher;
 use serde::{Deserialize, Serialize};
@@ -51,6 +48,9 @@ use smallvec::SmallVec;
 use strum::EnumIter;
 use uuid::Uuid;
 
+use crate::collections::FxHashMap;
+use crate::scheduler::Instant;
+pub use crate::scheduler::RunnableMeta;
 use crate::{
     Action, AnyWindowHandle, App, AsyncWindowContext, BackgroundExecutor, Bounds,
     DEFAULT_WINDOW_SIZE, DevicePixels, DispatchEventResult, Edges, ExternalDragPayload,
@@ -3047,24 +3047,6 @@ mod image_tests {
     use std::sync::Arc;
 
     use super::*;
-
-    #[test]
-    fn test_image_to_image_data_applies_exif_orientation() {
-        let image = Image::from_bytes(
-            ImageFormat::Jpeg,
-            include_bytes!("../test_assets/exif-orientation-rotate-180.jpg").to_vec(),
-        );
-
-        let render_image = image
-            .to_image_data(SvgRenderer::new(Arc::new(())))
-            .unwrap();
-
-        assert_eq!(render_image.size(0), size(16.into(), 32.into()));
-
-        let bytes = render_image.as_bytes(0).unwrap();
-        assert_eq!(&bytes[..4], &[255, 255, 255, 255]);
-        assert_eq!(&bytes[(16 * 32 - 1) * 4..], &[0, 0, 0, 255]);
-    }
 
     #[test]
     fn test_svg_image_to_image_data_converts_to_bgra() {

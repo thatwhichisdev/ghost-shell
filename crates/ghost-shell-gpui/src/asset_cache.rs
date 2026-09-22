@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use collections::FxHashSet;
 use futures::{Future, TryFutureExt};
 
+use crate::collections::FxHashSet;
 use crate::{App, EntityId, SharedString, SharedUri, Task};
 
 pub(crate) struct CachedLoad<T> {
@@ -143,7 +143,7 @@ where
 
 /// Use a quick, non-cryptographically secure hash function to get an identifier from data
 pub fn hash<T: Hash>(data: &T) -> u64 {
-    collections::FxBuildHasher.hash_one(data)
+    crate::collections::FxBuildHasher.hash_one(data)
 }
 
 #[cfg(test)]

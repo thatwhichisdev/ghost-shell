@@ -18,7 +18,6 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, anyhow};
-use collections::{FxHashMap, FxHashSet};
 use derive_more::{Deref, DerefMut};
 use futures::channel::oneshot;
 use gpui_util::post_inc;
@@ -27,8 +26,6 @@ use itertools::FoldWhile::{Continue, Done};
 use itertools::Itertools;
 use parking_lot::RwLock;
 use raw_window_handle::{HandleError, HasDisplayHandle, HasWindowHandle};
-use refineable::Refineable;
-use scheduler::Instant;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 use uuid::Uuid;
@@ -37,10 +34,13 @@ use uuid::Uuid;
 use crate::DebugFrameOverlayMode;
 #[cfg(any(feature = "inspector", debug_assertions))]
 use crate::Inspector;
+use crate::collections::{FxHashMap, FxHashSet};
 use crate::gestures::{GestureTuning, RecognizedTouchGesture, TouchGestureRecognizer};
 use crate::interactive::TouchEvent;
 #[cfg(feature = "profiler")]
 use crate::profiler;
+use crate::refineable::Refineable;
+use crate::scheduler::Instant;
 use crate::{
     Action, AnyDrag, AnyElement, AnyImageCache, AnyTooltip, AnyView, App, AppContext,
     Arena, Asset, AsyncWindowContext, AtlasTile, AvailableSpace, Background, BorderStyle,

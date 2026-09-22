@@ -14,9 +14,9 @@ use std::collections::VecDeque;
 use std::mem;
 use std::time::Duration;
 
-use scheduler::Instant;
 use smallvec::SmallVec;
 
+use crate::scheduler::Instant;
 use crate::{
     Axis, GestureEvent, InputEvent, IsZero, Modifiers, MouseButton, MouseDownEvent,
     MouseEvent, MouseUpEvent, Pixels, PlatformInput, Point, ScrollDelta,

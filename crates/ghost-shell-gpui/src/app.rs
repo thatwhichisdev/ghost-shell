@@ -17,9 +17,6 @@ pub use async_context::*;
 pub use bench_context::{
     BenchAppContext, BenchReport, BenchWindowContext, bench_platform,
 };
-use collections::{
-    FxHashMap, FxHashSet, HashMap, TypeIdHashMap, TypeIdHashSet, VecDeque,
-};
 pub use context::*;
 use derive_more::{Deref, DerefMut};
 pub use entity_map::*;
@@ -28,7 +25,6 @@ use gpui_util::{ResultExt, debug_panic};
 #[cfg(any(test, feature = "test-support"))]
 pub use headless_app_context::*;
 use parking_lot::RwLock;
-use scheduler::Instant;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 #[cfg(any(test, feature = "test-support"))]
@@ -39,6 +35,10 @@ pub use test_context::*;
 #[cfg(any(feature = "inspector", debug_assertions))]
 use crate::InspectorElementRegistry;
 use crate::asset_cache::CachedLoad;
+use crate::collections::{
+    FxHashMap, FxHashSet, HashMap, TypeIdHashMap, TypeIdHashSet, VecDeque,
+};
+use crate::scheduler::Instant;
 use crate::{
     Action, ActionBuildError, ActionRegistry, ActivityGuard, Any, AnyView,
     AnyWindowHandle, AppContext, Arena, ArenaBox, Asset, AssetSource, BackgroundExecutor,

@@ -13,9 +13,10 @@ use std::{
 #[cfg(feature = "profiler")]
 use hdrhistogram::Histogram;
 use itertools::Itertools;
-use scheduler::{Instant, SpawnTime};
 #[cfg(feature = "profiler")]
 use smallvec::SmallVec;
+
+use crate::scheduler::{Instant, SpawnTime};
 
 mod actions;
 #[cfg(feature = "profiler")]

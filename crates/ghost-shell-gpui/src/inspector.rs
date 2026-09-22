@@ -22,9 +22,8 @@ pub use conditional::*;
 mod conditional {
     use std::any::{Any, TypeId};
 
-    use collections::{FxHashMap, TypeIdHashMap, hash_map::Entry};
-
     use super::*;
+    use crate::collections::{FxHashMap, TypeIdHashMap, hash_map::Entry};
     use crate::{AnyElement, App, Context, Empty, IntoElement, Render, Window};
 
     /// `GlobalElementId` qualified by source location of element construction.

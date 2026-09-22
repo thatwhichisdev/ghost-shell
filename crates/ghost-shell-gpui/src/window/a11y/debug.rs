@@ -6,8 +6,8 @@
 //! we capture extra info.
 
 use accesskit::{Action, NodeId, TreeUpdate};
-use collections::FxHashMap;
 
+use crate::collections::FxHashMap;
 use crate::{Pixels, SharedString, Size};
 
 #[derive(Default)]

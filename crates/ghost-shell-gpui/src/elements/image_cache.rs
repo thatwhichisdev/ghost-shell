@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fmt, sync::Arc};
 
-use refineable::Refineable;
 use smallvec::SmallVec;
 
 use crate::asset_cache::CachedLoad;
+use crate::refineable::Refineable;
 use crate::{
     AnyElement, AnyEntity, App, AppContext, Asset, AssetLogger, Bounds, Element,
     ElementId, Entity, GlobalElementId, ImageAssetLoader, ImageCacheError,

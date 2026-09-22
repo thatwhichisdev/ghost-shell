@@ -2,10 +2,10 @@ mod binding;
 mod context;
 
 pub use binding::*;
-use collections::{HashSet, TypeIdHashMap};
 pub use context::*;
 use smallvec::SmallVec;
 
+use crate::collections::{HashSet, TypeIdHashMap};
 use crate::{Action, AsKeystroke, Keystroke, Unbind, is_no_action, is_unbind};
 
 /// An opaque identifier of which version of the keymap is currently active.

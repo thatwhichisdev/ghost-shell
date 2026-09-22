@@ -443,9 +443,8 @@ impl<T> FusedIterator for TryIter<T> {}
 
 #[cfg(test)]
 mod tests {
-    use collections::HashSet;
-
     use super::*;
+    use crate::collections::HashSet;
 
     #[test]
     fn all_tasks_get_yielded() {

@@ -9,10 +9,9 @@
 
 use std::{cell::RefCell, ops::Range, rc::Rc};
 
-use collections::VecDeque;
-use refineable::Refineable as _;
-use sum_tree::{Bias, Dimensions, SumTree};
-
+use crate::collections::VecDeque;
+use crate::refineable::Refineable as _;
+use crate::sum_tree::{Bias, Dimensions, SumTree};
 use crate::{
     AnyElement, App, AvailableSpace, Bounds, ContentMask, DispatchPhase, Edges, Element,
     EntityId, FocusHandle, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId,
@@ -1705,7 +1704,7 @@ impl Styled for List {
     }
 }
 
-impl sum_tree::Item for ListItem {
+impl crate::sum_tree::Item for ListItem {
     type Summary = ListItemSummary;
 
     fn summary(&self, _: ()) -> Self::Summary {
@@ -1739,7 +1738,7 @@ impl sum_tree::Item for ListItem {
     }
 }
 
-impl sum_tree::ContextLessSummary for ListItemSummary {
+impl crate::sum_tree::ContextLessSummary for ListItemSummary {
     fn zero() -> Self {
         Default::default()
     }
@@ -1754,7 +1753,7 @@ impl sum_tree::ContextLessSummary for ListItemSummary {
     }
 }
 
-impl<'a> sum_tree::Dimension<'a, ListItemSummary> for Count {
+impl<'a> crate::sum_tree::Dimension<'a, ListItemSummary> for Count {
     fn zero(_cx: ()) -> Self {
         Default::default()
     }
@@ -1764,7 +1763,7 @@ impl<'a> sum_tree::Dimension<'a, ListItemSummary> for Count {
     }
 }
 
-impl<'a> sum_tree::Dimension<'a, ListItemSummary> for Height {
+impl<'a> crate::sum_tree::Dimension<'a, ListItemSummary> for Height {
     fn zero(_cx: ()) -> Self {
         Default::default()
     }
@@ -1774,13 +1773,13 @@ impl<'a> sum_tree::Dimension<'a, ListItemSummary> for Height {
     }
 }
 
-impl sum_tree::SeekTarget<'_, ListItemSummary, ListItemSummary> for Count {
+impl crate::sum_tree::SeekTarget<'_, ListItemSummary, ListItemSummary> for Count {
     fn cmp(&self, other: &ListItemSummary, _: ()) -> std::cmp::Ordering {
         self.0.partial_cmp(&other.count).unwrap()
     }
 }
 
-impl sum_tree::SeekTarget<'_, ListItemSummary, ListItemSummary> for Height {
+impl crate::sum_tree::SeekTarget<'_, ListItemSummary, ListItemSummary> for Height {
     fn cmp(&self, other: &ListItemSummary, _: ()) -> std::cmp::Ordering {
         self.0.partial_cmp(&other.height).unwrap()
     }

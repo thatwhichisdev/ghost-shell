@@ -1,9 +1,9 @@
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 pub use easing::*;
-use scheduler::Instant;
 use smallvec::SmallVec;
 
+use crate::scheduler::Instant;
 use crate::{
     AnyElement, App, Element, ElementId, GlobalElementId, InspectorElementId,
     IntoElement, ParentElement, SpringAnimation, SpringConfig, SpringPlayback,

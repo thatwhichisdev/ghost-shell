@@ -14,11 +14,11 @@ use std::{
 
 use anyhow::{Context as _, anyhow};
 use derive_more::{Add, AddAssign, Div, DivAssign, Mul, Neg, Sub, SubAssign};
-use refineable::Refineable;
 use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use taffy::prelude::{TaffyGridLine, TaffyGridSpan};
 
+use crate::refineable::Refineable;
 use crate::{App, DisplayId};
 
 /// Axis in a 2D cartesian space.

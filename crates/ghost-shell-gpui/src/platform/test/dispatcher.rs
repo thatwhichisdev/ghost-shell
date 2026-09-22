@@ -6,9 +6,10 @@ use std::{
     time::Duration,
 };
 
-use scheduler::Instant;
-use scheduler::{Clock, Scheduler, SessionId, TestScheduler, TestSchedulerConfig, Yield};
-
+use crate::scheduler::Instant;
+use crate::scheduler::{
+    Clock, Scheduler, SessionId, TestScheduler, TestSchedulerConfig, Yield,
+};
 use crate::{PlatformDispatcher, Priority, RunnableVariant};
 
 /// TestDispatcher provides deterministic async execution for tests.

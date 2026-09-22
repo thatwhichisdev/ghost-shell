@@ -1,6 +1,5 @@
 use std::{fmt::Debug, ops::Range};
 
-use collections::{FxHashMap, FxHashSet};
 use taffy::{
     TaffyTree, TraversePartialTree as _,
     geometry::{Point as TaffyPoint, Rect as TaffyRect, Size as TaffySize},
@@ -9,6 +8,7 @@ use taffy::{
     tree::NodeId,
 };
 
+use crate::collections::{FxHashMap, FxHashSet};
 use crate::{
     AbsoluteLength, App, Bounds, DefiniteLength, Edges, GridTemplate, Length, Pixels,
     Point, Size, Style, Window, size,

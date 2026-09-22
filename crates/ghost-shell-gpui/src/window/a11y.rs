@@ -109,9 +109,9 @@ use std::sync::{
 };
 
 use accesskit::{Action, NodeId, TreeUpdate};
-use collections::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
+use crate::collections::{FxHashMap, FxHashSet};
 use crate::{App, Bounds, FocusId, Pixels, SharedString, Window};
 
 /// The fixed AccessKit node ID used for the root of every window's a11y tree.

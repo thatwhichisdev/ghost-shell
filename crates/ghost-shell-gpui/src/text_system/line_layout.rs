@@ -8,11 +8,11 @@ use std::{
     },
 };
 
-use collections::FxHashMap;
 use parking_lot::{Mutex, RwLock, RwLockUpgradableReadGuard};
 use smallvec::SmallVec;
 
 use super::LineWrapper;
+use crate::collections::FxHashMap;
 use crate::{
     FontId, GlyphId, Pixels, PlatformTextSystem, Point, SharedString, Size, point, px,
 };

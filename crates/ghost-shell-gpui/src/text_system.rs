@@ -19,7 +19,6 @@ use std::{
 };
 
 use anyhow::{Context as _, anyhow};
-use collections::{FxHashMap, FxHashSet};
 use derive_more::{Add, Deref, FromStr, Sub};
 pub use font_fallbacks::*;
 pub use font_features::*;
@@ -32,6 +31,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use smallvec::{SmallVec, smallvec};
 
+use crate::collections::{FxHashMap, FxHashSet};
 use crate::{
     Bounds, DevicePixels, Hsla, Pixels, PlatformTextSystem, Point, Result, SharedString,
     Size, StrikethroughStyle, TextRenderingMode, UnderlineStyle, px,
