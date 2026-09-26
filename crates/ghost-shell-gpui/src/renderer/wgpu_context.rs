@@ -27,23 +27,12 @@ pub struct CompositorGpuHint {
     pub device_id: u32,
 }
 
+const BACKEND_ATTEMPTS: [(wgpu::Backends, bool); 2] = [
+    (wgpu::Backends::VULKAN, true),
+    (wgpu::Backends::VULKAN.union(wgpu::Backends::GL), false),
+];
+
 impl WgpuContext {
-    pub fn new(
-        instance: wgpu::Instance,
-        surface: &wgpu::Surface<'_>,
-        compositor_gpu: Option<CompositorGpuHint>,
-    ) -> anyhow::Result<Self> {
-        Self::new_with_options(instance, surface, compositor_gpu, false)
-    }
-
-    pub fn new_rejecting_software(
-        instance: wgpu::Instance,
-        surface: &wgpu::Surface<'_>,
-        compositor_gpu: Option<CompositorGpuHint>,
-    ) -> anyhow::Result<Self> {
-        Self::new_with_options(instance, surface, compositor_gpu, true)
-    }
-
     fn new_with_options(
         instance: wgpu::Instance,
         surface: &wgpu::Surface<'_>,
@@ -150,14 +139,51 @@ impl WgpuContext {
         ))
     }
 
-    pub fn instance(display: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>) -> wgpu::Instance {
+    fn instance(
+        display: Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
+        backends: wgpu::Backends,
+    ) -> wgpu::Instance {
         wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::GL,
+            backends,
             flags: wgpu::InstanceFlags::default(),
             backend_options: wgpu::BackendOptions::default(),
             memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
             display: Some(display),
         })
+    }
+
+    /// A surface and adapter must come from the same instance. Retry surface
+    /// creation as well as device creation when moving to the GL fallback.
+    pub fn new_with_surface(
+        mut display: impl FnMut() -> Box<dyn wgpu::wgt::WgpuHasDisplayHandle>,
+        mut create_surface: impl FnMut(
+            &wgpu::Instance,
+        ) -> anyhow::Result<wgpu::Surface<'static>>,
+        compositor_gpu: Option<CompositorGpuHint>,
+        reject_software: bool,
+    ) -> anyhow::Result<(Self, wgpu::Surface<'static>)> {
+        let mut last_error = anyhow::anyhow!("No GPU backend was attempted");
+        for (backends, always_reject_software) in BACKEND_ATTEMPTS {
+            let instance = Self::instance(display(), backends);
+            let attempt = create_surface(&instance).and_then(|surface| {
+                let context = Self::new_with_options(
+                    instance,
+                    &surface,
+                    compositor_gpu,
+                    reject_software || always_reject_software,
+                )?;
+                Ok((context, surface))
+            });
+            match attempt {
+                Ok(context_and_surface) => return Ok(context_and_surface),
+                Err(error) => {
+                    log::info!("GPU initialization failed for {backends:?}: {error:#}");
+                    last_error =
+                        error.context(format!("{backends:?} initialization failed"));
+                }
+            }
+        }
+        Err(last_error)
     }
 
     pub fn check_compatible_with_surface(

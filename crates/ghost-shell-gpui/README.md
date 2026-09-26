@@ -3,6 +3,17 @@
 Ghost's local Linux/Wayland UI framework, with Vulkan and OpenGL rendering.
 The shell and its UI components use this framework directly.
 
+GPU startup tries hardware Vulkan first and loads the OpenGL backend only if
+Vulkan cannot create a usable window surface and device. A Vulkan loader built
+with headers version 1.3.234 or later can also skip software Vulkan drivers
+when the variable below is set before launching Ghost:
+
+```sh
+VK_LOADER_DRIVERS_DISABLE='*lvp*,*lavapipe*,*llvmpipe*,*dzn*,*swrast*,*swiftshader*' ghost-shell
+```
+
+Leave the variable unset on systems that rely on a software Vulkan driver.
+
 See [ORIGIN.md](ORIGIN.md) for the source revision, module boundaries,
 removed functionality, and verification commands.
 
