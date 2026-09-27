@@ -442,7 +442,6 @@ impl Render for FinderView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(self.render_input(cx))
             .when(is_loading, |this| this.child(self.render_loading(cx)))

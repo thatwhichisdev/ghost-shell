@@ -56,6 +56,7 @@ impl Bar {
     }
 
     pub fn open(&mut self, cx: &mut App) -> anyhow::Result<()> {
+        let background_opacity = self.config.background_opacity();
         let window_options = {
             let app_id: String = "dev.thatwhichis.ghost-shell".to_string();
             let namespace: String = "ghost-shell-bar".to_string();
@@ -85,7 +86,11 @@ impl Bar {
                 is_minimizable: false,
                 inactive_frame_interval: Default::default(),
                 display_id: Some(self.display.id()),
-                window_background: WindowBackgroundAppearance::Transparent,
+                window_background: if self.config.blur {
+                    WindowBackgroundAppearance::Blurred
+                } else {
+                    WindowBackgroundAppearance::Transparent
+                },
                 app_id: Some(app_id),
                 window_min_size: None,
                 window_decorations: None,
@@ -95,7 +100,10 @@ impl Bar {
         };
 
         let handle = cx.open_window(window_options, |window, cx| {
-            cx.new(|cx| Root::new(self.view.clone(), window, cx))
+            cx.new(|cx| {
+                Root::new(self.view.clone(), window, cx)
+                    .with_background_opacity(background_opacity)
+            })
         })?;
 
         self.window = Some(handle.into());

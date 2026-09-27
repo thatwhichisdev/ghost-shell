@@ -3,7 +3,7 @@ use std::{
     ffi::c_void,
     ptr::NonNull,
     rc::Rc,
-    sync::Arc,
+    sync::{Arc, Once},
 };
 
 use calloop::ping::Ping;
@@ -24,8 +24,9 @@ use wayland_backend::client::ObjectId;
 use wayland_client::WEnum;
 use wayland_client::{
     Proxy,
-    protocol::{wl_callback, wl_output, wl_seat, wl_surface},
+    protocol::{wl_callback, wl_output, wl_region, wl_seat, wl_surface},
 };
+use wayland_protocols::ext::background_effect::v1::client::ext_background_effect_surface_v1;
 use wayland_protocols::ext::session_lock::v1::client::{
     ext_session_lock_surface_v1, ext_session_lock_v1,
 };
@@ -99,6 +100,11 @@ struct InProgressConfigure {
     tiling: Tiling,
 }
 
+enum BlurSurface {
+    BackgroundEffect(ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1),
+    Kde(org_kde_kwin_blur::OrgKdeKwinBlur),
+}
+
 pub struct WaylandWindowState {
     surface_state: WaylandSurfaceState,
     parent: Option<WaylandWindowStatePtr>,
@@ -108,7 +114,7 @@ pub struct WaylandWindowState {
     pub surface: wl_surface::WlSurface,
     app_id: Option<String>,
     appearance: WindowAppearance,
-    blur: Option<org_kde_kwin_blur::OrgKdeKwinBlur>,
+    blur: Option<BlurSurface>,
     viewport: Option<wp_viewport::WpViewport>,
     outputs: HashMap<ObjectId, Output>,
     display: Option<(ObjectId, Output)>,
@@ -852,8 +858,11 @@ impl Drop for WaylandWindow {
         state.renderer.destroy();
 
         // Destroy blur first, this has no dependencies.
-        if let Some(blur) = &state.blur {
-            blur.release();
+        if let Some(blur) = state.blur.take() {
+            match blur {
+                BlurSurface::BackgroundEffect(effect) => effect.destroy(),
+                BlurSurface::Kde(blur) => blur.release(),
+            }
         }
 
         // Decorations must be destroyed before the xdg state.
@@ -1268,7 +1277,7 @@ impl WaylandWindowStatePtr {
             );
 
             let initial_configure = self.frame_loop.get() == FrameLoop::Unconfigured;
-            drop(state);
+            update_window(state);
             if initial_configure {
                 self.frame();
             } else {
@@ -2470,6 +2479,142 @@ impl accesskit::DeactivationHandler for TrivialDeactivationHandler {
     }
 }
 
+static BLUR_UNAVAILABLE_ONCE: Once = Once::new();
+const CLIENT_SIDE_DECORATION_ROUNDING: i32 = 10;
+
+fn add_rounded_blur_region(
+    region: &wl_region::WlRegion,
+    bounds: Bounds<i32>,
+    radius: i32,
+    tiling: Tiling,
+) {
+    let width = bounds.size.width;
+    let height = bounds.size.height;
+    if width <= 0 || height <= 0 {
+        return;
+    }
+
+    let radius = radius.min(width / 2).min(height / 2);
+    if radius <= 0 {
+        region.add(bounds.origin.x, bounds.origin.y, width, height);
+        return;
+    }
+
+    let left = bounds.origin.x;
+    let top = bounds.origin.y;
+    let radius_squared = (radius * radius) as f32;
+
+    for row in 0..radius {
+        let distance = (radius - row) as f32;
+        let half_chord = (radius_squared - distance * distance)
+            .sqrt()
+            .round() as i32;
+        let gap = radius - half_chord;
+        let left_gap = if !tiling.top && !tiling.left { gap } else { 0 };
+        let right_gap = if !tiling.top && !tiling.right { gap } else { 0 };
+        region.add(left + left_gap, top + row, width - left_gap - right_gap, 1);
+    }
+
+    let middle_height = height - 2 * radius;
+    if middle_height > 0 {
+        region.add(left, top + radius, width, middle_height);
+    }
+
+    for row in 0..radius {
+        let distance = row as f32;
+        let half_chord = (radius_squared - distance * distance)
+            .sqrt()
+            .round() as i32;
+        let gap = radius - half_chord;
+        let left_gap = if !tiling.bottom && !tiling.left {
+            gap
+        } else {
+            0
+        };
+        let right_gap = if !tiling.bottom && !tiling.right {
+            gap
+        } else {
+            0
+        };
+        region.add(
+            left + left_gap,
+            top + height - radius + row,
+            width - left_gap - right_gap,
+            1,
+        );
+    }
+}
+
+fn update_blur(state: &mut WaylandWindowState) {
+    if state.background_appearance != WindowBackgroundAppearance::Blurred {
+        match state.blur.take() {
+            Some(BlurSurface::BackgroundEffect(effect)) => effect.destroy(),
+            Some(BlurSurface::Kde(blur)) => {
+                if let Some(manager) = &state.globals.blur_manager {
+                    manager.unset(&state.surface);
+                }
+                blur.release();
+            }
+            None => {}
+        }
+        return;
+    }
+
+    if let Some(manager) = state
+        .globals
+        .background_effect_manager
+        .clone()
+    {
+        if !matches!(state.blur, Some(BlurSurface::BackgroundEffect(_))) {
+            if let Some(BlurSurface::Kde(blur)) = state.blur.take() {
+                if let Some(manager) = &state.globals.blur_manager {
+                    manager.unset(&state.surface);
+                }
+                blur.release();
+            }
+            state.blur = Some(BlurSurface::BackgroundEffect(
+                manager.get_background_effect(&state.surface, &state.globals.qh, ()),
+            ));
+        }
+
+        let bounds = inset_by_tiling(
+            state.bounds.map_origin(|_| px(0.0)),
+            state.inset(),
+            state.tiling,
+        )
+        .map(|value| f32::from(value) as i32);
+        let region = state
+            .globals
+            .compositor
+            .create_region(&state.globals.qh, ());
+        let radius = if state.decorations == WindowDecorations::Client {
+            CLIENT_SIDE_DECORATION_ROUNDING
+        } else {
+            0
+        };
+        add_rounded_blur_region(&region, bounds, radius, state.tiling);
+        if let Some(BlurSurface::BackgroundEffect(effect)) = &state.blur {
+            effect.set_blur_region(Some(&region));
+        }
+        region.destroy();
+    } else if let Some(manager) = &state.globals.blur_manager {
+        if state.blur.is_none() {
+            state.blur = Some(BlurSurface::Kde(manager.create(
+                &state.surface,
+                &state.globals.qh,
+                (),
+            )));
+        }
+        if let Some(BlurSurface::Kde(blur)) = &state.blur {
+            blur.commit();
+        }
+    } else {
+        BLUR_UNAVAILABLE_ONCE.call_once(|| {
+            log::warn!("Background blur requested but no blur protocol is available");
+        });
+    }
+}
+
 fn update_window(mut state: RefMut<WaylandWindowState>) {
     let opaque = !state.is_transparent();
 
@@ -2505,21 +2650,7 @@ fn update_window(mut state: RefMut<WaylandWindowState>) {
         state.surface.set_opaque_region(None);
     }
 
-    if let Some(ref blur_manager) = state.globals.blur_manager {
-        if state.background_appearance == WindowBackgroundAppearance::Blurred {
-            if state.blur.is_none() {
-                let blur = blur_manager.create(&state.surface, &state.globals.qh, ());
-                state.blur = Some(blur);
-            }
-            state.blur.as_ref().unwrap().commit();
-        } else {
-            // It probably doesn't hurt to clear the blur for opaque windows
-            blur_manager.unset(&state.surface);
-            if let Some(b) = state.blur.take() {
-                b.release()
-            }
-        }
-    }
+    update_blur(&mut state);
 
     region.destroy();
 }

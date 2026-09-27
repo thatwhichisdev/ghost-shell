@@ -117,19 +117,26 @@ A simple `~/.config/ghost-shell/config.toml` configuration can look like:
 [general]
 font_family = "BerkeleyMono Nerd Font Mono"
 font_size = 13
-fg = 0xffffffff
-bg = 0x00000000
 
 [bar."eDP-1"]
 output = "eDP-1"
 height = 27.0
 exclusive_zone = 27.0
+blur = false
 
 [bar."DP-1"]
 primary = true
 output = "DP-1"
 height = 27.0
 exclusive_zone = 27.0
+blur = false
+
+[launcher]
+blur = true
+background_opacity = 0.8
+
+[finder]
+blur = false
 
 [clock]
 format = "%H:%M"
@@ -138,6 +145,11 @@ format = "%H:%M"
 bg = 0x00000000
 path = "/nix/store/i1a32bnx94ynzfx7wq052fz6ybbak95n-source/assets/wallpapers/motion/waneella_clouds.gif"
 ```
+
+Each bar can set `blur` independently. The launcher and finder have their own
+`blur` switches. Window backgrounds use the active theme's `base00` color.
+`background_opacity` can be set from `0.0` to `1.0` for each surface. Its
+default is `0.8` when blur is enabled and `1.0` otherwise.
 
 # Acknowledgments
 

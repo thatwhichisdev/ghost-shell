@@ -28,6 +28,7 @@ pub fn init(cx: &mut App) {
 pub struct Root {
     style: StyleRefinement,
     view: AnyView,
+    background_opacity: f32,
     _theme_subscription: Subscription,
 }
 
@@ -41,8 +42,14 @@ impl Root {
         Self {
             style: StyleRefinement::default(),
             view: view.into(),
+            background_opacity: 1.0,
             _theme_subscription: cx.observe_global::<Theme>(|_, cx| cx.notify()),
         }
+    }
+
+    pub fn with_background_opacity(mut self, opacity: f32) -> Self {
+        self.background_opacity = opacity;
+        self
     }
 
     pub fn view(&self) -> &AnyView {
@@ -119,7 +126,10 @@ impl Render for Root {
             .relative()
             .size_full()
             .font_family(cx.theme().tokens.typography.sans.clone())
-            .bg(cx.theme().background)
+            .bg(cx
+                .theme()
+                .background
+                .opacity(self.background_opacity))
             .text_color(cx.theme().foreground)
             .map(|mut element| {
                 element.style().refine(&self.style);

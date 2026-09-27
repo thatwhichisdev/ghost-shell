@@ -16,6 +16,12 @@ pub struct AppConfig {
     pub bars: HashMap<String, BarConfig>,
 
     #[serde(default)]
+    pub launcher: WindowConfig,
+
+    #[serde(default)]
+    pub finder: WindowConfig,
+
+    #[serde(default)]
     pub clock: ClockConfig,
 
     #[serde(default)]
@@ -50,6 +56,8 @@ pub struct BarConfig {
     pub height: f32,
     pub exclusive_zone: f32,
     pub primary: bool,
+    pub blur: bool,
+    pub background_opacity: Option<f32>,
 }
 
 impl Default for BarConfig {
@@ -59,8 +67,36 @@ impl Default for BarConfig {
             height: 27.0,
             exclusive_zone: 27.0,
             primary: false,
+            blur: false,
+            background_opacity: None,
         }
     }
+}
+
+impl BarConfig {
+    pub fn background_opacity(&self) -> f32 {
+        background_opacity(self.blur, self.background_opacity)
+    }
+}
+
+#[derive(Default, Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct WindowConfig {
+    pub blur: bool,
+    pub background_opacity: Option<f32>,
+}
+
+impl WindowConfig {
+    pub fn background_opacity(&self) -> f32 {
+        background_opacity(self.blur, self.background_opacity)
+    }
+}
+
+fn background_opacity(blur: bool, configured_opacity: Option<f32>) -> f32 {
+    configured_opacity
+        .filter(|opacity| opacity.is_finite())
+        .unwrap_or(if blur { 0.8 } else { 1.0 })
+        .clamp(0.0, 1.0)
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -241,4 +277,46 @@ pub fn cache_dir() -> Result<PathBuf, ConfigError> {
 /// Get project directories
 pub fn project_dir() -> Option<ProjectDirs> {
     ProjectDirs::from("dev", "thatwhichis", "ghost-shell")
+}
+
+#[cfg(test)]
+mod tests {
+    use config::FileFormat;
+
+    use super::*;
+
+    #[test]
+    fn blur_settings_are_independent_and_default_to_disabled() -> Result<(), ConfigError>
+    {
+        let source = r#"
+            [bar.first]
+            blur = true
+
+            [bar.second]
+            blur = false
+
+            [launcher]
+            blur = true
+            background_opacity = 0.6
+        "#;
+        let config: AppConfig = Config::builder()
+            .add_source(File::from_str(source, FileFormat::Toml))
+            .build()?
+            .try_deserialize()?;
+
+        assert_eq!(config.bars.get("first").map(|bar| bar.blur), Some(true));
+        assert_eq!(config.bars.get("second").map(|bar| bar.blur), Some(false));
+        assert_eq!(
+            config
+                .bars
+                .get("first")
+                .map(BarConfig::background_opacity),
+            Some(0.8)
+        );
+        assert!(config.launcher.blur);
+        assert_eq!(config.launcher.background_opacity(), 0.6);
+        assert!(!config.finder.blur);
+        assert_eq!(config.finder.background_opacity(), 1.0);
+        Ok(())
+    }
 }

@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 ghost-shell-component-root.workspace = true
+ghost-shell-config.workspace = true
 ghost-shell-theme.workspace = true
 ghost-shell-component-virtual-list.workspace = true
 ghost-shell-component-input.workspace = true

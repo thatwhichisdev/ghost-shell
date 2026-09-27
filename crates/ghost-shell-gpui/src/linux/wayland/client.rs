@@ -37,6 +37,9 @@ use wayland_client::{
         wl_shm_pool, wl_surface,
     },
 };
+use wayland_protocols::ext::background_effect::v1::client::{
+    ext_background_effect_manager_v1, ext_background_effect_surface_v1,
+};
 use wayland_protocols::ext::session_lock::v1::client::{
     ext_session_lock_surface_v1, ext_session_lock_v1,
 };
@@ -229,6 +232,8 @@ pub struct Globals {
     pub session_lock_manager:
         Option<ext_session_lock_manager_v1::ExtSessionLockManagerV1>,
     pub blur_manager: Option<org_kde_kwin_blur_manager::OrgKdeKwinBlurManager>,
+    pub background_effect_manager:
+        Option<ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1>,
     pub text_input_manager: Option<zwp_text_input_manager_v3::ZwpTextInputManagerV3>,
     pub gesture_manager: Option<zwp_pointer_gestures_v1::ZwpPointerGesturesV1>,
     pub dialog: Option<xdg_wm_dialog_v1::XdgWmDialogV1>,
@@ -276,6 +281,7 @@ impl Globals {
             layer_shell: globals.bind(&qh, 1..=5, ()).ok(),
             session_lock_manager: globals.bind(&qh, 1..=1, ()).ok(),
             blur_manager: globals.bind(&qh, 1..=1, ()).ok(),
+            background_effect_manager: globals.bind(&qh, 1..=1, ()).ok(),
             text_input_manager: globals.bind(&qh, 1..=1, ()).ok(),
             gesture_manager: globals.bind(&qh, 1..=3, ()).ok(),
             dialog: globals
@@ -1871,6 +1877,8 @@ delegate_noop!(WaylandClientStatePtr: ignore zwlr_layer_shell_v1::ZwlrLayerShell
 delegate_noop!(WaylandClientStatePtr: ignore ext_session_lock_manager_v1::ExtSessionLockManagerV1);
 delegate_noop!(WaylandClientStatePtr: ignore xdg_positioner::XdgPositioner);
 delegate_noop!(WaylandClientStatePtr: ignore org_kde_kwin_blur_manager::OrgKdeKwinBlurManager);
+delegate_noop!(WaylandClientStatePtr: ignore ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1);
+delegate_noop!(WaylandClientStatePtr: ignore ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1);
 delegate_noop!(WaylandClientStatePtr: ignore zwp_text_input_manager_v3::ZwpTextInputManagerV3);
 delegate_noop!(WaylandClientStatePtr: ignore org_kde_kwin_blur::OrgKdeKwinBlur);
 delegate_noop!(WaylandClientStatePtr: ignore wp_viewporter::WpViewporter);

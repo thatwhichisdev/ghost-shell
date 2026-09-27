@@ -2,6 +2,7 @@ use anyhow::{Context as _, Result};
 use ghost_shell_actions::{FinderClose, FinderToggle};
 use ghost_shell_app::GhostShell;
 use ghost_shell_component_root::Root;
+use ghost_shell_config::AppConfig;
 use ghost_shell_gpui::{
     App, AppContext, BorrowAppContext as _, Bounds, Global, KeyBinding,
     WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions,
@@ -83,6 +84,9 @@ impl Finder {
     ///
     /// Returns an error if GPUI fails to create the window.
     pub fn open(&mut self, cx: &mut App) -> Result<()> {
+        let config = &cx.global::<AppConfig>().finder;
+        let blur = config.blur;
+        let background_opacity = config.background_opacity();
         let output = cx
             .global::<GhostShell>()
             .get_output()
@@ -97,14 +101,20 @@ impl Finder {
             is_resizable: false,
             is_minimizable: false,
             display_id: Some(output.display.id()),
-            window_background: WindowBackgroundAppearance::Transparent,
+            window_background: if blur {
+                WindowBackgroundAppearance::Blurred
+            } else {
+                WindowBackgroundAppearance::Transparent
+            },
             app_id: Some("ghost-shell-finder".to_owned()),
             ..Default::default()
         };
 
         let handle = cx.open_window(window_options, |window, cx| {
             let view = cx.new(|cx| FinderView::new(window, cx));
-            cx.new(|cx| Root::new(view, window, cx))
+            cx.new(|cx| {
+                Root::new(view, window, cx).with_background_opacity(background_opacity)
+            })
         })?;
 
         self.handle = Some(handle);
