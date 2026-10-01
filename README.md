@@ -1,3 +1,6 @@
+> [!IMPORTANT]
+> Remove this line to confirm you've reviewed this PR before submitting.
+
 # Preview
 
 ![preview](assets/preview.png)
@@ -122,14 +125,14 @@ font_size = 13
 output = "eDP-1"
 height = 27.0
 exclusive_zone = 27.0
-blur = false
+appearance = "themed"
 
 [bar."DP-1"]
 primary = true
 output = "DP-1"
 height = 27.0
 exclusive_zone = 27.0
-blur = false
+appearance = "themed"
 
 [launcher]
 blur = true
@@ -146,10 +149,20 @@ bg = 0x00000000
 path = "/nix/store/i1a32bnx94ynzfx7wq052fz6ybbak95n-source/assets/wallpapers/motion/waneella_clouds.gif"
 ```
 
-Each bar can set `blur` independently. The launcher and finder have their own
-`blur` switches. Window backgrounds use the active theme's `base00` color.
+Each bar can set `appearance` independently:
+
+- `"themed"` (the default): the active theme's `base00` background without blur.
+  `"default"` is also accepted as an alias.
+- `"blur"`: the theme background with compositor blur behind it.
+- `"transparent"`: a fully transparent background without blur; widgets remain visible.
+
+For bars, replace the old `blur = true` setting with `appearance = "blur"`, or
+`blur = false` with `appearance = "themed"`.
+The launcher and finder retain their own `blur` switches.
 `background_opacity` can be set from `0.0` to `1.0` for each surface. Its
-default is `0.8` when blur is enabled and `1.0` otherwise.
+default is `0.8` when blur is enabled and `1.0` otherwise. Transparent bars
+always use zero background opacity, regardless of this setting.
+Blur requires compositor support.
 
 # Acknowledgments
 

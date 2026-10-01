@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use ghost_shell_component_root::Root;
-use ghost_shell_config::BarConfig;
+use ghost_shell_config::{BarAppearance, BarConfig};
 use ghost_shell_gpui::{
     AnyWindowHandle, App, Entity, IntoElement, PlatformDisplay, Render, Size, Window,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, div,
@@ -86,10 +86,11 @@ impl Bar {
                 is_minimizable: false,
                 inactive_frame_interval: Default::default(),
                 display_id: Some(self.display.id()),
-                window_background: if self.config.blur {
-                    WindowBackgroundAppearance::Blurred
-                } else {
-                    WindowBackgroundAppearance::Transparent
+                window_background: match self.config.appearance {
+                    BarAppearance::Blur => WindowBackgroundAppearance::Blurred,
+                    BarAppearance::Themed | BarAppearance::Transparent => {
+                        WindowBackgroundAppearance::Transparent
+                    }
                 },
                 app_id: Some(app_id),
                 window_min_size: None,

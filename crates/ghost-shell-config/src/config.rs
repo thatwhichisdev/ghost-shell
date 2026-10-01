@@ -56,7 +56,7 @@ pub struct BarConfig {
     pub height: f32,
     pub exclusive_zone: f32,
     pub primary: bool,
-    pub blur: bool,
+    pub appearance: BarAppearance,
     pub background_opacity: Option<f32>,
 }
 
@@ -67,7 +67,7 @@ impl Default for BarConfig {
             height: 27.0,
             exclusive_zone: 27.0,
             primary: false,
-            blur: false,
+            appearance: BarAppearance::default(),
             background_opacity: None,
         }
     }
@@ -75,8 +75,22 @@ impl Default for BarConfig {
 
 impl BarConfig {
     pub fn background_opacity(&self) -> f32 {
-        background_opacity(self.blur, self.background_opacity)
+        match self.appearance {
+            BarAppearance::Themed => background_opacity(false, self.background_opacity),
+            BarAppearance::Blur => background_opacity(true, self.background_opacity),
+            BarAppearance::Transparent => 0.0,
+        }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BarAppearance {
+    #[default]
+    #[serde(alias = "default")]
+    Themed,
+    Blur,
+    Transparent,
 }
 
 #[derive(Default, Debug, Clone, Deserialize)]
@@ -290,10 +304,10 @@ mod tests {
     {
         let source = r#"
             [bar.first]
-            blur = true
+            appearance = "blur"
 
             [bar.second]
-            blur = false
+            appearance = "themed"
 
             [launcher]
             blur = true
@@ -304,8 +318,20 @@ mod tests {
             .build()?
             .try_deserialize()?;
 
-        assert_eq!(config.bars.get("first").map(|bar| bar.blur), Some(true));
-        assert_eq!(config.bars.get("second").map(|bar| bar.blur), Some(false));
+        assert_eq!(
+            config
+                .bars
+                .get("first")
+                .map(|bar| bar.appearance),
+            Some(BarAppearance::Blur)
+        );
+        assert_eq!(
+            config
+                .bars
+                .get("second")
+                .map(|bar| bar.appearance),
+            Some(BarAppearance::Themed)
+        );
         assert_eq!(
             config
                 .bars
