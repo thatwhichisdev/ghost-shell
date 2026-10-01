@@ -1,6 +1,3 @@
-> [!IMPORTANT]
-> Remove this line to confirm you've reviewed this PR before submitting.
-
 # Preview
 
 ![preview](assets/preview.png)
@@ -154,14 +151,14 @@ Each bar can set `appearance` independently:
 - `"themed"` (the default): the active theme's `base00` background without blur.
   `"default"` is also accepted as an alias.
 - `"blur"`: the theme background with compositor blur behind it.
-- `"transparent"`: a fully transparent background without blur; widgets remain visible.
+- `"transparent"`: a fully transparent background without blur; widgets remain
+  visible.
 
 For bars, replace the old `blur = true` setting with `appearance = "blur"`, or
-`blur = false` with `appearance = "themed"`.
-The launcher and finder retain their own `blur` switches.
-`background_opacity` can be set from `0.0` to `1.0` for each surface. Its
-default is `0.8` when blur is enabled and `1.0` otherwise. Transparent bars
-always use zero background opacity, regardless of this setting.
+`blur = false` with `appearance = "themed"`. The launcher and finder retain
+their own `blur` switches. `background_opacity` can be set from `0.0` to `1.0`
+for each surface. Its default is `0.8` when blur is enabled and `1.0` otherwise.
+Transparent bars always use zero background opacity, regardless of this setting.
 Blur requires compositor support.
 
 # Acknowledgments
