@@ -20,6 +20,7 @@ ghost-shell-component-icon.workspace = true
 ghost-shell-component-input.workspace = true
 ghost-shell-component-menu.workspace = true
 ghost-shell-component-spinner.workspace = true
+ghost-shell-component-slider.workspace = true
 ghost-shell-component-virtual-list.workspace = true
 
 [[example]]

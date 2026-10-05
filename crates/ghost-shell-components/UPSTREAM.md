@@ -20,6 +20,7 @@ The extracted portions remain Apache-2.0 licensed; see the repository
 | `../ghost-shell-theme/src/focus.rs` | `crates/base/src/focus_trap.rs` | Idempotent initialization, checked layout ID, innermost trap selection. |
 | `ghost-shell-component-root/src/root.rs` | `crates/component/src/root.rs` | Theme styling and tab traversal; restore focus if bounded traversal cannot stay in a trap. |
 | `ghost-shell-component-icon` | `crates/component/src/icon.rs`, `crates/assets` | SVG paths/data and a small embedded icon set; no asset-loader dependency. |
+| `ghost-shell-component-slider` | `crates/component/src/slider.rs`, `crates/base/src/slider.rs` | Local GPUI/theme, canvas geometry tracking, keyboard thumb navigation, bounded step snapping and normalized values; static hover/focus feedback without the toolkit spring runtime. |
 | `ghost-shell-component-spinner` | `crates/component/src/spinner.rs` | Local icons and GPUI animation, including reduced-motion behavior. |
 | `ghost-shell-component-menu` | `crates/component/src/menu/popup_menu.rs`, `menu_item.rs` | Local theme and icons, GPUI layout tracking, keyboard/submenu dismissal; no native menus, shortcut badges, or external scrollbar component. |
 | `ghost-shell-component-virtual-list` | `crates/base/src/virtual_list.rs` | Variable-size virtualization and deferred scrolling; no toolkit scrollbar trait. |
@@ -67,12 +68,49 @@ Run these inside Ghost's development environment:
 
 ```sh
 cargo test -p ghost-shell-theme -p ghost-shell-component-root
+cargo test -p ghost-shell-component-slider
 cargo test -p ghost-shell-component-input -p ghost-shell-component-menu -p ghost-shell-component-icon -p ghost-shell-component-spinner -p ghost-shell-component-virtual-list
 cargo check -p ghost-shell-component-root --example hello_components
 cargo check -p ghost-shell-daemon
 cargo run -p ghost-shell-component-root --example hello_components
 ```
 
-The example shows inputs, password masking, a spinner, icons, a nested menu,
+The example shows a volume slider, inputs, password masking, a spinner, icons, a nested menu,
 and a variable-height list in a normal Wayland window; it does not start or
 replace the running shell.
+
+## Slider integration
+
+`ghost-shell-component-slider` uses the revision recorded above and has no
+GPUI Kit runtime dependency. It exports `Slider`, `SliderState`, `SliderValue`,
+`SliderScale`, and `SliderEvent`. Initialize the local theme (or use `Root`)
+before rendering. Create and retain the state once in the owning view:
+
+```rust,ignore
+let volume = cx.new(|_| SliderState::new().min(0.).max(100.).step(1.).default_value(50.));
+// In render:
+Slider::new(&volume)
+```
+
+Subscribe to `SliderEvent::Change(value)` for live updates and
+`SliderEvent::Release(value)` to commit a completed interaction. Retain the
+subscription in the owning view. `state.set_value(value, window, cx)` updates
+and notifies without emitting either event, so backend updates do not feed
+back into audio commands. The preview demonstrates state creation and rendering;
+no audio service is connected yet.
+
+A tuple or `Range<f32>` creates two thumbs. `.vertical()` puts the minimum at
+the bottom; `.reverse()` changes only the single-value fill direction. Each
+thumb supports Tab traversal, arrow keys, Home, and End. Accessibility increment
+and decrement actions adjust the end value, preserving a range's start.
+Disabled sliders accept no pointer, keyboard, or accessibility adjustments.
+
+Values are clamped and range endpoints ordered. Pointer steps are anchored at
+the minimum, stay inside the bounds, and allow the exact maximum. Programmatic
+values are clamped but not quantized. Non-finite bounds and non-positive or
+non-finite steps retain the previous setting; NaN values become the minimum.
+Setting a bound past the opposite bound moves both to the new bound. Degenerate
+ranges remain stationary. Logarithmic mapping uses linear fallback unless
+`0 < min < max`. These defensive behaviors replace upstream panics and invalid
+floating-point geometry. Hover/focus feedback is static and requires no timers
+or animation runtime.

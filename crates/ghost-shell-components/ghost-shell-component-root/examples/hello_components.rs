@@ -4,12 +4,14 @@ use ghost_shell_component_icon::{Icon, IconName};
 use ghost_shell_component_input::{Input, InputContentType, InputEvent, InputState};
 use ghost_shell_component_menu::{PopupMenu, PopupMenuItem};
 use ghost_shell_component_root::Root;
+use ghost_shell_component_slider::{Slider, SliderState};
 use ghost_shell_component_spinner::Spinner;
 use ghost_shell_component_virtual_list::{VirtualListScrollHandle, v_virtual_list};
 use ghost_shell_gpui::{prelude::*, *};
 use ghost_shell_theme::{ActiveTheme, Sizable, Theme, ThemeMode};
 
 struct Preview {
+    volume: Entity<SliderState>,
     query: Entity<InputState>,
     password: Entity<InputState>,
     submitted: SharedString,
@@ -39,7 +41,10 @@ impl Preview {
                 cx.notify();
             }
         });
+        let volume = cx.new(|_| SliderState::new().default_value(50.));
+        let volume_subscription = cx.observe(&volume, |_, _, cx| cx.notify());
         Self {
+            volume,
             query,
             password,
             submitted: "".into(),
@@ -51,7 +56,7 @@ impl Preview {
                     .collect(),
             ),
             scroll: VirtualListScrollHandle::new(),
-            _subscriptions: vec![subscription],
+            _subscriptions: vec![subscription, volume_subscription],
         }
     }
 
@@ -103,6 +108,8 @@ impl Render for Preview {
                     .child("Ghost components — self-contained GPUI")
                     .child(Spinner::new().small()),
             )
+            .child(format!("Volume preview: {}%", self.volume.read(cx).value()))
+            .child(Slider::new(&self.volume))
             .child(Input::new(&self.query))
             .child(Input::new(&self.password).content_type(InputContentType::Password))
             .child(format!("Submitted: {}", self.submitted))

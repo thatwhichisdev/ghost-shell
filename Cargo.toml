@@ -15,6 +15,7 @@ members = [
   "crates/ghost-shell-components/ghost-shell-component-root",
   "crates/ghost-shell-components/ghost-shell-component-icon",
   "crates/ghost-shell-components/ghost-shell-component-spinner",
+  "crates/ghost-shell-components/ghost-shell-component-slider",
   "crates/ghost-shell-components/ghost-shell-component-virtual-list",
   "crates/ghost-shell-components/ghost-shell-component-menu",
   "crates/ghost-shell-components/ghost-shell-component-input",
@@ -55,6 +56,7 @@ ghost-shell-bar = { path = "crates/ghost-shell-bar" }
 ghost-shell-config = { path = "crates/ghost-shell-config" }
 ghost-shell-component-root = { path = "crates/ghost-shell-components/ghost-shell-component-root" }
 ghost-shell-component-icon = { path = "crates/ghost-shell-components/ghost-shell-component-icon" }
+ghost-shell-component-slider = { path = "crates/ghost-shell-components/ghost-shell-component-slider" }
 ghost-shell-component-spinner = { path = "crates/ghost-shell-components/ghost-shell-component-spinner" }
 ghost-shell-component-virtual-list = { path = "crates/ghost-shell-components/ghost-shell-component-virtual-list" }
 ghost-shell-component-menu = { path = "crates/ghost-shell-components/ghost-shell-component-menu" }

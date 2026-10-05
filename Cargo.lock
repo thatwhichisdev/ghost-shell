@@ -2254,8 +2254,17 @@ dependencies = [
  "ghost-shell-component-icon",
  "ghost-shell-component-input",
  "ghost-shell-component-menu",
+ "ghost-shell-component-slider",
  "ghost-shell-component-spinner",
  "ghost-shell-component-virtual-list",
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+]
+
+[[package]]
+name = "ghost-shell-component-slider"
+version = "0.1.0"
+dependencies = [
  "ghost-shell-gpui",
  "ghost-shell-theme",
 ]
