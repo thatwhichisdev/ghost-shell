@@ -2570,6 +2570,15 @@ dependencies = [
 [[package]]
 name = "ghost-shell-widget-audio"
 version = "0.1.0"
+dependencies = [
+ "ghost-shell-audio",
+ "ghost-shell-component-icon",
+ "ghost-shell-component-root",
+ "ghost-shell-component-slider",
+ "ghost-shell-gpui",
+ "ghost-shell-theme",
+ "log",
+]
 
 [[package]]
 name = "ghost-shell-widget-clock"

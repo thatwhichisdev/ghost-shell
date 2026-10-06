@@ -45,6 +45,15 @@ impl Audio {
         self.send(endpoint, AudioCommand::SetMuted(endpoint, muted))
     }
 
+    /// Requests this endpoint as the default for its input or output direction.
+    ///
+    /// Queuing is not acknowledgement: observe `AudioEvent::DefaultsChanged` and
+    /// read the effective defaults, or handle `AudioEvent::CommandFailed`.
+    /// Existing stream routing remains subject to the session manager's policy.
+    pub fn set_default(&self, endpoint: AudioEndpointId) -> Result<()> {
+        self.send(endpoint, AudioCommand::SetDefault(endpoint))
+    }
+
     fn send(&self, endpoint: AudioEndpointId, command: AudioCommand) -> Result<()> {
         if self.state.connection_status() != &AudioConnectionStatus::Connected {
             bail!("audio backend is not connected");

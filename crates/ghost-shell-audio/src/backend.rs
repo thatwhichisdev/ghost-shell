@@ -26,6 +26,7 @@ use crate::state::{
 pub(crate) enum AudioCommand {
     SetVolume(AudioEndpointId, f32),
     SetMuted(AudioEndpointId, bool),
+    SetDefault(AudioEndpointId),
     Shutdown,
 }
 
@@ -204,7 +205,8 @@ struct Device {
 
 struct Metadata {
     _listener: pw::metadata::MetadataListener,
-    _proxy: pw::metadata::Metadata,
+    proxy: pw::metadata::Metadata,
+    writable: bool,
 }
 
 struct Graph {
@@ -262,6 +264,12 @@ impl Graph {
         let (endpoint, volume, muted) = match command {
             AudioCommand::SetVolume(endpoint, volume) => (endpoint, Some(volume), None),
             AudioCommand::SetMuted(endpoint, muted) => (endpoint, None, Some(muted)),
+            AudioCommand::SetDefault(endpoint) => {
+                if let Err(error) = self.set_default(endpoint) {
+                    self.failed(Some(endpoint), error);
+                }
+                return;
+            }
             AudioCommand::Shutdown => {
                 self.main_loop.quit();
                 return;
@@ -270,6 +278,36 @@ impl Graph {
         if let Err(error) = self.set_parameter(endpoint, volume, muted) {
             self.failed(Some(endpoint), error);
         }
+    }
+
+    fn set_default(&self, endpoint: AudioEndpointId) -> Result<()> {
+        let node = self
+            .nodes
+            .values()
+            .find(|node| node.endpoint.id == endpoint)
+            .context("audio endpoint was removed")?;
+        if node.endpoint.name.is_empty() {
+            bail!("audio endpoint has no node name");
+        }
+        let metadata = self
+            .metadata
+            .values()
+            .find(|metadata| metadata.writable)
+            .context("default audio metadata is unavailable or read-only")?;
+        let key = match node.endpoint.direction {
+            AudioDirection::Output => "default.configured.audio.sink",
+            AudioDirection::Input => "default.configured.audio.source",
+        };
+        // Set the user's preference; the session manager publishes the effective
+        // default.audio.* value after applying its routing policy.
+        let value = serde_json::json!({ "name": node.endpoint.name }).to_string();
+        metadata.proxy.set_property(
+            pw::core::PW_ID_CORE,
+            key,
+            Some("Spa:String:JSON"),
+            Some(&value),
+        );
+        Ok(())
     }
 
     fn set_parameter(
@@ -758,7 +796,10 @@ fn bind_metadata<P: AsRef<DictRef>>(
         global.id,
         Metadata {
             _listener: listener,
-            _proxy: proxy,
+            proxy,
+            writable: global.permissions.contains(
+                pw::permissions::PermissionFlags::W | pw::permissions::PermissionFlags::X,
+            ),
         },
     );
     Ok(())

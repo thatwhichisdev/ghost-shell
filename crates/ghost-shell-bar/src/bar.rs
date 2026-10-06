@@ -10,6 +10,7 @@ use ghost_shell_gpui::{
     prelude::*,
     px,
 };
+use ghost_shell_widget_audio::AudioWidget;
 use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
@@ -34,6 +35,7 @@ pub struct Widgets {
     pub focus: Entity<FocusWidget>,
     pub power: Entity<PowerWidget>,
     pub tray: Entity<TrayWidget>,
+    pub audio: Entity<AudioWidget>,
     pub clock: Entity<ClockWidget>,
 }
 
@@ -169,6 +171,7 @@ impl Render for BarView {
                     .items_center()
                     .justify_end()
                     .child(self.widgets.tray.clone())
+                    .child(self.widgets.audio.clone())
                     .child(self.widgets.power.clone())
                     .child(self.widgets.clock.clone())
             })

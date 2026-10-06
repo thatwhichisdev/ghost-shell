@@ -7,6 +7,7 @@ use ghost_shell_config::AppConfig;
 use ghost_shell_gpui::{
     App, AppContext, BorrowAppContext, Entity, Global, accesskit::Uuid,
 };
+use ghost_shell_widget_audio::AudioWidget;
 use ghost_shell_widget_clock::ClockWidget;
 use ghost_shell_widget_focus::FocusWidget;
 use ghost_shell_widget_menu::MenuWidget;
@@ -18,6 +19,7 @@ struct BarManager {
     bars: HashMap<Uuid, Entity<Bar>>,
     menu: Entity<MenuWidget>,
     power: Entity<PowerWidget>,
+    audio: Entity<AudioWidget>,
     clock: Entity<ClockWidget>,
     focus: Entity<FocusWidget>,
     tray: Entity<TrayWidget>,
@@ -64,6 +66,7 @@ impl BarManager {
             }
             let workspaces = cx.new(|cx| WorkspacesWidget::new(cx, identity));
             let widgets = Widgets {
+                audio: self.audio.clone(),
                 menu: self.menu.clone(),
                 power: self.power.clone(),
                 clock: self.clock.clone(),
@@ -95,6 +98,7 @@ pub fn init(cx: &mut App) {
         bars: HashMap::new(),
         menu: cx.new(|_| MenuWidget {}),
         power,
+        audio: cx.new(AudioWidget::new),
         clock: cx.new(ClockWidget::new),
         focus: cx.new(FocusWidget::new),
         tray: cx.new(TrayWidget::new),
