@@ -118,6 +118,6 @@ builds upon:
 
 ## Licensing
 
-See [LICENSE.md](LICENSE.md) for the project license. Vendored code and assets
+See [LICENSE.md](../LICENSE.md) for the project license. Vendored code and assets
 also carry their own licenses and attribution notices; see the
 [development guide](CONTRIBUTING.md#vendored-code-and-attribution).

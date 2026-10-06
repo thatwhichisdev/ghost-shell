@@ -104,7 +104,8 @@ build is not needed unless the documentation change also changes code.
 | `.config/` | Development tool configuration |
 | `assets/` | Documentation screenshots |
 | `crates/ghost-shell-assets/` | Assets embedded into the application |
-| `docs/` | Project overview, development and agent guides, project license |
+| `LICENSE.md` | Project license |
+| `docs/` | Project overview, development and agent guides |
 | `docs/wiki/` | User guides and architecture documentation |
 
 See [architecture](wiki/Architecture.md) for the runtime relationships and
@@ -137,7 +138,7 @@ back to the relevant source. Widget pages follow the same structure under
 
 ## Vendored code and attribution
 
-Consult the [project license](LICENSE.md),
+Consult the [project license](../LICENSE.md),
 [GPUI origin notes](../crates/ghost-shell-gpui/ORIGIN.md),
 [GPUI license](../crates/ghost-shell-gpui/LICENSE-APACHE),
 [component upstream notes](../crates/ghost-shell-components/UPSTREAM.md), and
