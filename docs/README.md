@@ -1,8 +1,15 @@
-# Preview
+# Ghost Shell
 
-![preview](assets/preview.png)
+A desktop shell for the Niri Wayland compositor, built with GPUI.
 
-# Overview
+[User documentation](wiki/README.md) · [Contributing](CONTRIBUTING.md) ·
+[Agent guide](AGENTS.md)
+
+## Preview
+
+![preview](../assets/preview.png)
+
+## Overview
 
 Ghost Shell is a desktop shell built exclusively for the Niri Wayland
 compositor. It is built on top of Zed's GPUI UI framework.
@@ -13,36 +20,37 @@ to the compositor.
 
 The project's name is inspired by the anime Ghost in the Shell.
 
-## Bar
+### Bar
 
 The bar follows a widely adopted layout with three sections: start, center, and
-end. You can place the widgets you want in each section through configuration.
+end. Its current widget layout is fixed; appearance and outputs are configurable.
+See the [bar guide](wiki/Bar.md) and [widget reference](wiki/Widgets.md).
 
-![bar](assets/bar.png)
+![bar](../assets/bar.png)
 
-## Launcher
+### Launcher
 
 The application launcher is intentionally simple. It displays all applications
 discovered on the system and allows you to launch them through Niri's `spawn`
 command. Terminal applications are launched inside a terminal emulator.
 
-![launcher](assets/launcher.png)
+![launcher](../assets/launcher.png)
 
-## Finder
+### Finder
 
 The file and directory finder is one of the ideas I'm particularly proud of. It
 takes advantage of the `fff` library to build an indexed tree of files and
 directories, allowing Ghost Shell to quickly find files across the system.
 
-![finder](assets/finder.png)
+![finder](../assets/finder.png)
 
-## Lockscreen
+### Lockscreen
 
 The lockscreen supports animated wallpapers. What else do you need?
 
-![lockscreen](assets/lockscreen.png)
+![lockscreen](../assets/lockscreen.png)
 
-# Roadmap
+## Roadmap
 
 The project is still in a very early alpha stage. I don't expect a release any
 time soon. There is still a lot to implement, test, and improve before I can be
@@ -70,98 +78,24 @@ confident that Ghost Shell is robust and performant enough for a proper release.
 - [ ] Wallpapers
 - [ ] Theming
 
-# Getting Started
+## Documentation
 
-## Prerequisites
+Start with the [wiki](wiki/README.md) for the project overview and user guides:
 
-- Rust nightly
-- Niri Wayland compositor
-- GPUI's [necessary system
-  libraries](https://github.com/zed-industries/zed/blob/main/docs/src/development/linux.md)
+- [Installation](wiki/Installation.md) and [getting started](wiki/Getting-Started.md)
+- [Configuration](wiki/Configuration.md) and [theming](wiki/Theming.md)
+- [Bar](wiki/Bar.md) and [individual widgets](wiki/Widgets.md)
+- [Launcher](wiki/Launcher.md), [finder](wiki/Finder.md), and
+  [lockscreen](wiki/Lockscreen.md)
+- [Wallpapers](wiki/Wallpapers.md) and [CLI commands](wiki/Commands.md)
+- [Architecture](wiki/Architecture.md) and
+  [troubleshooting](wiki/Troubleshooting.md)
 
-If you're using Nix, the following command will provide the Rust toolchain and
-system libraries needed to build the project:
+Build, run, and contribution instructions live in [CONTRIBUTING.md](CONTRIBUTING.md).
+The roadmap above tracks completion; implemented features may still have alpha
+limitations documented in their respective guides.
 
-```shell
-nix develop
-```
-
-## Installation
-
-Clone the repository:
-
-```shell
-git clone https://github.com/thatwhichisdev/ghost-shell
-```
-
-## Building
-
-```
-cargo build  
-```
-
-## Running
-
-```
-cargo run   
-```
-
-## Configuration
-
-Ghost Shell follows the XDG Base Directory Specification when discovering its
-configuration.
-
-A simple `~/.config/ghost-shell/config.toml` configuration can look like:
-
-```toml
-[general]
-font_family = "BerkeleyMono Nerd Font Mono"
-font_size = 13
-
-[bar."eDP-1"]
-output = "eDP-1"
-height = 27.0
-exclusive_zone = 27.0
-appearance = "themed"
-
-[bar."DP-1"]
-primary = true
-output = "DP-1"
-height = 27.0
-exclusive_zone = 27.0
-appearance = "themed"
-
-[launcher]
-blur = true
-background_opacity = 0.8
-
-[finder]
-blur = false
-
-[clock]
-format = "%H:%M"
-
-[wallpaper]
-bg = 0x00000000
-path = "/nix/store/i1a32bnx94ynzfx7wq052fz6ybbak95n-source/assets/wallpapers/motion/waneella_clouds.gif"
-```
-
-Each bar can set `appearance` independently:
-
-- `"themed"` (the default): the active theme's `base00` background without blur.
-  `"default"` is also accepted as an alias.
-- `"blur"`: the theme background with compositor blur behind it.
-- `"transparent"`: a fully transparent background without blur; widgets remain
-  visible.
-
-For bars, replace the old `blur = true` setting with `appearance = "blur"`, or
-`blur = false` with `appearance = "themed"`. The launcher and finder retain
-their own `blur` switches. `background_opacity` can be set from `0.0` to `1.0`
-for each surface. Its default is `0.8` when blur is enabled and `1.0` otherwise.
-Transparent bars always use zero background opacity, regardless of this setting.
-Blur requires compositor support.
-
-# Acknowledgments
+## Acknowledgments
 
 Ghost Shell would not be possible without the excellent work of the projects it
 builds upon:
@@ -182,7 +116,8 @@ builds upon:
 - [fff](https://github.com/dmtrKovalenko/fff) - amazing file search toolkit,
   powers finder and launcher's applications filtering.
 
-# Licensing
+## Licensing
 
-The code in this project is licensed under the MIT License. Check the
-[LICENSE](LICENSE.md) file for further details.
+See [LICENSE.md](LICENSE.md) for the project license. Vendored code and assets
+also carry their own licenses and attribution notices; see the
+[development guide](CONTRIBUTING.md#vendored-code-and-attribution).
