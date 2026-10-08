@@ -8,7 +8,7 @@ use ghost_shell_gpui::{App, Entity, Global};
 use crate::{item::Item, watcher::Watcher};
 pub use crate::{
     item::{IconPixmap, ItemEvent, StatusNotifierId, StatusNotifierItem},
-    menu::{Menu, MenuId, MenuItem, MenuItemType, MenuLayout},
+    menu::{Menu, MenuId, MenuItem, MenuItemType, MenuLayout, MenuSession},
     watcher::WatcherEvent,
 };
 

@@ -85,30 +85,40 @@ impl MenuLayout {
     }
 }
 
+/// A fresh layout and a subscription scoped to its visible lifetime.
+/// Drop this session when the popup closes to release the D-Bus subscription.
+pub struct MenuSession {
+    pub layout: MenuLayout,
+    invalidated: oneshot::Receiver<()>,
+}
+
+impl MenuSession {
+    /// Waits until the layout/properties change or the signal connection closes.
+    pub async fn invalidated(&mut self) {
+        let _ = (&mut self.invalidated).await;
+    }
+}
+
 pub struct Menu {
     commands: mpsc::Sender<MenuCommand>,
 }
 
 impl Menu {
-    /// Fetches the complete current layout of a remote DBusMenu.
-    pub fn discover(
-        &self,
-        id: MenuId,
-        cx: &mut Context<Self>,
-    ) -> Task<Result<MenuLayout>> {
+    /// Prepares a remote menu for display and watches for changes.
+    pub fn open(&self, id: MenuId, cx: &mut Context<Self>) -> Task<Result<MenuSession>> {
         let commands = self.commands.clone();
 
         cx.spawn(async move |_this, _cx| {
             let (reply, response) = oneshot::channel();
 
             commands
-                .send(MenuCommand::Discover { id, reply })
+                .send(MenuCommand::Open { id, reply })
                 .await
                 .context("D-Bus menu client stopped")?;
 
             response
                 .await
-                .context("D-Bus menu client dropped discovery request")?
+                .context("D-Bus menu client dropped menu open request")?
         })
     }
 
@@ -140,9 +150,9 @@ impl Menu {
 }
 
 enum MenuCommand {
-    Discover {
+    Open {
         id: MenuId,
-        reply: oneshot::Sender<Result<MenuLayout>>,
+        reply: oneshot::Sender<Result<MenuSession>>,
     },
     Activate {
         menu: MenuId,
@@ -173,8 +183,8 @@ async fn run(mut commands: mpsc::Receiver<MenuCommand>) -> Result<()> {
 
     while let Some(command) = commands.recv().await {
         match command {
-            MenuCommand::Discover { id, reply } => {
-                let result = DbusMenuClient::fetch(&connection, id).await;
+            MenuCommand::Open { id, reply } => {
+                let result = DbusMenuClient::open(&connection, id).await;
 
                 let _ = reply.send(result);
             }

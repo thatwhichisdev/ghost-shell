@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::{Context as _, Result};
+use futures_util::StreamExt as _;
+use tokio::sync::oneshot;
 use zbus::{Connection, proxy, zvariant::OwnedValue};
 
-use super::{MenuId, MenuItem, MenuItemType, MenuLayout};
+use super::{MenuId, MenuItem, MenuItemType, MenuLayout, MenuSession};
 
 const ROOT_ITEM_ID: i32 = 0;
 const UNLIMITED_RECURSION: i32 = -1;
@@ -16,6 +18,8 @@ type RawMenuItem = (i32, HashMap<String, OwnedValue>, Vec<OwnedValue>);
     gen_blocking = false
 )]
 trait DbusMenuInterface {
+    fn about_to_show(&self, id: i32) -> zbus::Result<bool>;
+
     fn get_layout(
         &self,
         parent_id: i32,
@@ -35,13 +39,25 @@ trait DbusMenuInterface {
 pub(super) struct DbusMenuClient;
 
 impl DbusMenuClient {
-    pub(super) async fn fetch(connection: &Connection, id: MenuId) -> Result<MenuLayout> {
+    pub(super) async fn open(connection: &Connection, id: MenuId) -> Result<MenuSession> {
         let proxy = DbusMenuInterfaceProxy::builder(connection)
             .destination(id.service().to_owned())?
             .path(id.object_path().to_owned())?
             .build()
             .await
             .with_context(|| format!("failed to create D-Bus menu proxy for {id}"))?;
+
+        // Some exporters do not implement AboutToShow. Still fetch their layout.
+        if let Err(error) = proxy.about_to_show(ROOT_ITEM_ID).await {
+            log::debug!("D-Bus menu AboutToShow failed for {id}: {error:#}");
+        }
+
+        // Subscribe before fetching so changes during GetLayout cannot be lost.
+        let mut signals = proxy
+            .inner()
+            .receive_all_signals()
+            .await
+            .with_context(|| format!("failed to watch D-Bus menu {id}"))?;
 
         let (revision, root) = proxy
             .get_layout(ROOT_ITEM_ID, UNLIMITED_RECURSION, Vec::new())
@@ -51,7 +67,27 @@ impl DbusMenuClient {
         let root = decode_item(root)
             .with_context(|| format!("failed to decode D-Bus menu layout for {id}"))?;
 
-        Ok(MenuLayout { id, revision, root })
+        let (mut invalidated, receiver) = oneshot::channel();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = invalidated.closed() => return,
+                    signal = signals.next() => {
+                        let Some(signal) = signal else { break };
+                        if matches!(signal.header().member().map(|name| name.as_str()),
+                            Some("LayoutUpdated" | "ItemsPropertiesUpdated")) {
+                            break;
+                        }
+                    }
+                }
+            }
+            let _ = invalidated.send(());
+        });
+
+        Ok(MenuSession {
+            layout: MenuLayout { id, revision, root },
+            invalidated: receiver,
+        })
     }
 
     pub(super) async fn activate(
@@ -153,3 +189,6 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

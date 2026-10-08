@@ -6,7 +6,7 @@ use ghost_shell_dbus::{
 };
 use ghost_shell_gpui::{
     AppContext as _, Bounds, Context, DismissEvent, Entity, MouseDownEvent, ObjectFit,
-    Pixels, Point, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
+    Pixels, Point, Subscription, Task, Window, WindowBackgroundAppearance, WindowBounds,
     WindowKind, WindowOptions, div, img, point,
     popup::{PopupAnchor, PopupConstraintAdjustment, PopupGravity, PopupOptions},
     prelude::*,
@@ -19,7 +19,10 @@ mod icon;
 mod item;
 mod menu;
 
-struct TrayMenuSurface(Entity<PopupMenu>);
+struct TrayMenuSurface {
+    menu: Entity<PopupMenu>,
+    _watch: Task<()>,
+}
 
 impl Render for TrayMenuSurface {
     fn render(
@@ -32,7 +35,7 @@ impl Render for TrayMenuSurface {
             .flex()
             .items_start()
             .justify_end()
-            .child(self.0.clone())
+            .child(self.menu.clone())
     }
 }
 
@@ -40,6 +43,7 @@ pub struct TrayWidget {
     items: BTreeMap<StatusNotifierId, TrayItem>,
     _watcher_subscription: Subscription,
     _item_subscription: Subscription,
+    pending_menu: Option<Task<()>>,
 }
 
 impl TrayWidget {
@@ -87,6 +91,7 @@ impl TrayWidget {
             items: BTreeMap::new(),
             _watcher_subscription: watcher_subscription,
             _item_subscription: item_subscription,
+            pending_menu: None,
         }
     }
 
@@ -94,7 +99,6 @@ impl TrayWidget {
         let dbus = cx.global::<Dbus>();
 
         let item = dbus.status_notifier_item().clone();
-        let menu = dbus.dbus_menu().clone();
 
         cx.spawn(async move |tray, cx| {
             let item_task = item.update(cx, |item, cx| item.discover(registration, cx));
@@ -106,38 +110,18 @@ impl TrayWidget {
                 }
             };
 
-            let tray_menu = if let Some(path) = status_notifier_item.menu.as_deref() {
-                let id = MenuId::new(status_notifier_item.id.service(), path);
-                let menu_task = menu.update(cx, |menu, cx| menu.discover(id, cx));
-
-                match menu_task.await {
-                    Ok(layout) => Some(TrayMenu::from(layout)),
-
-                    Err(error) => {
-                        log::warn!(
-                            "failed to discover tray menu for {}: \
-                                 {error:#}",
-                            status_notifier_item.id
-                        );
-                        None
-                    }
-                }
-            } else {
-                None
-            };
-
             _ = tray.update(cx, |tray, cx| {
-                tray.insert_item(&status_notifier_item, tray_menu);
+                tray.insert_item(&status_notifier_item);
                 cx.notify();
             });
         })
         .detach();
     }
 
-    fn insert_item(&mut self, item: &StatusNotifierItem, menu: Option<TrayMenu>) {
+    fn insert_item(&mut self, item: &StatusNotifierItem) {
         let id = item.id.clone();
 
-        match TrayItem::new(item, menu) {
+        match TrayItem::new(item) {
             Ok(item) => {
                 self.items.insert(id, item);
             }
@@ -170,7 +154,7 @@ impl TrayWidget {
 
     fn open_menu(
         &mut self,
-        menu: TrayMenu,
+        menu: MenuId,
         position: Point<Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -188,31 +172,61 @@ impl TrayWidget {
             grab: true,
         };
 
-        let bounds = WindowBounds::Windowed(Bounds::new(Default::default(), menu.size()));
-        let options = WindowOptions {
-            window_bounds: Some(bounds),
-            kind: WindowKind::AnchoredPopup(popup),
-            titlebar: None,
-            is_movable: false,
-            is_resizable: false,
-            is_minimizable: false,
-            window_background: WindowBackgroundAppearance::Transparent,
-            ..Default::default()
-        };
+        let dbus_menu = cx.global::<Dbus>().dbus_menu().clone();
+        let task = dbus_menu.update(cx, |client, cx| client.open(menu.clone(), cx));
 
-        if let Err(error) = cx.open_window(options, move |window, cx| {
-            let popup_menu = menu.build(window, cx);
+        // A second click cancels a pending open instead of showing duplicate popups.
+        self.pending_menu = Some(cx.spawn_in(window, async move |_tray, cx| {
+            let mut session = match task.await {
+                Ok(session) => session,
+                Err(error) => {
+                    log::warn!("failed to load tray menu {menu}: {error:#}");
+                    return;
+                }
+            };
+            let menu = TrayMenu::from(session.layout.clone());
+            let _ = cx.update(|_parent, cx| {
+                let bounds =
+                    WindowBounds::Windowed(Bounds::new(Default::default(), menu.size()));
+                let options = WindowOptions {
+                    window_bounds: Some(bounds),
+                    kind: WindowKind::AnchoredPopup(popup),
+                    titlebar: None,
+                    is_movable: false,
+                    is_resizable: false,
+                    is_minimizable: false,
+                    window_background: WindowBackgroundAppearance::Transparent,
+                    ..Default::default()
+                };
 
-            window
-                .subscribe(&popup_menu, cx, |_menu, _: &DismissEvent, window, _cx| {
-                    window.remove_window();
-                })
-                .detach();
+                if let Err(error) = cx.open_window(options, move |window, cx| {
+                    let popup_menu = menu.build(window, cx);
+                    window
+                        .subscribe(
+                            &popup_menu,
+                            cx,
+                            |_menu, _: &DismissEvent, window, _cx| {
+                                window.remove_window();
+                            },
+                        )
+                        .detach();
 
-            cx.new(|_| TrayMenuSurface { 0: popup_menu })
-        }) {
-            log::warn!("failed to open tray menu: {error:#}");
-        }
+                    cx.new(|cx| {
+                        let watch = cx.spawn_in(window, async move |_surface, cx| {
+                            session.invalidated().await;
+                            // Never leave entries with obsolete IDs or properties clickable.
+                            let _ = cx.update(|window, _cx| window.remove_window());
+                        });
+                        TrayMenuSurface {
+                            menu: popup_menu,
+                            _watch: watch,
+                        }
+                    })
+                }) {
+                    log::warn!("failed to open tray menu: {error:#}");
+                }
+            });
+        }));
     }
 }
 

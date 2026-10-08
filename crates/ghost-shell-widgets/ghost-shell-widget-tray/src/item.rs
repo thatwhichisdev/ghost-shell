@@ -1,23 +1,24 @@
 use anyhow::{Result, anyhow};
-use ghost_shell_dbus::StatusNotifierItem;
+use ghost_shell_dbus::{MenuId, StatusNotifierItem};
 
-use crate::{icon::TrayIcon, menu::TrayMenu};
+use crate::icon::TrayIcon;
 
 pub(crate) struct TrayItem {
     pub(crate) icon: TrayIcon,
-    pub(crate) menu: Option<TrayMenu>,
+    pub(crate) menu: Option<MenuId>,
 }
 
 impl TrayItem {
-    pub(crate) fn new(item: &StatusNotifierItem, menu: Option<TrayMenu>) -> Result<Self> {
+    pub(crate) fn new(item: &StatusNotifierItem) -> Result<Self> {
         Ok(Self {
             icon: icon(item)?,
-            menu,
+            menu: menu_id(item),
         })
     }
 
     pub(crate) fn update(&mut self, item: &StatusNotifierItem) -> Result<()> {
         self.icon = icon(item)?;
+        self.menu = menu_id(item);
 
         Ok(())
     }
@@ -27,7 +28,7 @@ impl TryFrom<&StatusNotifierItem> for TrayItem {
     type Error = anyhow::Error;
 
     fn try_from(item: &StatusNotifierItem) -> Result<Self> {
-        Self::new(item, None)
+        Self::new(item)
     }
 }
 
@@ -49,4 +50,11 @@ fn icon(item: &StatusNotifierItem) -> Result<TrayIcon> {
         .ok_or_else(|| anyhow!("status notifier item has no usable icon pixmap"))?;
 
     TrayIcon::from_pixmap(pixmap)
+}
+
+fn menu_id(item: &StatusNotifierItem) -> Option<MenuId> {
+    item.menu
+        .as_deref()
+        .filter(|path| *path != "/")
+        .map(|path| MenuId::new(item.id.service(), path))
 }
