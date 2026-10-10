@@ -8,23 +8,21 @@ For any file search or grep in the current git-indexed directory, use fff tools.
 
 ## Read First
 
-- [README.md](README.md): project purpose, features, and roadmap.
-- [CONTRIBUTING.md](CONTRIBUTING.md): prerequisites, build/run commands, checks,
-  repository layout, and documentation workflow.
-- [Wiki](wiki/README.md): user setup, configuration, features, and widget
+- [README.md](docs/README.md): project purpose, features, and roadmap.
+- [CONTRIBUTING.md](docs/CONTRIBUTING.md): prerequisites, build/run commands,
+  checks, repository layout, and documentation workflow.
+- [Wiki](docs/wiki/README.md): user setup, configuration, features, and widget
   guides.
-- [Architecture](wiki/Architecture.md): crate responsibilities and runtime flow.
+- [Architecture](docs/wiki/Architecture.md): crate responsibilities and runtime
+  flow.
 
 Run development commands from the repository root. Keep user-facing behavior and
 configuration examples in the wiki, and contributor workflows in
-CONTRIBUTING.md. Update the relevant guides when changing behavior; verify
-options against `crates/ghost-shell-config/src/config.rs` and distinguish
+`docs/CONTRIBUTING.md`. Update the relevant guides when changing behavior;
+verify options against `crates/ghost-shell-config/src/config.rs` and distinguish
 implemented features from planned ones.
 
-This guide lives under `docs/`. Agents working elsewhere in the repository
-should read it explicitly; tools that discover instructions by ancestor
-directory may not automatically apply it to sibling directories such as
-`crates/`.
+This guide applies to the entire repository.
 
 ## Development Guidelines
 
@@ -196,7 +194,7 @@ If some attributes or children of an element tree are conditional,
 `condition` is true. Similarly, `.when_some(option, |this, value| ...)` runs the
 closure when the `Option` has a value.
 
-#### Input events
+#### Input Events
 
 Input event handlers can be registered on an element via methods like
 `.on_click(|event, window, cx: &mut App| ...)`.
@@ -278,6 +276,21 @@ propagation, image processing, and future extension dispatch.
 - Take visual inspiration from high-quality desktop interfaces, but preserve
   Ghost's own restrained identity. Do not copy assets, branding, or distinctive
   visual elements from *Ghost in the Shell* or other products.
+
+## Commit Messages
+
+Commit messages must follow [Conventional Commits
+1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+- Use `<type>[optional scope][!]: <description>` for the subject, for example
+  `docs: move agent guide to repository root` or
+  `fix(launcher): handle missing application icons`.
+- Use `feat` for new features and `fix` for bug fixes. Other types such as
+  `docs`, `refactor`, `perf`, `test`, `build`, `ci`, and `chore` are allowed.
+- Mark breaking changes with `!` immediately before the colon or a
+  `BREAKING CHANGE: <description>` footer. When using `!` without that footer,
+  describe the breaking change in the subject.
+- Separate an optional body and footer section with blank lines.
 
 ## Issue and PR Guidelines
 

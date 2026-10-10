@@ -3,7 +3,7 @@
 A desktop shell for the Niri Wayland compositor, built with GPUI.
 
 [User documentation](wiki/README.md) · [Contributing](CONTRIBUTING.md) ·
-[Agent guide](AGENTS.md)
+[Agent guide](../AGENTS.md)
 
 ## Preview
 

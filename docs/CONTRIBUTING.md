@@ -1,7 +1,7 @@
 # Contributing
 
 [Project overview](README.md) · [User documentation](wiki/README.md) ·
-[Agent guide](AGENTS.md)
+[Agent guide](../AGENTS.md)
 
 Run the commands below from the repository root. For using the shell without
 changing its code, start with [installation](wiki/Installation.md).
@@ -109,7 +109,7 @@ build is not needed unless the documentation change also changes code.
 | `docs/wiki/` | User guides and architecture documentation |
 
 See [architecture](wiki/Architecture.md) for the runtime relationships and
-[AGENTS.md](AGENTS.md) for Rust, GPUI, and performance conventions.
+[AGENTS.md](../AGENTS.md) for Rust, GPUI, and performance conventions.
 
 ## Documentation workflow
 

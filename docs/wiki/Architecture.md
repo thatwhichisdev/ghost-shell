@@ -52,7 +52,7 @@ launcher, finder, and bar.
 
 GPUI entities and globals hold application state. Observers propagate changes to
 views; services perform asynchronous work through the Tokio integration. The
-[agent guide](../AGENTS.md#gpui) describes the entity and context conventions.
+[agent guide](../../AGENTS.md#gpui) describes the entity and context conventions.
 
 The bar manager reconciles configured outputs against connected displays. It
 shares menu, focus, tray, audio, power, and clock entities across bars, while

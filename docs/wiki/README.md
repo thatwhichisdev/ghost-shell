@@ -31,7 +31,7 @@ features are called out in the relevant guide.
 
 - [Architecture](Architecture.md): processes, crates, and data flow.
 - [Contributing guide](../CONTRIBUTING.md): toolchain, builds, checks, and writing docs.
-- [Agent guide](../AGENTS.md): coding conventions and GPUI patterns.
+- [Agent guide](../../AGENTS.md): coding conventions and GPUI patterns.
 
 The organization takes inspiration from [Niri's wiki](https://github.com/niri-wm/niri/wiki):
 a getting-started path, focused configuration pages, and separate development
