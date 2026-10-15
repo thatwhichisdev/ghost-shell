@@ -14,6 +14,11 @@ ghost-shell msg launcher toggle
 Press Enter to launch the selected application and Escape to close the launcher.
 The window opens on the focused output, falling back to the primary output.
 
+Desktop entries without a name or whose `Exec` command cannot be parsed are
+skipped. The daemon logs a warning with the desktop file path and reason, so a
+rejected entry does not prevent startup. If an application is missing, check the
+daemon logs for `Skipping desktop entry`.
+
 ## Configuration
 
 ```toml

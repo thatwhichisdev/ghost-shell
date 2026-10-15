@@ -2,8 +2,8 @@
 
 A desktop shell for the Niri Wayland compositor, built with GPUI.
 
-[User documentation](wiki/README.md) · [Contributing](CONTRIBUTING.md) ·
-[Agent guide](../AGENTS.md)
+[User documentation](wiki/README.md) · [Contributing](CONTRIBUTING.md) · [Agent
+guide](../AGENTS.md)
 
 ## Preview
 
@@ -23,8 +23,9 @@ The project's name is inspired by the anime Ghost in the Shell.
 ### Bar
 
 The bar follows a widely adopted layout with three sections: start, center, and
-end. Its current widget layout is fixed; appearance and outputs are configurable.
-See the [bar guide](wiki/Bar.md) and [widget reference](wiki/Widgets.md).
+end. Its current widget layout is fixed; appearance and outputs are
+configurable. See the [bar guide](wiki/Bar.md) and [widget
+reference](wiki/Widgets.md).
 
 ![bar](../assets/bar.png)
 
@@ -82,7 +83,8 @@ confident that Ghost Shell is robust and performant enough for a proper release.
 
 Start with the [wiki](wiki/README.md) for the project overview and user guides:
 
-- [Installation](wiki/Installation.md) and [getting started](wiki/Getting-Started.md)
+- [Installation](wiki/Installation.md) and [getting
+  started](wiki/Getting-Started.md)
 - [Configuration](wiki/Configuration.md) and [theming](wiki/Theming.md)
 - [Bar](wiki/Bar.md) and [individual widgets](wiki/Widgets.md)
 - [Launcher](wiki/Launcher.md), [finder](wiki/Finder.md), and
@@ -91,9 +93,10 @@ Start with the [wiki](wiki/README.md) for the project overview and user guides:
 - [Architecture](wiki/Architecture.md) and
   [troubleshooting](wiki/Troubleshooting.md)
 
-Build, run, and contribution instructions live in [CONTRIBUTING.md](CONTRIBUTING.md).
-The roadmap above tracks completion; implemented features may still have alpha
-limitations documented in their respective guides.
+Build, run, and contribution instructions live in
+[CONTRIBUTING.md](CONTRIBUTING.md). The roadmap above tracks completion;
+implemented features may still have alpha limitations documented in their
+respective guides.
 
 ## Acknowledgments
 
@@ -118,6 +121,6 @@ builds upon:
 
 ## Licensing
 
-See [LICENSE.md](../LICENSE.md) for the project license. Vendored code and assets
-also carry their own licenses and attribution notices; see the
+See [LICENSE.md](../LICENSE.md) for the project license. Vendored code and
+assets also carry their own licenses and attribution notices; see the
 [development guide](CONTRIBUTING.md#vendored-code-and-attribution).

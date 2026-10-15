@@ -29,7 +29,8 @@ features are called out in the relevant guide.
 
 ## Understanding and developing Ghost Shell
 
-- [Architecture](Architecture.md): processes, crates, and data flow.
+- [Architecture](Architecture.md): current integrations, GPUI service APIs,
+  and replaceable backend boundaries.
 - [Contributing guide](../CONTRIBUTING.md): toolchain, builds, checks, and writing docs.
 - [Agent guide](../../AGENTS.md): coding conventions and GPUI patterns.
 
