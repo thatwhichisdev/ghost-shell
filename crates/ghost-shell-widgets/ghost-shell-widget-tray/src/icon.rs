@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use ghost_shell_dbus::IconPixmap;
-use ghost_shell_gpui::RenderImage;
+use ghost_shell_gpui::{DevicePixels, RenderImage, Size, SvgRenderer, SvgSize};
 use image::{Frame, ImageReader, RgbaImage};
 
 pub(crate) struct TrayIcon(Arc<RenderImage>);
@@ -14,6 +14,18 @@ impl TrayIcon {
 
     pub(crate) fn from_path(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
+
+        if path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("svg"))
+        {
+            let bytes = std::fs::read(path).with_context(|| {
+                format!("failed to read tray icon {}", path.display())
+            })?;
+            return Self::from_svg(&bytes).with_context(|| {
+                format!("failed to render tray icon {}", path.display())
+            });
+        }
 
         let mut image = ImageReader::open(path)
             .with_context(|| format!("failed to open tray icon {}", path.display()))?
@@ -31,6 +43,15 @@ impl TrayIcon {
         }
 
         Ok(Self(Arc::new(RenderImage::new([Frame::new(image)]))))
+    }
+
+    fn from_svg(bytes: &[u8]) -> Result<Self> {
+        let renderer = SvgRenderer::new(Arc::new(()));
+        let svg = renderer.parse_svg(bytes)?;
+        Ok(Self(renderer.render_parsed(
+            &svg,
+            SvgSize::Size(Size::new(DevicePixels(48), DevicePixels(48))),
+        )?))
     }
 
     pub(crate) fn from_pixmap(pixmap: &IconPixmap) -> Result<Self> {
@@ -67,5 +88,21 @@ impl TrayIcon {
             .ok_or_else(|| anyhow!("failed to create tray icon image buffer"))?;
 
         Ok(Self(Arc::new(RenderImage::new([Frame::new(image)]))))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn renders_svg_and_rejects_invalid_data() -> Result<()> {
+        let icon = TrayIcon::from_svg(br#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="12"><path fill="red" d="M0 0h24v12H0z"/></svg>"#)?;
+        assert_eq!(
+            icon.into_inner().size(0),
+            Size::new(DevicePixels(48), DevicePixels(24))
+        );
+        assert!(TrayIcon::from_svg(b"not an SVG").is_err());
+        Ok(())
     }
 }

@@ -7,6 +7,11 @@ Status: **Implemented with incomplete interactions.**
 Displays applications registered through the session's StatusNotifier D-Bus
 integration. Left-click an item to open its exported menu when it provides one.
 
+Icons can come from application pixmaps, absolute file paths, or named icons in
+the desktop icon theme (with hicolor fallback). The application’s icon directory
+is checked first when supplied. Both raster images and SVG icons are supported,
+including GlobalProtect’s symbolic status icons.
+
 ## Setup and configuration
 
 Run tray applications in the same session D-Bus environment as Ghost Shell.

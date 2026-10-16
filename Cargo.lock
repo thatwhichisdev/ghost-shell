@@ -2640,6 +2640,7 @@ dependencies = [
  "ghost-shell-gpui",
  "image",
  "log",
+ "tempfile",
 ]
 
 [[package]]

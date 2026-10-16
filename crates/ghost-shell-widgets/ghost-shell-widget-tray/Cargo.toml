@@ -19,3 +19,6 @@ freedesktop-icons.workspace = true
 ghost-shell-gpui.workspace = true
 image.workspace = true
 log.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
