@@ -4,7 +4,7 @@
 
 Status: **Implemented controls.**
 
-Shows the default output's audio status. Click the widget to open its panel,
+Shows an 18px speaker icon and the default output's audio status. Click the widget to open its panel,
 which provides output and input volume sliders and device lists. Select a device
 to make it the default for its direction. Escape closes the panel.
 
@@ -16,9 +16,10 @@ The panel follows the shared theme.
 
 ## Current limitations
 
-Sliders cover 0–100%; amplification above 100% is not exposed. Muted status is
-shown, but the widget does not currently provide a dedicated mute toggle.
+Sliders cover 0–100%; amplification above 100% is not exposed. Each endpoint with
+mute support provides a Mute/Unmute button.
 Unavailable connections and failed commands are reported in the panel. Controls
-are disabled when the relevant device or connection is unavailable.
+are built from the available endpoint capabilities; rejected backend commands
+show an error.
 
-Implementation: [widget source](../../../crates/ghost-shell-widgets/ghost-shell-widget-audio/src/audio.rs).
+Implementation: [widget crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-audio/src/audio.rs).

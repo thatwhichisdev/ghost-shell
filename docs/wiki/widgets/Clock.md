@@ -4,7 +4,7 @@
 
 Status: **Implemented.**
 
-Displays local time using Jiff's `strftime` formatting. The clock entity and
+Displays local time using Jiff's `strftime` formatting. The clock state and
 configuration are shared by all bars.
 
 ## Setup and configuration
@@ -27,7 +27,7 @@ time zone; there is no separate time-zone setting.
 
 ## Current limitations
 
-The display updates every minute, so adding a seconds directive does not make it
-update every second. There is no calendar popup or click action yet.
+The display updates on minute boundaries by default. Common second-bearing
+directives (`%S`, `%T`, `%r`, `%X`, `%c`, `%s`, `%f`, `%N`) enable second updates. There is no calendar popup or click action yet.
 
-Implementation: [widget source](../../../crates/ghost-shell-widgets/ghost-shell-widget-clock/src/clock.rs).
+Implementation: [widget crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-clock/src/clock.rs).

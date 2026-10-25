@@ -1,6 +1,6 @@
 # Contributing
 
-[Project overview](README.md) · [User documentation](wiki/README.md) ·
+[Project overview](../README.md) · [User documentation](wiki/README.md) ·
 [Agent guide](../AGENTS.md)
 
 Run the commands below from the repository root. For using the shell without
@@ -14,9 +14,7 @@ changing its code, start with [installation](wiki/Installation.md).
 - Native build tools, `pkg-config`, and Clang/libclang for bindgen.
 - Development libraries for Fontconfig, FreeType, libxkbcommon, Vulkan, Wayland,
   Linux PAM, and PipeWire. See [nix/dev-shell.nix](../nix/dev-shell.nix) for the
-  repository's dependency list. GPUI's upstream
-  [Linux development guide](https://github.com/zed-industries/zed/blob/main/docs/src/development/linux.md)
-  is additional background; this repository vendors its own GPUI fork.
+  repository's dependency list. The GUI uses iced and the pinned Waycrate runtime.
 
 Clone the repository:
 
@@ -39,30 +37,47 @@ running shell.
 
 ```sh
 cargo build
-cargo run
+cargo run --bin ghost-shell-bar
 ```
 
-The workspace's default member is `ghost-shell-daemon`, so these commands build
-and run the daemon. Build the separate control CLI when testing IPC:
+The default workspace members are bar, launcher, finder and lockscreen.
+`cargo build` builds these desktop applications. Select one by binary name:
+
+```sh
+cargo run --bin ghost-shell-launcher
+cargo run --bin ghost-shell-finder
+cargo run --bin ghost-shell-lockscreen
+```
+
+`--bin` takes a target name, not a source directory. Bare `cargo run` requires a
+binary selection because there are now multiple defaults. Package selection with
+`cargo run -p ghost-shell-launcher` also works. Use `cargo build --workspace` to
+build all six executables.
+Enable the bar and lockscreen Home Manager services, or run those daemons directly.
+Run launcher and finder on demand; they open immediately and exit on dismissal.
+The boot greeter runs through greetd; see the [greeter guide](wiki/Greeter.md).
+Use the CLI only for daemon IPC:
 
 ```sh
 cargo build -p ghost-shell-cli
-cargo run -p ghost-shell-cli -- msg launcher toggle
+cargo run -p ghost-shell-launcher
+cargo run -p ghost-shell-finder
+cargo run -p ghost-shell-cli -- msg bar toggle
 ```
 
-The daemon must already be running in the same user session. Configure it using
+The target daemon must already be running in the same user session. Configure it using
 [getting started](wiki/Getting-Started.md) and the
 [configuration reference](wiki/Configuration.md). A missing or invalid config
-falls back to defaults, which contain no bars. There is no separate development
+falls back to defaults, which show a bar on each connected output. There is no separate development
 configuration file or command-line config override.
 
-For release builds of both executables:
+For release builds of all six executables:
 
 ```sh
-cargo build --release -p ghost-shell-daemon -p ghost-shell-cli
+cargo build --workspace --release
 ```
 
-The Nix package builds both executables and wraps the daemon's runtime libraries:
+The Nix package builds all six executables and wraps the GUI runtime libraries:
 
 ```sh
 nix build .#ghost-shell --print-build-logs
@@ -94,22 +109,52 @@ build is not needed unless the documentation change also changes code.
 
 | Path | Purpose |
 | --- | --- |
-| `crates/ghost-shell-daemon/` | Application entry point and service initialization |
-| `crates/ghost-shell-cli/` | User-facing `ghost-shell` command |
-| `crates/ghost-shell-config/` | Configuration schema, defaults, and loading |
-| `crates/ghost-shell-widgets/` | Bar widgets |
-| `crates/ghost-shell-components/` | Reusable UI components |
-| Other `crates/ghost-shell-*/` directories | Surfaces, integrations, and shared services |
+| `crates/ghost-shell-core/ghost-shell-cli/` | User-facing `ghost-shell` command |
+| `crates/ghost-shell-core/` | CLI, embedded assets, configuration and theme |
+| `crates/ghost-shell-applications/` | Independent applications: bar, finder, launcher, lockscreen and boot greeter |
+| `crates/ghost-shell-components/` | Reusable UI/rendering components, including wallpaper |
+| `crates/ghost-shell-adapters/` | Audio, D-Bus, IPC, Niri and system integrations |
+| `crates/ghost-shell-widgets/` | Separate iced crate for each implemented bar widget |
 | `nix/` and `flake.nix` | Package, development environment, Home Manager module |
 | `.config/` | Development tool configuration |
 | `assets/` | Documentation screenshots |
-| `crates/ghost-shell-assets/` | Assets embedded into the application |
 | `LICENSE.md` | Project license |
 | `docs/` | Project overview, development and agent guides |
 | `docs/wiki/` | User guides and architecture documentation |
 
 See [architecture](wiki/Architecture.md) for the runtime relationships and
-[AGENTS.md](../AGENTS.md) for Rust, GPUI, and performance conventions.
+[AGENTS.md](../AGENTS.md) for Rust, iced, and performance conventions.
+
+## Dependency declarations
+
+Keep `[workspace.dependencies]` as a flat catalog of shared versions, internal
+crate paths, pinned Git revisions, and default-feature policy. Select dependency
+features in each consuming crate's manifest; do not put feature lists in the root.
+Dependencies used by only one crate may remain local. Declare test-only features
+under `[dev-dependencies]` and optional capabilities under the owning package's
+`[features]` (a virtual workspace has no shared `[features]` table).
+
+Each crate using iced explicitly selects `tokio`, `wayland` and `wgpu` so it can
+build in isolation: iced requires an executor, platform backend and renderer.
+Add `svg`, `image-without-codecs`, or other capabilities where
+used. The launcher and tray explicitly enable raster codecs through an `image`
+dependency because iced decodes their icons using that crate. Wallpaper requests
+its supported GIF, PNG and JPEG codecs. Keep default features disabled centrally
+for iced, Waycrate, image and zbus.
+
+Check affected members separately, including test targets, before checking the
+whole workspace. Unified workspace features can otherwise hide an incomplete
+member declaration:
+
+```sh
+cargo check -p ghost-shell-niri --all-targets
+cargo check --workspace --all-targets
+cargo tree -e features -i image
+```
+
+Feature lists are additive; a member cannot subtract features enabled elsewhere
+in the same build. Preserve the pinned Waycrate revision and existing version
+requirements when reorganizing manifests.
 
 ## Documentation workflow
 
@@ -136,11 +181,8 @@ Use `../../assets/` for screenshots in top-level wiki pages and relative links
 back to the relevant source. Widget pages follow the same structure under
 `wiki/widgets/` and need one extra `../` to reach repository files.
 
-## Vendored code and attribution
-
-Consult the [project license](../LICENSE.md),
-[GPUI origin notes](../crates/ghost-shell-gpui/ORIGIN.md),
-[GPUI license](../crates/ghost-shell-gpui/LICENSE-APACHE),
-[component upstream notes](../crates/ghost-shell-components/UPSTREAM.md), and
-[Lucide license](../crates/ghost-shell-components/ghost-shell-component-icon/LICENSE-LUCIDE)
-when working on vendored code or assets. Preserve their attribution notices.
+## Runtime validation
+Run `cargo test --workspace` for portable tests. On a host with a graphics adapter,
+run `cargo test -p ghost-shell-wallpaper -- --ignored` to validate the custom wgpu
+pipeline. D-Bus tests start private buses and require permission to create Unix
+sockets. Test compositor operations in an isolated nested Niri session.

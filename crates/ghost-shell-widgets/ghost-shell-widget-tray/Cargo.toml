@@ -1,4 +1,5 @@
 [package]
+license.workspace = true
 name = "ghost-shell-widget-tray"
 version.workspace = true
 edition.workspace = true
@@ -10,15 +11,11 @@ publish.workspace = true
 path = "src/tray.rs"
 
 [dependencies]
-ghost-shell-component-menu.workspace = true
+iced = { workspace = true, features = ["image-without-codecs", "svg", "tokio", "wayland", "wgpu"] }
 ghost-shell-dbus.workspace = true
-
-
-anyhow.workspace = true
+ghost-shell-theme.workspace = true
 freedesktop-icons.workspace = true
-ghost-shell-gpui.workspace = true
-image.workspace = true
+anyhow.workspace = true
 log.workspace = true
-
-[dev-dependencies]
-tempfile = "3"
+# Iced decodes raster icons through image; keep codec selection with the consumer.
+image = { workspace = true, features = ["bmp", "gif", "ico", "jpeg", "png", "webp"] }

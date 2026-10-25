@@ -1,0 +1,21 @@
+[package]
+license.workspace = true
+name = "ghost-shell-dbus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/dbus.rs"
+
+[dependencies]
+anyhow.workspace = true
+futures-util.workspace = true
+log.workspace = true
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+zbus = { workspace = true, features = ["async-io"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }

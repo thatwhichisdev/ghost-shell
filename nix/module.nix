@@ -7,53 +7,67 @@
 }:
 let
   cfg = config.programs.ghost-shell;
-
   tomlFormat = pkgs.formats.toml { };
-
+  applicationNames = [
+    "bar"
+    "lockscreen"
+  ];
+  applications = lib.filterAttrs (_: application: application.enable) (
+    lib.genAttrs applicationNames (name: cfg.applications.${name})
+  );
   configFile = tomlFormat.generate "ghost-shell-config.toml" cfg.settings;
 in
 {
+  imports =
+    map
+      (
+        name:
+        lib.mkRemovedOptionModule [ "programs" "ghost-shell" "applications" name "settings" ]
+          "Move these sections into programs.ghost-shell.settings; shared theme and general settings are defined once."
+      )
+      (
+        applicationNames
+        ++ [
+          "launcher"
+          "finder"
+        ]
+      )
+    ++
+      map
+        (
+          name:
+          lib.mkRemovedOptionModule [ "programs" "ghost-shell" "applications" name "enable" ]
+            "Launcher and finder run on demand. Remove this service option and bind ghost-shell-${name} directly in Niri."
+        )
+        [
+          "launcher"
+          "finder"
+        ];
+
   options.programs.ghost-shell = {
-    enable = lib.mkEnableOption "Ghost desktop shell";
+    enable = lib.mkEnableOption "Ghost desktop applications";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.ghost-shell;
-      description = "The Ghost package to install and run.";
+      description = "The Ghost applications and CLI package to install.";
     };
+
+    applications = lib.genAttrs applicationNames (name: {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Enable the Ghost ${name} application.";
+      };
+    });
 
     settings = lib.mkOption {
       inherit (tomlFormat) type;
-
       default = { };
-
-      example = lib.literalExpression ''
-        {
-          general = {
-            font_family = "Berkeley Mono";
-            font_size = 13;
-          };
-
-          wallpaper = {
-            path = "/some/wallpaper.gif";
-          };
-
-          bar.primary = {
-            output = "DP-1";
-            height = 27;
-            exclusive_zone = 27;
-            primary = true;
-          };
-        }
-      '';
-
-      description = ''
-        Ghost configuration written to
-        `$XDG_CONFIG_HOME/ghost-shell/config.toml`.
-      '';
+      description = "Shared desktop configuration written to $XDG_CONFIG_HOME/ghost-shell/config.toml.";
     };
 
-    systemd.enable = lib.mkEnableOption "ghost-shell systemd user service";
+    systemd.enable = lib.mkEnableOption "independent Ghost systemd user services";
   };
 
   config = lib.mkIf cfg.enable {
@@ -61,25 +75,31 @@ in
 
     xdg.configFile."ghost-shell/config.toml".source = configFile;
 
-    systemd.user.services.ghost-shell = lib.mkIf cfg.systemd.enable {
-      Unit = {
-        Description = "A desktop shell built exclusively for the Niri Wayland compositor";
-
-        PartOf = [ "graphical-session.target" ];
-        After = [ "graphical-session.target" ];
-        Requisite = [ "graphical-session.target" ];
-
-        ConditionEnvironment = "NIRI_SOCKET";
-
-        X-Restart-Triggers = [ "${configFile}" ];
-      };
-
-      Service = {
-        ExecStart = lib.getExe' cfg.package "ghost-shell-daemon";
-        Restart = "on-failure";
-      };
-
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
+    systemd.user.services = lib.mkIf cfg.systemd.enable (
+      lib.mapAttrs' (
+        name: _:
+        lib.nameValuePair "ghost-shell-${name}" {
+          Unit = {
+            Description = "Ghost ${name}";
+            PartOf = [ "graphical-session.target" ];
+            After = [ "graphical-session.target" ];
+            Requisite = [ "graphical-session.target" ];
+            ConditionEnvironment = "WAYLAND_DISPLAY";
+            X-Restart-Triggers = [ "${configFile}" ];
+          };
+          Service = {
+            ExecStart = lib.getExe' cfg.package "ghost-shell-${name}";
+            Restart = if name == "lockscreen" then "no" else "on-failure";
+          }
+          // lib.optionalAttrs (name == "lockscreen") {
+            # SIGTERM is handled by the lockscreen and exit waits for authentication.
+            KillMode = "mixed";
+            TimeoutStopSec = "infinity";
+            SendSIGKILL = false;
+          };
+          Install.WantedBy = [ "graphical-session.target" ];
+        }
+      ) applications
+    );
   };
 }

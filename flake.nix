@@ -1,5 +1,5 @@
 {
-  description = "A desktop shell built with GPUI, designed exclusively for Wayland and Niri.";
+  description = "A desktop shell built with iced, designed exclusively for Wayland and Niri.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -67,6 +67,8 @@
         ghost-shell = import ./nix/module.nix { inherit self; };
         default = ghost-shell;
       };
+
+      nixosModules.greeter = import ./nix/greeter-module.nix { inherit self; };
 
       formatter = forEachSystem (system: (pkgsFor system).nixfmt-tree);
     };

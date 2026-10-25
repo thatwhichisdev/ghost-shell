@@ -14,4 +14,4 @@ Configure the bar for the correct output in the [bar guide](../Bar.md).
 There are no `[workspaces]` settings. The indicator is display-only; it currently
 has no click handler for switching workspaces. Use your Niri workspace bindings.
 
-Implementation: [widget source](../../../crates/ghost-shell-widgets/ghost-shell-widget-workspaces/src/workspaces.rs).
+Implementation: [widget crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-workspaces/src/workspaces.rs).

@@ -2,7 +2,8 @@
 
 [Wiki](README.md) · [Configuration](Configuration.md)
 
-Ghost Shell builds a shared theme at startup. Fonts come from `[general]`;
+Each desktop application builds its theme from the shared `config.toml` at startup.
+Define `[theme]` and `[general]` once for a consistent appearance. Fonts come from `[general]`;
 background blur and opacity are configured separately for each surface.
 
 ## Appearance mode
@@ -12,10 +13,9 @@ background blur and opacity are configured separately for each surface.
 mode = "dark"
 ```
 
-`mode` accepts `"dark"` (the default), `"light"`, and `"system"`. At startup,
-`"system"` uses GPUI's reported window appearance to choose a palette. The daemon
-does not currently register an appearance-change listener to switch themes
-while running; restart it to apply a new mode.
+`mode` accepts `"dark"` (the default), `"light"`, and `"system"`. System mode
+uses iced's reported system theme and follows appearance changes while running.
+Restart the affected application after editing its configuration file.
 
 ## Base16 palettes
 
@@ -48,7 +48,7 @@ base0F = 0xffb1af
 ```
 
 For the exact mapping from palette entries to UI roles, see
-[`Theme::apply_base16`](../../crates/ghost-shell-theme/src/theme.rs).
+[theme mapping](../../crates/ghost-shell-core/ghost-shell-theme/src/theme.rs).
 Mode selection is implemented in the
-[daemon entry point](../../crates/ghost-shell-daemon/src/main.rs); defaults live
-in the [configuration schema](../../crates/ghost-shell-config/src/config.rs).
+[application](../../crates/ghost-shell-applications/ghost-shell-launcher/src/app.rs); defaults live
+in the [configuration schema](../../crates/ghost-shell-core/ghost-shell-config/src/config.rs).

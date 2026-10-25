@@ -2,8 +2,10 @@
 
 [Wiki](README.md) · [Configuration](Configuration.md) · [Widgets](Widgets.md)
 
-The bar is a top-anchored Wayland layer-shell surface. Configure a separate bar
-for each output on which it should appear:
+The bar is a top-anchored Wayland layer-shell surface. Without `[bar.*]` entries,
+a default bar opens on every connected output, including newly connected displays.
+Explicit entries restrict bars to the named outputs. Configure a separate bar
+for each output on which it should appear in `~/.config/ghost-shell/config.toml`:
 
 ```toml
 [bar."eDP-1"]
@@ -31,7 +33,7 @@ to the table key. Arbitrary table names such as `[bar.main]` will not match `DP-
 | `output` | `"<default>"` | Schema field; output selection currently uses the table key |
 | `height` | `27.0` | Bar height in logical pixels |
 | `exclusive_zone` | `27.0` | Space reserved for the bar in logical pixels |
-| `primary` | `false` | Preferred fallback output for shell surfaces |
+| `primary` | `false` | Preferred fallback output within the bar application |
 | `appearance` | `"themed"` | `"themed"` (alias `"default"`), `"blur"`, or `"transparent"` |
 | `background_opacity` | Automatic | `1.0` for themed, `0.8` for blur, always `0.0` for transparent |
 
@@ -39,10 +41,8 @@ Themed bars use the active palette's `base00` background without blur. Blur uses
 the theme background and asks the compositor to blur behind it. Transparent
 bars retain visible widgets without a background or blur.
 
-Set one connected output as primary. If multiple bars set `primary = true`,
-the lexicographically first table key is selected. If that display is absent,
-the shell falls back to an available display. Launcher and finder prefer the
-focused output, then the primary output. Bars reconcile when displays change;
+The primary-output setting is local to the bar application. Launcher and finder
+use their own focused-output selection. Bars reconcile when displays change;
 a disconnected output's bar is removed and can return on reconnection.
 
 ## Widget layout
@@ -53,11 +53,14 @@ a disconnected output's bar is removed and can return on reconnection.
 | Center | Focused window |
 | End | Tray, audio, power, clock |
 
+Bar content has a 9px inset on both the left and right edges.
+The menu, workspace dots and speaker use 18px icons; the battery uses a 24px
+state icon. Icons are vertically centered, with filled and outlined dots marking
+active and inactive workspaces respectively.
 This layout is currently fixed in code. TOML cannot add, remove, reorder, or
 independently configure widget instances per output. Network and notifications
-are not rendered. See [widgets](Widgets.md) for current behavior and limits,
-including the battery requirement that can prevent all bars from appearing.
+are not rendered. See [widgets](Widgets.md) for current behavior and limits.
 
-Implementation: [bar manager](../../crates/ghost-shell-bar/src/lib.rs),
-[layout](../../crates/ghost-shell-bar/src/bar.rs), and
-[output selection](../../crates/ghost-shell-app/src/lib.rs).
+Implementation: [bar manager](../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs),
+[layout](../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs), and
+[output selection](../../crates/ghost-shell-applications/ghost-shell-bar/src/app.rs).

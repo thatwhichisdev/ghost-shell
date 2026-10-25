@@ -1,48 +1,19 @@
-use ghost_shell_gpui::{Context, SharedString, Subscription, Window, div, prelude::*};
 use ghost_shell_niri::NiriState;
+use iced::{
+    Element, Fill,
+    widget::{container, text},
+};
 
-pub struct FocusWidget {
-    pub title: SharedString,
+pub fn view<'a, Message: 'a>(niri: &'a NiriState) -> Element<'a, Message> {
+    let title = niri
+        .windows
+        .values()
+        .find(|window| window.is_focused)
+        .and_then(|window| window.title.as_deref())
+        .unwrap_or("");
 
-    #[allow(unused)]
-    subscription: Subscription,
-}
-
-impl FocusWidget {
-    #[must_use]
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let subscription = cx.observe_global::<NiriState>(|widget, cx| {
-            let title: SharedString = cx
-                .global::<NiriState>()
-                .windows
-                .values()
-                .find(|window| window.is_focused)
-                .and_then(|window| window.title.as_deref())
-                .unwrap_or_default()
-                .to_owned()
-                .into();
-
-            widget.title = title;
-
-            cx.notify();
-        });
-
-        Self {
-            title: SharedString::default(),
-            subscription,
-        }
-    }
-}
-
-impl Render for FocusWidget {
-    fn render(
-        &mut self,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .id("focus")
-            .truncate()
-            .child(self.title.clone())
-    }
+    container(text(title).wrapping(iced::widget::text::Wrapping::None))
+        .center_x(Fill)
+        .clip(true)
+        .into()
 }

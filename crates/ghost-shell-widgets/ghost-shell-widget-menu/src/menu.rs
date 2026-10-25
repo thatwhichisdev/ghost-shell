@@ -1,25 +1,18 @@
-use ghost_shell_component_icon::Icon;
-use ghost_shell_gpui::{Context, Window, div, prelude::*, px};
-use ghost_shell_theme::{ActiveTheme as _, Sizable};
+use iced::{
+    Element, Fill,
+    widget::{button, container},
+};
 
-pub struct MenuWidget;
+#[derive(Debug, Clone)]
+pub enum Message {
+    OpenLauncher,
+}
 
-impl Render for MenuWidget {
-    fn render(
-        &mut self,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .id("menu")
-            .flex()
-            .items_center()
-            .pl(px(8.0))
-            .child(
-                Icon::empty()
-                    .path("icons/nixos.svg")
-                    .with_size(px(18.0))
-                    .text_color(cx.theme().foreground),
-            )
-    }
+pub fn view() -> Element<'static, Message> {
+    button(container(ghost_shell_assets::icon("icons/nixos.svg", 18.0)).center_y(Fill))
+        .padding(0)
+        .height(Fill)
+        .on_press(Message::OpenLauncher)
+        .style(button::text)
+        .into()
 }

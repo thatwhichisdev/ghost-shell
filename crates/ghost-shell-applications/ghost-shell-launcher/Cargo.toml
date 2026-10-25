@@ -1,0 +1,25 @@
+[package]
+license.workspace = true
+name = "ghost-shell-launcher"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ghost-shell-niri.workspace = true
+iced_wayland_subscriber.workspace = true
+iced_exwlshell = { workspace = true, features = ["linux-theme-detection", "macros"] }
+env_logger.workspace = true
+ghost-shell-config.workspace = true
+iced = { workspace = true, features = ["image-without-codecs", "svg", "tokio", "wayland", "wgpu"] }
+ghost-shell-theme.workspace = true
+anyhow.workspace = true
+freedesktop-desktop-entry.workspace = true
+freedesktop-icons.workspace = true
+log.workspace = true
+neo_frizbee.workspace = true
+tokio = { workspace = true, features = ["rt"] }
+# Iced decodes raster icons through image; keep codec selection with the consumer.
+image = { workspace = true, features = ["bmp", "gif", "ico", "jpeg", "png", "webp"] }

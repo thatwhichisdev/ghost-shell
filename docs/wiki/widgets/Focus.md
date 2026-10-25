@@ -14,4 +14,4 @@ per-output window title.
 Requires the daemon's Niri connection. There are no `[focus]` settings, title
 format strings, or click actions. Fonts and colors follow the shared theme.
 
-Implementation: [widget source](../../../crates/ghost-shell-widgets/ghost-shell-widget-focus/src/focus.rs).
+Implementation: [widget crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-focus/src/focus.rs).

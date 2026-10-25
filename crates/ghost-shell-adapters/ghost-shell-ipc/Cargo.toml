@@ -1,0 +1,22 @@
+[package]
+license.workspace = true
+name = "ghost-shell-ipc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/ipc.rs"
+
+[features]
+iced = ["dep:iced"]
+
+[dependencies]
+log.workspace = true
+iced = { workspace = true, optional = true, features = ["tokio", "wayland", "wgpu"] }
+anyhow.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "sync", "time"] }

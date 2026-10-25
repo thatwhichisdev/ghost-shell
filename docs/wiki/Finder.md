@@ -3,16 +3,25 @@
 [Wiki](README.md) · [Commands](Commands.md)
 
 The finder uses `fff` to index and search files and directories. The current
-search root is `/` and is not configurable through TOML.
+search root is the current user's home directory, resolved at runtime, and is not
+configurable through TOML. Filesystem-root scanning and following symlinks are
+disabled. Each invocation builds its own in-memory index; no persistent index is
+implemented yet.
 
 ```sh
-ghost-shell msg finder toggle
+ghost-shell-finder
 ```
 
-Type to filter indexed entries; Escape closes the finder. The window prefers
-the focused output and falls back to the primary output.
+The window opens while indexing runs in the background. You can type immediately;
+pressing Enter during indexing queues a search using the latest query once the
+scan finishes. Escape or surface closure terminates the process and releases the
+index. Niri chooses the active output for the centered overlay, which takes
+exclusive keyboard focus. A process lock prevents duplicate windows. There is no
+finder service or IPC server.
 
 ## Configuration
+
+Put these settings in `~/.config/ghost-shell/config.toml`.
 
 ```toml
 [finder]
@@ -27,12 +36,10 @@ background_opacity = 1.0
 
 ## Current limitations
 
-Opening a selected result is unfinished: the current action logs the selected
-entry rather than opening the file or its containing directory. `Ctrl+O` and
-`Ctrl+P` are registered for open and preview actions, but should not be treated
-as completed file-opening or preview features. Search roots and indexing options
-are not exposed in the user configuration.
+Opening and previewing a selected result remain unimplemented. The former
+placeholder Ctrl+O/Ctrl+P actions are not registered. Search roots and indexing
+options are not exposed in the user configuration.
 
-Implementation: [finder](../../crates/ghost-shell-finder/src/finder.rs),
-[search defaults](../../crates/ghost-shell-finder/src/search.rs), and
-[result handling](../../crates/ghost-shell-finder/src/view.rs).
+Implementation: [finder](../../crates/ghost-shell-applications/ghost-shell-finder/src/finder.rs),
+[search defaults](../../crates/ghost-shell-applications/ghost-shell-finder/src/search.rs), and
+[result handling](../../crates/ghost-shell-applications/ghost-shell-finder/src/finder.rs).

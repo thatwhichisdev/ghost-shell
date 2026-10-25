@@ -1,0 +1,22 @@
+[package]
+license.workspace = true
+name = "ghost-shell-greeter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+jiff.workspace = true
+iced_wayland_subscriber.workspace = true
+iced_exwlshell = { workspace = true, features = ["linux-theme-detection", "macros"] }
+env_logger.workspace = true
+log.workspace = true
+ghost-shell-greetd.workspace = true
+ghost-shell-theme.workspace = true
+ghost-shell-config.workspace = true
+iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
+ghost-shell-wallpaper.workspace = true
+tokio = { workspace = true, features = ["rt"] }

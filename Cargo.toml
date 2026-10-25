@@ -1,206 +1,122 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/ghost-shell-gpui",
-  "crates/ghost-shell-gpui-macros",
-  "crates/ghost-shell-tokio",
-  "crates/ghost-shell-util",
-  "crates/ghost-shell-actions",
-  "crates/ghost-shell-app",
-  "crates/ghost-shell-assets",
-  "crates/ghost-shell-audio",
-  "crates/ghost-shell-bar",
-  "crates/ghost-shell-cli",
-  "crates/ghost-shell-config",
-  "crates/ghost-shell-components/ghost-shell-component-root",
-  "crates/ghost-shell-components/ghost-shell-component-icon",
-  "crates/ghost-shell-components/ghost-shell-component-spinner",
-  "crates/ghost-shell-components/ghost-shell-component-slider",
-  "crates/ghost-shell-components/ghost-shell-component-virtual-list",
-  "crates/ghost-shell-components/ghost-shell-component-menu",
-  "crates/ghost-shell-components/ghost-shell-component-input",
-  "crates/ghost-shell-daemon",
-  "crates/ghost-shell-dbus",
-  "crates/ghost-shell-finder",
-  "crates/ghost-shell-ipc",
-  "crates/ghost-shell-launcher",
-  "crates/ghost-shell-lockscreen",
-  "crates/ghost-shell-niri",
-  "crates/ghost-shell-theme",
-  "crates/ghost-shell-wallpaper",
+  "crates/ghost-shell-core/ghost-shell-cli",
+  "crates/ghost-shell-core/ghost-shell-assets",
+  "crates/ghost-shell-core/ghost-shell-config",
+  "crates/ghost-shell-core/ghost-shell-theme",
+  "crates/ghost-shell-applications/ghost-shell-bar",
+  "crates/ghost-shell-applications/ghost-shell-finder",
+  "crates/ghost-shell-applications/ghost-shell-launcher",
+  "crates/ghost-shell-applications/ghost-shell-lockscreen",
+  "crates/ghost-shell-applications/ghost-shell-greeter",
+  "crates/ghost-shell-components/ghost-shell-wallpaper",
+  "crates/ghost-shell-adapters/ghost-shell-audio",
+  "crates/ghost-shell-adapters/ghost-shell-dbus",
+  "crates/ghost-shell-adapters/ghost-shell-ipc",
+  "crates/ghost-shell-adapters/ghost-shell-niri",
+  "crates/ghost-shell-adapters/ghost-shell-system",
+  "crates/ghost-shell-adapters/ghost-shell-greetd",
   "crates/ghost-shell-widgets/ghost-shell-widget-audio",
   "crates/ghost-shell-widgets/ghost-shell-widget-clock",
   "crates/ghost-shell-widgets/ghost-shell-widget-focus",
   "crates/ghost-shell-widgets/ghost-shell-widget-menu",
-  "crates/ghost-shell-widgets/ghost-shell-widget-network",
-  "crates/ghost-shell-widgets/ghost-shell-widget-notifications",
   "crates/ghost-shell-widgets/ghost-shell-widget-power",
   "crates/ghost-shell-widgets/ghost-shell-widget-tray",
   "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
 ]
-default-members = ["crates/ghost-shell-daemon"]
+default-members = [
+  "crates/ghost-shell-applications/ghost-shell-bar",
+  "crates/ghost-shell-applications/ghost-shell-launcher",
+  "crates/ghost-shell-applications/ghost-shell-finder",
+  "crates/ghost-shell-applications/ghost-shell-lockscreen",
+]
 
 [workspace.package]
+license = "MIT"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.95.0"
+rust-version = "1.99.1"
 repository = "https://github.com/thatwhichisdev/ghost-shell"
 publish = false
 
 [workspace.dependencies]
-ghost-shell-actions = { path = "crates/ghost-shell-actions" }
-ghost-shell-app = { path = "crates/ghost-shell-app" }
-ghost-shell-assets = { path = "crates/ghost-shell-assets" }
-ghost-shell-audio = { path = "crates/ghost-shell-audio" }
-ghost-shell-bar = { path = "crates/ghost-shell-bar" }
-ghost-shell-config = { path = "crates/ghost-shell-config" }
-ghost-shell-component-root = { path = "crates/ghost-shell-components/ghost-shell-component-root" }
-ghost-shell-component-icon = { path = "crates/ghost-shell-components/ghost-shell-component-icon" }
-ghost-shell-component-slider = { path = "crates/ghost-shell-components/ghost-shell-component-slider" }
-ghost-shell-component-spinner = { path = "crates/ghost-shell-components/ghost-shell-component-spinner" }
-ghost-shell-component-virtual-list = { path = "crates/ghost-shell-components/ghost-shell-component-virtual-list" }
-ghost-shell-component-menu = { path = "crates/ghost-shell-components/ghost-shell-component-menu" }
-ghost-shell-component-input = { path = "crates/ghost-shell-components/ghost-shell-component-input" }
-ghost-shell-dbus = { path = "crates/ghost-shell-dbus" }
-ghost-shell-finder = { path = "crates/ghost-shell-finder" }
-ghost-shell-ipc = { path = "crates/ghost-shell-ipc" }
-ghost-shell-launcher = { path = "crates/ghost-shell-launcher" }
-ghost-shell-lockscreen = { path = "crates/ghost-shell-lockscreen" }
-ghost-shell-niri = { path = "crates/ghost-shell-niri" }
-ghost-shell-theme = { path = "crates/ghost-shell-theme" }
-ghost-shell-wallpaper = { path = "crates/ghost-shell-wallpaper" }
+directories = "6.0.0"
+# core crates
+ghost-shell-assets = { path = "crates/ghost-shell-core/ghost-shell-assets" }
+ghost-shell-config = { path = "crates/ghost-shell-core/ghost-shell-config" }
+ghost-shell-theme = { path = "crates/ghost-shell-core/ghost-shell-theme" }
 
+# component crates
+ghost-shell-wallpaper = { path = "crates/ghost-shell-components/ghost-shell-wallpaper" }
+
+# adapter crates
+ghost-shell-audio = { path = "crates/ghost-shell-adapters/ghost-shell-audio" }
+ghost-shell-dbus = { path = "crates/ghost-shell-adapters/ghost-shell-dbus" }
+ghost-shell-ipc = { path = "crates/ghost-shell-adapters/ghost-shell-ipc" }
+ghost-shell-greetd = { path = "crates/ghost-shell-adapters/ghost-shell-greetd" }
+ghost-shell-niri = { path = "crates/ghost-shell-adapters/ghost-shell-niri" }
+
+# widget crates
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
 ghost-shell-widget-focus = { path = "crates/ghost-shell-widgets/ghost-shell-widget-focus" }
 ghost-shell-widget-menu = { path = "crates/ghost-shell-widgets/ghost-shell-widget-menu" }
-ghost-shell-widget-network = { path = "crates/ghost-shell-widgets/ghost-shell-widget-network" }
-ghost-shell-widget-notifications = {
-  path = "crates/ghost-shell-widgets/ghost-shell-widget-notifications"
-}
 ghost-shell-widget-power = { path = "crates/ghost-shell-widgets/ghost-shell-widget-power" }
 ghost-shell-widget-tray = { path = "crates/ghost-shell-widgets/ghost-shell-widget-tray" }
-ghost-shell-widget-workspaces = {
-  path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces"
-}
+ghost-shell-widget-workspaces = { path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces" }
 
-futures-util = "0.3.32"
+# iced gui framework
+iced = { version = "0.14.0", default-features = false }
+iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91", default-features = false }
+iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91" }
 
-tokio = {
-  version = "1.53.1",
-  features = [
-    "rt",
-    "sync",
-  ],
-}
-
-aehobak = "=0.0.14"
+# error handling
 anyhow = "1.0.104"
-bsdiff = "0.2.1"
-clap = "4.6.4"
+snafu = "0.9.2"
+
+# logging
+log = "0.4.33"
 env_logger = "0.11.11"
+
+# integrations
 fff-search = "0.10.1"
 freedesktop-desktop-entry = "0.8.1"
 freedesktop-icons = "0.4.0"
-image = "0.25.10"
-jiff = "0.2.35"
-log = "0.4.33"
-lz4_flex = "0.14.0"
 neo_frizbee = "0.11.0"
-nonstick = "0.1.2"
-postcard = "1.1.3"
 pipewire = "0.10.1"
-rayon = "1.12.0"
+starship-battery = "0.12.0"
+zbus = { version = "5.18.0", default-features = false }
+
+# cli
+clap = "4.6.4"
+
+# async
+deadpool = { version = "0.13.1", default-features = false }
+tokio = "1.53.1"
+futures = "0.3.34"
+futures-util = "0.3.32"
+
+# gif
+image = { version = "0.25.10", default-features = false }
+
+# pam authentication
+nonstick = "0.1.2"
+greetd_ipc = { version = "0.10.3", default-features = false }
+
+# time
+jiff = "0.2.35"
+
+# serialization/deserialization
+postcard = "1.1.3"
+serde = "1.0.228"
+serde_json = "1.0.151"
+
+# system information
+sysinfo = "0.39.6"
+
+# util
+lz4_flex = "0.14.0"
 regex = "1.13.1"
 rust-embed = "8.12.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.151"
-smallvec = "1.15.2"
-starship-battery = "0.11.1"
-thiserror = "2.0.18"
-zbus = {
-  version = "5.18.0",
-  default-features = false,
-  features = ["async-io"],
-}
-
-gpui_util = { package = "ghost-shell-util", path = "crates/ghost-shell-util" }
-ghost-shell-gpui-macros = { path = "crates/ghost-shell-gpui-macros" }
-ghost-shell-gpui = { path = "crates/ghost-shell-gpui" }
-ghost-shell-tokio = { path = "crates/ghost-shell-tokio" }
-ghost-shell-util = { path = "crates/ghost-shell-util" }
-accesskit = { version = "0.24.0", features = ["enumn"] }
-async-task = "4.7"
-backtrace = "0.3"
-bitflags = "2.6.0"
-criterion = { version = "0.5", features = ["html_reports"] }
-ctor = "1.0.12"
-derive_more = { version = "2.1.1", features = [
-    "add",
-    "add_assign",
-    "deref",
-    "deref_mut",
-    "display",
-    "from",
-    "from_str",
-    "mul",
-    "mul_assign",
-    "not",
-] }
-etagere = "0.2"
-futures = "0.3.34"
-futures-concurrency = "7.7.1"
-inventory = "0.3.19"
-itertools = "0.14.0"
-parking_lot = "0.12.1"
-postage = { version = "0.5", features = ["futures-traits"] }
-proptest = { git = "https://github.com/proptest-rs/proptest", rev = "3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b", features = ["attr-macro"] }
-chrono = { version = "0.4", features = ["serde"] }
-profiling = "1"
-rand = "0.9"
-raw-window-handle = "0.6"
-resvg = { version = "0.46.0", default-features = false, features = [
-    "text",
-    "system-fonts",
-    "memmap-fonts",
-    "raster-images",
-] }
-usvg = { version = "0.46.0", default-features = false }
-schemars = { version = "1.0", features = ["indexmap2"] }
-slotmap = "1.0.6"
-stacksafe = "1.0"
-strum = { version = "0.28", features = ["derive"] }
-hdrhistogram = { version = "7", default-features = false }
-pollster = "0.4.0"
-url = "2.2"
-uuid = { version = "1.1.2", features = ["v4", "v5", "v7", "serde"] }
-web-time = "1.1.0"
-heapless = "0.9.2"
-async-channel = "2.5.0"
-unicode-segmentation = "1.10"
-accesskit_unix = "0.22"
-libc = "0.2"
-smol = "2.0"
-notify-rust = "4"
-ashpd = { version = "0.13", default-features = false, features = [
-    "async-io",
-    "inhibit",
-    "notification",
-    "open_uri",
-    "file_chooser",
-    "settings",
-    "trash"
-] }
-heck = "0.5"
-proc-macro2 = "1.0.93"
-quote = "1.0.9"
-syn = { version = "2.0.101", features = ["full", "extra-traits", "visit-mut"] }
-indexmap = { version = "2.7.0", features = ["serde"] }
-rustc-hash = "2.1.0"
-flume = "0.12"
-tracing = "0.1.40"
-swash = "0.2.6"
-unicode-bidi = { version = "0.3.18", default-features = false, features = [
-    "hardcoded-data",
-] }
-wgpu = { version = "29.0.4", default-features = false, features = ["std", "parking_lot", "vulkan", "gles", "wgsl"] }
+uuid = "1.1.2"

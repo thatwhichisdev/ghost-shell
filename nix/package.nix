@@ -35,7 +35,15 @@ let
     "--package"
     "ghost-shell-cli"
     "--package"
-    "ghost-shell-daemon"
+    "ghost-shell-bar"
+    "--package"
+    "ghost-shell-launcher"
+    "--package"
+    "ghost-shell-finder"
+    "--package"
+    "ghost-shell-lockscreen"
+    "--package"
+    "ghost-shell-greeter"
   ];
 in
 rustPlatform.buildRustPackage {
@@ -66,9 +74,11 @@ rustPlatform.buildRustPackage {
   LIBPAMSYS_IMPL = "LinuxPam";
 
   postFixup = ''
-    wrapProgram $out/bin/ghost-shell-daemon \
-      --set XKB_CONFIG_ROOT "${xkeyboard_config}/share/X11/xkb" \
-      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath runtimeLibraries}"
+    for application in ghost-shell-bar ghost-shell-launcher ghost-shell-finder ghost-shell-lockscreen ghost-shell-greeter; do
+      wrapProgram $out/bin/$application \
+        --set XKB_CONFIG_ROOT "${xkeyboard_config}/share/X11/xkb" \
+        --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath runtimeLibraries}"
+    done
   '';
 
   meta.platforms = lib.platforms.linux;

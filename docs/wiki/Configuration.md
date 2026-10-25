@@ -4,29 +4,52 @@
 
 ## Location and loading
 
-Ghost Shell reads TOML from `$XDG_CONFIG_HOME/ghost-shell/config.toml`, normally
-`~/.config/ghost-shell/config.toml`. The daemon loads it at startup; restart it
-after changes. There is no config-path CLI option or live reload.
+Desktop applications independently read `$XDG_CONFIG_HOME/ghost-shell/config.toml`,
+normally `~/.config/ghost-shell/config.toml`. Each deserializes only its relevant
+sections; there is no shared runtime or dependency on another application.
+Restart affected applications after edits. Configuration is not live-reloaded.
 
-Omitted sections and fields use defaults. If the file is missing or cannot be
-loaded or deserialized, the daemon prints `Failed to load config` and uses the
-entire default configuration. Defaults contain no bars. Unknown fields are not
-rejected by the current schema, so a misspelled option may silently do nothing.
+| Application | Sections read |
+| --- | --- |
+| Bar | `[general]`, `[theme]`, `[bar."OUTPUT"]`, `[clock]`, `[wallpaper]` |
+| Launcher | `[general]`, `[theme]`, `[launcher]` |
+| Finder | `[general]`, `[theme]`, `[finder]` |
+| Lockscreen | `[general]`, `[theme]`, `[wallpaper]` |
 
-## Sections
+Define `[general]`, `[theme.dark]` and `[theme.light]` once for all desktop
+applications. `[wallpaper]` supplies the desktop and lock background. There are
+no application-specific theme overrides. The boot [greeter](Greeter.md) retains
+its own system-owned `/etc/ghost-shell/greeter.toml`, accessible before login.
 
-| Section | Purpose | Reference |
-| --- | --- | --- |
-| `[general]` | Font family and size | Below |
-| `[bar."OUTPUT"]` | One bar per configured output | [Bar](Bar.md) |
-| `[launcher]` | Launcher blur and opacity | [Launcher](Launcher.md) |
-| `[finder]` | Finder blur and opacity | [Finder](Finder.md) |
-| `[clock]` | Shared bar clock format | [Clock](widgets/Clock.md) |
-| `[wallpaper]` | Shared desktop and lockscreen background | [Wallpapers](Wallpapers.md) |
-| `[theme]`, `[theme.dark]`, `[theme.light]` | Mode and palettes | [Theming](Theming.md) |
+Omitted sections and fields use defaults, except that an explicitly supplied
+Base16 palette requires all sixteen colors. Invalid configuration logs
+`Configuration:` and falls back to that application's defaults. With no `[bar.*]`
+entries, the bar appears on every connected output. Unknown sections and fields
+are ignored, so a type error in an unrelated application's section does not
+prevent another application from reading its own settings. TOML syntax errors
+still affect the whole file.
 
-There are no dedicated TOML sections for the other widgets or the lockscreen.
-See the [widget reference](Widgets.md) before adding settings.
+## Migrating to config.toml
+
+Existing combined configurations using `[bar.*]`, `[clock]`, `[finder]`,
+`[general]`, `[launcher]`, `[theme]` and `[wallpaper]` work without changes.
+If you split your configuration, combine those sections into `config.toml`,
+choosing one shared theme, general configuration and wallpaper.
+
+For compatibility, when `config.toml` is absent, each application falls back to
+its previous `bar.toml`, `launcher.toml`, `finder.toml` or `lockscreen.toml`.
+Files are never merged: an existing `config.toml`, even an empty or invalid one,
+takes precedence. If neither file exists, defaults apply.
+
+Home Manager generates the shared file through `programs.ghost-shell.settings`.
+Move sections out of `applications.<name>.settings` into that option; the removed
+options report a migration error. `applications.<name>.enable` still controls
+the bar and lockscreen services. A shared configuration change triggers all enabled services
+to restart; lockscreen restart still waits for authentication while locked.
+See [installation](Installation.md#home-manager).
+
+Launcher and finder let Niri select the active output. They do not read the bar's primary-output setting.
+There are no dedicated sections for other widgets. See [widgets](Widgets.md).
 
 ## General settings
 
@@ -38,8 +61,8 @@ font_size = 13.0
 
 | Option | Type | Default | Behavior |
 | --- | --- | --- | --- |
-| `font_family` | String | `"monospace"` | Sets the theme's sans font family; install your chosen font separately |
-| `font_size` | Number | `13.0` | Sets the theme's medium typography size |
+| `font_family` | String | `"monospace"` | Sets the default UI font family; install your chosen font separately |
+| `font_size` | Number | `13.0` | Sets the default UI text size |
 
 ## Surface opacity
 
@@ -53,5 +76,5 @@ older configuration, replace bar `blur = true` with `appearance = "blur"`, and
 bar `blur = false` with `appearance = "themed"`. Launcher and finder still use
 `blur = true` or `false`.
 
-Implementation: [schema and defaults](../../crates/ghost-shell-config/src/config.rs)
-and [startup fallback](../../crates/ghost-shell-config/src/lib.rs).
+Implementation: [schema and defaults](../../crates/ghost-shell-core/ghost-shell-config/src/config.rs)
+and [startup fallback](../../crates/ghost-shell-applications/ghost-shell-bar/src/app.rs).

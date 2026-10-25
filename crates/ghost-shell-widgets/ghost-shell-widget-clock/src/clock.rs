@@ -1,58 +1,48 @@
 use std::time::Duration;
 
-use ghost_shell_config::AppConfig;
-use ghost_shell_gpui::{Context, SharedString, Window, div, prelude::*, px};
-use jiff::Zoned;
+use futures::SinkExt as _;
+use iced::{Element, Subscription, widget::text};
 
-pub struct ClockWidget {
-    time: SharedString,
+#[derive(Default)]
+pub struct Clock {
+    label: String,
+}
+impl Clock {
+    pub fn update(&mut self, now: &jiff::Zoned, format: &str) {
+        self.label = now.strftime(format).to_string();
+    }
+    pub fn view<Message>(&self) -> Element<'_, Message> {
+        text(&self.label).into()
+    }
 }
 
-impl ClockWidget {
-    #[must_use]
-    pub fn new(cx: &mut Context<Self>) -> Self {
-        let config = cx.global::<AppConfig>().clock.clone();
-        let time = formatted_time(&config.format);
+pub fn subscription(format: &str) -> Subscription<()> {
+    Subscription::run_with(
+        if ["%S", "%T", "%r", "%X", "%c", "%s", "%f", "%N"]
+            .iter()
+            .any(|directive| format.contains(directive))
+        {
+            1
+        } else {
+            60
+        },
+        ticks,
+    )
+}
 
-        // Spawn a task that will update clock's state every 60 seconds
-        cx.spawn(async move |clock, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_mins(1))
-                    .await;
-
-                if let Err(err) = clock.update(cx, |clock, cx| {
-                    clock.time = formatted_time(&config.format);
-                    cx.notify();
-                }) {
-                    eprintln!("Failed to update clock widget state {err:#}");
-                }
+fn ticks(interval: &u64) -> impl futures::Stream<Item = ()> + use<> {
+    let interval = Duration::from_secs(*interval);
+    iced::stream::channel(1, async move |mut output| {
+        loop {
+            let elapsed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default();
+            let remaining =
+                interval.as_nanos() - elapsed.as_nanos() % interval.as_nanos();
+            tokio::time::sleep(Duration::from_nanos(remaining as u64)).await;
+            if output.send(()).await.is_err() {
+                break;
             }
-        })
-        .detach();
-
-        Self { time }
-    }
-}
-
-impl Render for ClockWidget {
-    fn render(
-        &mut self,
-        _window: &mut Window,
-        _cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .id("clock")
-            .flex()
-            .items_center()
-            .pr(px(8.0))
-            .child(self.time.clone())
-    }
-}
-
-fn formatted_time(format: &str) -> SharedString {
-    Zoned::now()
-        .strftime(format)
-        .to_string()
-        .into()
+        }
+    })
 }

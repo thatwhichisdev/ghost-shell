@@ -1,4 +1,5 @@
 [package]
+license.workspace = true
 name = "ghost-shell-widget-focus"
 version.workspace = true
 edition.workspace = true
@@ -6,18 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[lib]
+path = "src/focus.rs"
+
 [dependencies]
+iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
 ghost-shell-niri.workspace = true
-
-ghost-shell-gpui.workspace = true
-ghost-shell-tokio.workspace = true
-
-anyhow.workspace = true
-tokio = {
-  workspace = true,
-  features = [
-    "io-util",
-    "net",
-    "sync",
-  ],
-}

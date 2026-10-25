@@ -2,13 +2,14 @@
 
 [Wiki](README.md) · [Bar layout](Bar.md)
 
-Widgets are compiled into the bar. The current layout cannot be changed through
+Each implemented widget lives in its own crate under `crates/ghost-shell-widgets/`
+and is composed into the bar. The current layout cannot be changed through
 TOML, and most widgets have no dedicated configuration. Their fonts and colors
 follow the shared theme.
 
 | Widget | Current state | Dedicated configuration |
 | --- | --- | --- |
-| [System menu](widgets/Menu.md) | Menu icon placeholder | None |
+| [System menu](widgets/Menu.md) | Launcher shortcut | None |
 | [Workspaces](widgets/Workspaces.md) | Implemented indicator | None |
 | [Focused window](widgets/Focus.md) | Implemented indicator | None |
 | [System tray](widgets/Tray.md) | Implemented with incomplete interactions | None |
@@ -19,7 +20,7 @@ follow the shared theme.
 | [Notifications](widgets/Notifications.md) | Not implemented as a widget | None |
 
 Each page describes behavior, setup, supported configuration, and current limits.
-Status here describes what exists; the [roadmap](../README.md#roadmap) tracks
+Status here describes what exists; the [roadmap](../../README.md#roadmap) tracks
 whether a feature is considered complete.
 
 Camera, Bluetooth, screenshot/recording, theme-switch, and weather widgets remain

@@ -35,36 +35,40 @@ including on desktops without batteries. See [power](widgets/Power.md).
 
 ## Start and control the shell
 
-Run the daemon from a terminal in your Niri session:
+For a foreground run, start the two daemons in separate terminals in Niri:
 
 ```sh
-ghost-shell-daemon
+ghost-shell-bar
+ghost-shell-lockscreen
 ```
 
-In another terminal, open the launcher:
+Launch the launcher on demand from another terminal:
 
 ```sh
-ghost-shell msg launcher toggle
+ghost-shell-launcher
 ```
 
 See [commands](Commands.md) for the finder and session lock actions.
 
 ## Integrate with Niri
 
-If you are not using the Home Manager service, add an autostart command to your
-Niri configuration:
+Prefer the [Home Manager services](Installation.md#home-manager). If you do not
+use Home Manager, Niri can start the binaries independently:
 
 ```kdl
-spawn-at-startup "ghost-shell-daemon"
+spawn-at-startup "ghost-shell-bar"
+spawn-at-startup "ghost-shell-lockscreen"
 ```
+
+Do not enable both startup mechanisms for the same application.
 
 Add bindings inside your existing `binds` block, choosing keys that do not
 conflict with your configuration:
 
 ```kdl
 binds {
-    Mod+D { spawn "ghost-shell" "msg" "launcher" "toggle"; }
-    Mod+E { spawn "ghost-shell" "msg" "finder" "toggle"; }
+    Mod+D { spawn "ghost-shell-launcher"; }
+    Mod+E { spawn "ghost-shell-finder"; }
     Mod+Shift+L { spawn "ghost-shell" "msg" "session" "lock"; }
 }
 ```
@@ -74,5 +78,6 @@ binding. These are Niri settings, not Ghost Shell TOML settings. Refer to
 [Niri's configuration guide](https://github.com/niri-wm/niri/wiki/Configuration:-Introduction)
 for compositor configuration.
 
-Restart the daemon after editing Ghost Shell's configuration. If using the
-Home Manager service, run `systemctl --user restart ghost-shell.service`.
+Restart the affected application after configuration changes, for example
+`systemctl --user restart ghost-shell-bar.service`. Lock service stop/restart
+waits for authentication if the session is locked.

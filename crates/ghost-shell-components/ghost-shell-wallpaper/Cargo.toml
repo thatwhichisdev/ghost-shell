@@ -1,0 +1,24 @@
+[package]
+license.workspace = true
+name = "ghost-shell-wallpaper"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/wallpaper.rs"
+
+[dependencies]
+iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
+anyhow.workspace = true
+image = { workspace = true, features = ["gif", "png", "jpeg"] }
+log.workspace = true
+lz4_flex.workspace = true
+postcard = { workspace = true, features = ["use-std"] }
+serde = { workspace = true, features = ["derive"] }
+ghost-shell-config.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt"] }

@@ -2,7 +2,7 @@
 
 [Wiki](README.md) · [Wallpapers](Wallpapers.md) · [Commands](Commands.md)
 
-Ghost Shell locks the Wayland session and uses the shared wallpaper source,
+Ghost Shell locks the Wayland session and uses its own wallpaper source,
 including animated GIFs, behind its password input.
 
 ```sh
@@ -23,12 +23,22 @@ session. Ghost Shell remains early-alpha software.
 
 ## Configuration
 
-There is no `[lockscreen]` table. Configure its background through
+Use `~/.config/ghost-shell/config.toml`. There is no `[lockscreen]` table.
+The lockscreen shares the desktop wallpaper, general settings and theme.
+Configure the background through
 `[wallpaper]` as described in [wallpapers](Wallpapers.md). The PAM service name
 and username source are fixed in the implementation. Automatic idle locking and
 suspend integration are not provided by the configuration schema; the CLI can
 be called by your session tooling.
 
-Implementation: [lock lifecycle](../../crates/ghost-shell-lockscreen/src/lockscreen.rs),
-[authentication](../../crates/ghost-shell-lockscreen/src/auth.rs), and
-[view](../../crates/ghost-shell-lockscreen/src/view.rs).
+## Stopping the service
+
+SIGTERM, SIGINT and `ghost-shell msg shutdown lockscreen` request exit. While a
+lock is pending or active, exit waits for authentication and protocol unlock.
+Home Manager's lockscreen service has no forced stop timeout and does not restart
+after a crash. `systemctl --user restart ghost-shell-lockscreen` may therefore
+wait until you unlock. Other applications can stop or restart independently.
+
+Implementation: [lock lifecycle](../../crates/ghost-shell-applications/ghost-shell-lockscreen/src/app.rs),
+[authentication](../../crates/ghost-shell-applications/ghost-shell-lockscreen/src/auth.rs), and
+[view](../../crates/ghost-shell-applications/ghost-shell-lockscreen/src/lib.rs).

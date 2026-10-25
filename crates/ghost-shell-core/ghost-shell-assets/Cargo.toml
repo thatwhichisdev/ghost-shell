@@ -1,0 +1,12 @@
+[package]
+license.workspace = true
+name = "ghost-shell-assets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+iced = { workspace = true, features = ["svg", "tokio", "wayland", "wgpu"] }
+rust-embed = { workspace = true, features = ["include-exclude"] }
