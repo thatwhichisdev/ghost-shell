@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/ghost-shell-core/ghost-shell-cli",
+  "crates/ghost-shell-applications/ghost-shell-cli",
   "crates/ghost-shell-core/ghost-shell-assets",
   "crates/ghost-shell-core/ghost-shell-config",
   "crates/ghost-shell-core/ghost-shell-theme",

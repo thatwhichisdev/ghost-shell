@@ -1,3 +1,5 @@
+> [!IMPORTANT]
+> Remove this line to confirm you've reviewed this PR before submitting.
 # Ghost Shell
 
 A desktop shell for the Niri Wayland compositor, built with iced.

@@ -109,9 +109,9 @@ build is not needed unless the documentation change also changes code.
 
 | Path | Purpose |
 | --- | --- |
-| `crates/ghost-shell-core/ghost-shell-cli/` | User-facing `ghost-shell` command |
-| `crates/ghost-shell-core/` | CLI, embedded assets, configuration and theme |
-| `crates/ghost-shell-applications/` | Independent applications: bar, finder, launcher, lockscreen and boot greeter |
+| `crates/ghost-shell-applications/ghost-shell-cli/` | User-facing `ghost-shell` command |
+| `crates/ghost-shell-core/` | Embedded assets, configuration and theme |
+| `crates/ghost-shell-applications/` | Independent applications: bar, CLI, finder, launcher, lockscreen and boot greeter |
 | `crates/ghost-shell-components/` | Reusable UI/rendering components, including wallpaper |
 | `crates/ghost-shell-adapters/` | Audio, D-Bus, IPC, Niri and system integrations |
 | `crates/ghost-shell-widgets/` | Separate iced crate for each implemented bar widget |

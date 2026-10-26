@@ -2,7 +2,9 @@
 
 A file for [guiding coding agents](https://agents.md/).
 
-## Search
+## MCP Tools
+
+### Searching
 
 For any file search or grep in the current git-indexed directory, use fff tools.
 
@@ -16,13 +18,7 @@ For any file search or grep in the current git-indexed directory, use fff tools.
 - [Architecture](docs/wiki/Architecture.md): crate responsibilities and runtime
   flow.
 
-## Active restructuring
-
-Follow [Independent application daemons](docs/APPLICATION-RESTRUCTURE.md) for
-process ownership, IPC, lifecycle and the delivery checklist. Update that document
-as implementation progresses. Do not reintroduce a shared application runtime.
-
-## Additional Guidelines
+## Guidelines
 
 ### Running Project
 
@@ -30,12 +26,13 @@ Run development commands from the repository root.
 
 ### Crate layout
 
-- Keep the CLI in `crates/ghost-shell-core/ghost-shell-cli`; application binaries
-  live with their application crates. There is no supervisor executable.
-- Group CLI, assets, config and theme under `crates/ghost-shell-core`.
-- Group complete shell interfaces (bar, finder, launcher and lockscreen) under
+- Keep the CLI in `crates/ghost-shell-applications/ghost-shell-cli`; application
+  binaries live with their application crates. There is no supervisor
+  executable.
+- Group assets, config and theme under `crates/ghost-shell-core`.
+- Group application binaries (bar, CLI, finder, launcher, lockscreen and greeter) under
   `crates/ghost-shell-applications`.
-- Each application owns an executable and Waycrate runtime. Only bar and
+- Each application owns an executable; GUI applications own a Waycrate runtime. Only bar and
   lockscreen are resident daemons with IPC servers and Home Manager services.
   Launcher and finder open on startup and exit on dismissal; launch them through
   Niri, without IPC servers. Do not reintroduce a supervisor or shared runtime.
@@ -45,13 +42,13 @@ Run development commands from the repository root.
   `crates/ghost-shell-widgets`.
 - These directories group workspace members; do not create nested workspaces or
   umbrella crates. Keep shared dependency paths in the root `Cargo.toml`.
-- Applications own their Wayland surface lifecycle; only daemons expose IPC.
-  Do not add dependencies between application crates. Shared core crates remain
+- Applications own their Wayland surface lifecycle; only daemons expose IPC. Do
+  not add dependencies between application crates. Shared core crates remain
   usable independently. Bar owns wallpaper backgrounds; lockscreen alone owns
   session locking and unlock authentication. Desktop applications read shared
   `config.toml`, deserializing only their relevant sections and shared settings.
-  Keep their runtimes independent. The boot greeter reads a separate system-owned
-  configuration file; greetd owns login authentication.
+  Keep their runtimes independent. The boot greeter reads a separate
+  system-owned configuration file; greetd owns login authentication.
 
 ### Rust
 
@@ -85,11 +82,11 @@ Run development commands from the repository root.
   `main.rs`).
 * HARD RULE: When modifying any source files, prepend `> [!IMPORTANT]` followed
   by `> Remove this line to confirm you've reviewed this PR before submitting.`
-  as the first two lines of `README.md` if they are not already present.
-  This must be done before any other work. No exceptions. Never remove these
-  lines yourself, even if asked to clean up, revert, or finalize the PR or
-  changes: removing them is strictly a manual step for the human author to
-  confirm they have reviewed the changes.
+  as the first two lines of `README.md` if they are not already present. This
+  must be done before any other work. No exceptions. Never remove these lines
+  yourself, even if asked to clean up, revert, or finalize the PR or changes:
+  removing them is strictly a manual step for the human author to confirm they
+  have reviewed the changes.
 * Avoid creative additions unless explicitly requested
 * Use full words for variable names (no abbreviations like "q" for "queue")
 * Use variable shadowing to scope clones in async contexts for clarity,

@@ -37,5 +37,5 @@ application does not stop any other application.
 For global shortcuts, bind these commands in [Niri](Getting-Started.md#integrate-with-niri).
 For lock prerequisites, see [lockscreen](Lockscreen.md).
 
-Implementation: [CLI](../../crates/ghost-shell-core/ghost-shell-cli/src/main.rs) and
+Implementation: [CLI](../../crates/ghost-shell-applications/ghost-shell-cli/src/main.rs) and
 [IPC protocol](../../crates/ghost-shell-adapters/ghost-shell-ipc/src/protocol.rs).
