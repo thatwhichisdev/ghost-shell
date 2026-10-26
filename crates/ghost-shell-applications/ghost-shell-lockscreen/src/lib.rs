@@ -64,7 +64,6 @@ impl Lockscreen {
                     async move {
                         tokio::task::spawn_blocking(move || {
                             auth::authenticate(&username, std::ffi::OsStr::new(&password))
-                                .map_err(|_| "Authentication failed".to_owned())
                         })
                         .await
                         .unwrap_or_else(

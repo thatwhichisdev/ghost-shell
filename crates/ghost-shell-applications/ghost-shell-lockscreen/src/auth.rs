@@ -35,9 +35,9 @@ pub fn username() -> OsString {
 ///
 /// # Errors
 ///
-/// Returns a PAM error if the transaction cannot be created, authentication
+/// Returns a user-facing error if the transaction cannot be created, authentication
 /// fails, or account validation fails.
-pub fn authenticate(username: &OsStr, password: &OsStr) -> PamResult<()> {
+pub fn authenticate(username: &OsStr, password: &OsStr) -> Result<(), String> {
     let conversation = PasswordConversation {
         username: username.to_owned(),
         password: password.to_owned(),
@@ -45,10 +45,26 @@ pub fn authenticate(username: &OsStr, password: &OsStr) -> PamResult<()> {
 
     let mut transaction = TransactionBuilder::new_with_service(PAM_SERVICE)
         .username(username)
-        .build(conversation.into_conversation())?;
+        .build(conversation.into_conversation())
+        .map_err(|error| {
+            log::error!(
+                "PAM service={PAM_SERVICE} user={username:?} stage=setup: {error:?}"
+            );
+            "Authentication service setup failed".to_owned()
+        })?;
 
-    transaction.authenticate(AuthnFlags::empty())?;
-    transaction.account_management(AuthnFlags::empty())?;
+    transaction.authenticate(AuthnFlags::empty()).map_err(|error| {
+        log::warn!("PAM service={PAM_SERVICE} user={username:?} stage=authenticate: {error:?}");
+        "Authentication failed".to_owned()
+    })?;
+    transaction
+        .account_management(AuthnFlags::empty())
+        .map_err(|error| {
+            log::warn!(
+                "PAM service={PAM_SERVICE} user={username:?} stage=account: {error:?}"
+            );
+            "Account validation failed; check the lockscreen logs".to_owned()
+        })?;
 
     Ok(())
 }

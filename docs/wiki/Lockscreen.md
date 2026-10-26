@@ -21,6 +21,19 @@ there is no distribution-independent PAM file supplied by this project.
 Complete and test authentication setup before relying on the lockscreen in your
 session. Ghost Shell remains early-alpha software.
 
+## Diagnosing unlock failures
+
+Failures log the PAM service, selected username, stage (`setup`, `authenticate`,
+or `account`) and PAM error code without recording passwords. Read terminal
+output when running directly, or use
+`journalctl --user -u ghost-shell-lockscreen.service -b` for the standalone service.
+Account validation can reject an unlock even after password authentication
+succeeds. Do not assume that every failure means the password was incorrect.
+
+If logs instead identify `ghost-shell-daemon` or `ghost-shell.service`, an older
+installation is still running. Update the installed package and user services;
+changes to the standalone lockscreen do not change that older process.
+
 ## Configuration
 
 Use `~/.config/ghost-shell/config.toml`. There is no `[lockscreen]` table.
