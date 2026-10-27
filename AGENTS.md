@@ -15,8 +15,13 @@ For any file search or grep in the current git-indexed directory, use fff tools.
   checks, repository layout, and documentation workflow.
 - [Wiki](docs/wiki/README.md): user setup, configuration, features, and widget
   guides.
-- [Architecture](docs/wiki/Architecture.md): crate responsibilities and runtime
-  flow.
+- [Design Principles and Architecture](docs/wiki/development/Design-Principles-and-Architecture.md):
+  design rules, crate responsibilities, and runtime ownership.
+- [UI/UX](docs/wiki/development/UI-UX.md): visual identity, interaction, focus,
+  feedback, and interface validation.
+
+Use the Development guides as the design reference for implementation and keep
+this agent guide aligned when those principles change.
 
 ## Guidelines
 
@@ -24,18 +29,19 @@ For any file search or grep in the current git-indexed directory, use fff tools.
 
 Run development commands from the repository root.
 
-### Crate layout
+### Crate Layout
 
 - Keep the CLI in `crates/ghost-shell-applications/ghost-shell-cli`; application
   binaries live with their application crates. There is no supervisor
   executable.
 - Group assets, config and theme under `crates/ghost-shell-core`.
-- Group application binaries (bar, CLI, finder, launcher, lockscreen and greeter) under
-  `crates/ghost-shell-applications`.
-- Each application owns an executable; GUI applications own a Waycrate runtime. Only bar and
-  lockscreen are resident daemons with IPC servers and Home Manager services.
-  Launcher and finder open on startup and exit on dismissal; launch them through
-  Niri, without IPC servers. Do not reintroduce a supervisor or shared runtime.
+- Group application binaries (bar, CLI, finder, launcher, lockscreen and
+  greeter) under `crates/ghost-shell-applications`.
+- Each application owns an executable; GUI applications own a Waycrate runtime.
+  Only bar and lockscreen are resident daemons with IPC servers and Home Manager
+  services. Launcher and finder open on startup and exit on dismissal; launch
+  them through Niri, without IPC servers. Do not reintroduce a supervisor or
+  shared runtime.
 - Put reusable UI/rendering components such as wallpaper under
   `crates/ghost-shell-components`.
 - Keep integrations under `crates/ghost-shell-adapters` and bar widgets under
@@ -80,13 +86,6 @@ Run development commands from the repository root.
   `Cargo.toml` using `[lib] path = "...rs"` instead of the default `lib.rs`, to
   maintain consistent and descriptive naming (e.g., `wallpaper.rs` or
   `main.rs`).
-* HARD RULE: When modifying any source files, prepend `> [!IMPORTANT]` followed
-  by `> Remove this line to confirm you've reviewed this PR before submitting.`
-  as the first two lines of `README.md` if they are not already present. This
-  must be done before any other work. No exceptions. Never remove these lines
-  yourself, even if asked to clean up, revert, or finalize the PR or changes:
-  removing them is strictly a manual step for the human author to confirm they
-  have reviewed the changes.
 * Avoid creative additions unless explicitly requested
 * Use full words for variable names (no abbreviations like "q" for "queue")
 * Use variable shadowing to scope clones in async contexts for clarity,

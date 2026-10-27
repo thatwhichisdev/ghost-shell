@@ -1,5 +1,3 @@
-> [!IMPORTANT]
-> Remove this line to confirm you've reviewed this PR before submitting.
 # Ghost Shell
 
 A desktop shell for the Niri Wayland compositor, built with iced.
@@ -23,8 +21,8 @@ The project's name is inspired by the anime Ghost in the Shell.
 
 The bar follows a widely adopted layout with three sections: start, center, and
 end. Its current widget layout is fixed; appearance and outputs are
-configurable. See the [bar guide](docs/wiki/Bar.md) and [widget
-reference](docs/wiki/Widgets.md).
+configurable. See the [bar guide](docs/wiki/configuration/Bar.md) and [widget
+reference](docs/wiki/configuration/Bar.md#widgets).
 
 ![bar](assets/bar.png)
 
@@ -54,7 +52,8 @@ The lockscreen supports animated wallpapers. What else do you need?
 
 The boot greeter displays a wallpaper, clock and authentication prompts through
 greetd. It starts independently of the desktop lockscreen. See the [greeter
-guide](docs/wiki/Greeter.md) for NixOS setup and validation requirements.
+guide](docs/wiki/configuration/Greeter.md) for NixOS setup and validation
+requirements.
 
 ## Roadmap
 
@@ -66,6 +65,8 @@ confident that Ghost Shell is robust and performant enough for a proper release.
   - [ ] Widget: System Menu
   - [x] Widget: Niri Workspaces
   - [x] Widget: Focused Window
+  - [ ] Widget: CPU/GPU usage
+  - [ ] Widget: Network usage
   - [x] Widget: Tray
   - [ ] Widget: Notifications
   - [ ] Widget: Camera
@@ -87,21 +88,14 @@ confident that Ghost Shell is robust and performant enough for a proper release.
 
 ## Documentation
 
-Start with the [wiki](docs/wiki/README.md) for the project overview and user
-guides:
+The [wiki](docs/wiki/README.md) is organized into three sections:
 
-- [Installation](docs/wiki/Installation.md) and [getting
-  started](docs/wiki/Getting-Started.md)
-- [Configuration](docs/wiki/Configuration.md) and
-  [theming](docs/wiki/Theming.md)
-- [Bar](docs/wiki/Bar.md) and [individual widgets](docs/wiki/Widgets.md)
-- [Launcher](docs/wiki/Launcher.md), [finder](docs/wiki/Finder.md), and
-  [lockscreen](docs/wiki/Lockscreen.md), and [boot
-  greeter](docs/wiki/Greeter.md)
-- [Wallpapers](docs/wiki/Wallpapers.md) and [CLI
-  commands](docs/wiki/Commands.md)
-- [Architecture](docs/wiki/Architecture.md) and
-  [troubleshooting](docs/wiki/Troubleshooting.md)
+- [Getting Started](docs/wiki/getting-started/Installation.md): install on NixOS
+  with flakes and Home Manager, then connect Ghost Shell to Niri.
+- [Configuration](docs/wiki/configuration/Introduction.md): file discovery,
+  shared settings, and application and widget guides.
+- [Development](docs/wiki/development/Design-Principles-and-Architecture.md):
+  design principles, architecture, and [UI/UX](docs/wiki/development/UI-UX.md).
 
 Build, run, and contribution instructions live in
 [CONTRIBUTING.md](docs/CONTRIBUTING.md). The roadmap above tracks completion;

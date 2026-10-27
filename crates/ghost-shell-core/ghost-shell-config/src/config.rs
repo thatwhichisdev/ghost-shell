@@ -194,34 +194,90 @@ pub enum ThemeMode {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Base16Config {
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base00: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base01: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base02: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base03: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base04: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base05: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base06: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base07: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base08: u32,
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base09: u32,
 
     #[serde(rename = "base0A")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0a: u32,
 
     #[serde(rename = "base0B")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0b: u32,
 
     #[serde(rename = "base0C")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0c: u32,
 
     #[serde(rename = "base0D")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0d: u32,
 
     #[serde(rename = "base0E")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0e: u32,
 
     #[serde(rename = "base0F")]
+    #[serde(deserialize_with = "deserialize_theme_color")]
     pub base0f: u32,
+}
+
+fn deserialize_theme_color<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct ThemeColorVisitor;
+
+    impl<'de> serde::de::Visitor<'de> for ThemeColorVisitor {
+        type Value = u32;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a #RRGGBB color string or an unsigned 32-bit integer")
+        }
+
+        fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<u32, E> {
+            let digits = value.strip_prefix('#').filter(|digits| {
+                digits.len() == 6
+                    && digits
+                        .bytes()
+                        .all(|byte| byte.is_ascii_hexdigit())
+            });
+            match digits {
+                Some(digits) => u32::from_str_radix(digits, 16).map_err(E::custom),
+                None => Err(E::custom(
+                    "theme colors must use #RRGGBB with exactly six hexadecimal digits",
+                )),
+            }
+        }
+
+        fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<u32, E> {
+            u32::try_from(value).map_err(E::custom)
+        }
+
+        fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<u32, E> {
+            u32::try_from(value).map_err(E::custom)
+        }
+    }
+
+    deserializer.deserialize_any(ThemeColorVisitor)
 }
 
 impl Base16Config {
@@ -320,6 +376,81 @@ mod tests {
     use config::FileFormat;
 
     use super::*;
+
+    fn parse_theme_color(value: &str) -> Result<ThemeConfig, ConfigError> {
+        use std::fmt::Write;
+
+        let mut source = String::new();
+        for polarity in ["dark", "light"] {
+            writeln!(source, "[theme.{polarity}]")
+                .map_err(|error| ConfigError::Message(error.to_string()))?;
+            for index in 0..16 {
+                writeln!(source, "base{index:02X} = {value}")
+                    .map_err(|error| ConfigError::Message(error.to_string()))?;
+            }
+        }
+        let config: BarAppConfig = Config::builder()
+            .add_source(File::from_str(&source, FileFormat::Toml))
+            .build()?
+            .try_deserialize()?;
+        Ok(config.theme)
+    }
+
+    #[test]
+    fn theme_palettes_accept_hex_strings_and_legacy_numbers() -> Result<(), ConfigError> {
+        for (value, expected) in [
+            ("\"#0a0C10\"", 0x0a0c10),
+            ("\"#000000\"", 0),
+            ("\"#FFFFFF\"", 0xffffff),
+            ("658448", 0x0a0c10),
+            ("0x0a0c10", 0x0a0c10),
+        ] {
+            let theme = parse_theme_color(value)?;
+            for palette in [theme.dark, theme.light] {
+                let colors = [
+                    palette.base00,
+                    palette.base01,
+                    palette.base02,
+                    palette.base03,
+                    palette.base04,
+                    palette.base05,
+                    palette.base06,
+                    palette.base07,
+                    palette.base08,
+                    palette.base09,
+                    palette.base0a,
+                    palette.base0b,
+                    palette.base0c,
+                    palette.base0d,
+                    palette.base0e,
+                    palette.base0f,
+                ];
+                assert_eq!(colors, [expected; 16], "input: {value}");
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn theme_palettes_reject_invalid_colors() {
+        for value in [
+            "\"#abc\"",
+            "\"#12345678\"",
+            "\"#gg0000\"",
+            "\"123456\"",
+            "\"0x123456\"",
+            "\"#１２３４５６\"",
+            "\" #123456\"",
+            "\"#123456 \"",
+            "-1",
+            "4294967296",
+            "1.5",
+            "true",
+            "[]",
+        ] {
+            assert!(parse_theme_color(value).is_err(), "accepted {value}");
+        }
+    }
 
     #[test]
     fn blur_settings_are_independent_and_default_to_disabled() -> Result<(), ConfigError>

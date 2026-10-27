@@ -7,30 +7,34 @@ use ghost_shell_dbus::{
     MenuId, MenuItem, MenuItemType, MenuLayout, StatusNotifierId, StatusNotifierItem,
 };
 use iced::{
-    Border, Color, ContentFit, Element, Fill,
-    widget::{button, column, container, row, text},
+    Color, ContentFit, Element, Fill,
+    widget::{button, container, row, text},
 };
+mod menu_popup;
+
 #[derive(Clone, Debug)]
 pub enum TrayMessage {
     Open(MenuId),
-    Hover(usize, i32),
-    Move(bool),
-    Back,
-    Enter,
-    Activate(usize, i32),
+    Dismiss,
+    Resize(u32, u32),
+    Activate(i32),
 }
+
 enum Icon {
     Svg(iced::widget::svg::Handle),
     Image(iced::widget::image::Handle),
 }
+
 struct Item {
     icon: Option<Icon>,
     menu: Option<MenuId>,
 }
+
 #[derive(Default)]
 pub struct Tray {
     items: BTreeMap<StatusNotifierId, Item>,
 }
+
 impl Tray {
     pub fn remove(&mut self, id: &StatusNotifierId) {
         self.items.remove(id);
@@ -50,6 +54,7 @@ impl Tray {
         self.items
             .insert(item.id, Item { icon, menu });
     }
+
     pub fn view(&self) -> Element<'_, TrayMessage> {
         row(self.items.values().map(|item| {
             let icon: Element<'_, TrayMessage> = match &item.icon {
@@ -150,217 +155,140 @@ fn resolve_icon(name: &str, directory: Option<&str>) -> Option<PathBuf> {
 }
 pub struct MenuState {
     pub layout: MenuLayout,
-    path: Vec<i32>,
-    selected: Option<i32>,
+    size: (u32, u32),
+    generation: u64,
 }
 impl MenuState {
     pub fn new(layout: MenuLayout) -> Self {
+        let height = layout
+            .items()
+            .iter()
+            .filter(|item| item.visible)
+            .map(|item| {
+                if item.item_type == MenuItemType::Separator {
+                    1_u32
+                } else {
+                    30
+                }
+            })
+            .fold(8_u32, u32::saturating_add)
+            .clamp(38, 702);
         Self {
             layout,
-            path: Vec::new(),
-            selected: None,
+            size: (258, height),
+            generation: 0,
         }
     }
     pub fn replace(&mut self, layout: MenuLayout) {
         self.layout = layout;
-        self.path.clear();
-        self.selected = None;
-    }
-    fn items_at(&self, depth: usize) -> &[MenuItem] {
-        let mut items = self.layout.items();
-        for id in self.path.iter().take(depth) {
-            if let Some(item) = items.iter().find(|item| item.id == *id) {
-                items = &item.children;
-            } else {
-                break;
-            }
-        }
-        items
+        self.generation = self.generation.wrapping_add(1);
     }
     pub fn update(&mut self, message: &TrayMessage) -> Option<i32> {
         match message {
-            TrayMessage::Hover(depth, id) => {
-                let submenu = self
-                    .items_at(*depth)
-                    .iter()
-                    .find(|item| item.id == *id)
-                    .is_some_and(|item| item.enabled && !item.children.is_empty());
-                self.path.truncate(*depth);
-                self.selected = Some(*id);
-                if submenu {
-                    self.path.push(*id);
+            TrayMessage::Resize(width, height) => self.size = (*width, *height),
+            TrayMessage::Activate(id) => {
+                fn actionable(items: &[MenuItem], id: i32) -> bool {
+                    items
+                        .iter()
+                        .filter(|item| item.visible && item.enabled)
+                        .any(|item| {
+                            if item.id == id {
+                                !item
+                                    .children
+                                    .iter()
+                                    .any(|child| child.visible)
+                            } else {
+                                actionable(&item.children, id)
+                            }
+                        })
                 }
+                return actionable(self.layout.items(), *id).then_some(*id);
             }
-            TrayMessage::Move(forward) => {
-                let items: Vec<_> = self
-                    .items_at(self.path.len())
-                    .iter()
-                    .filter(|item| {
-                        item.visible
-                            && item.enabled
-                            && item.item_type != MenuItemType::Separator
-                    })
-                    .collect();
-                let position = self
-                    .selected
-                    .and_then(|id| items.iter().position(|item| item.id == id));
-                self.selected =
-                    ghost_shell_theme::selection(position, items.len(), *forward)
-                        .and_then(|index| items.get(index))
-                        .map(|item| item.id);
-            }
-            TrayMessage::Back => {
-                self.selected = self.path.pop();
-            }
-            TrayMessage::Enter => {
-                if let Some(id) = self.selected {
-                    return self.activate(self.path.len(), id);
-                }
-            }
-            TrayMessage::Activate(depth, id) => return self.activate(*depth, *id),
             _ => {}
         }
         None
     }
-    fn activate(&mut self, depth: usize, id: i32) -> Option<i32> {
-        self.path.truncate(depth);
-        let item = self
-            .items_at(self.path.len())
-            .iter()
-            .find(|item| item.id == id)?;
-        if !item.enabled {
-            return None;
-        }
-        if item.children.is_empty() {
-            Some(id)
-        } else {
-            self.path.push(id);
-            self.selected = None;
-            None
-        }
-    }
     pub fn size(&self) -> (u32, u32) {
-        fn measure(items: &[MenuItem]) -> (usize, usize) {
+        self.size
+    }
+
+    pub fn view(&self) -> Element<'_, TrayMessage> {
+        fn depth(items: &[MenuItem]) -> usize {
             items
                 .iter()
-                .fold((1, items.len()), |(depth, rows), item| {
-                    let (child_depth, child_rows) = measure(&item.children);
-                    (
-                        depth.max(if item.children.is_empty() {
-                            1
-                        } else {
-                            child_depth + 1
-                        }),
-                        rows.max(child_rows),
-                    )
-                })
+                .filter(|item| item.visible && item.enabled)
+                .map(|item| depth(&item.children) + 1)
+                .max()
+                .unwrap_or(0)
         }
-        let (depth, rows) = measure(self.layout.items());
-        (
-            (depth.min(5) * 250 + 2) as u32,
-            (rows * 30 + 14).clamp(62, 702) as u32,
+
+        menu_popup::Popup::new(
+            menu_items(self.layout.items()),
+            depth(self.layout.items()),
+            self.generation,
         )
-    }
-    pub fn view(&self) -> Element<'_, TrayMessage> {
-        let columns = (0..=self.path.len()).map(|depth| {
-            let items = self
-                .items_at(depth)
-                .iter()
-                .filter(|item| item.visible)
-                .map(move |item| {
-                    if item.item_type == MenuItemType::Separator {
-                        return iced::widget::rule::horizontal(1).into();
-                    }
-                    let label = format!(
-                        "{}{}{}",
-                        if item.toggle_state == 1 { "✓ " } else { "" },
-                        item.label.replace('_', ""),
-                        if item.children.is_empty() {
-                            ""
-                        } else {
-                            "  ›"
-                        }
-                    );
-                    let button = button(text(label))
-                        .width(Fill)
-                        .height(30)
-                        .style(move |theme: &iced::Theme, status| {
-                            if item.enabled && self.selected == Some(item.id) {
-                                button::Style {
-                                    background: Some(theme.palette().primary.into()),
-                                    text_color: Color::BLACK,
-                                    ..button::Style::default()
-                                }
-                            } else {
-                                ghost_shell_theme::plain(theme, status)
-                            }
-                        });
-                    let button = if item.enabled {
-                        button.on_press(TrayMessage::Activate(depth, item.id))
-                    } else {
-                        button
-                    };
-                    iced::widget::mouse_area(button)
-                        .on_enter(TrayMessage::Hover(depth, item.id))
-                        .into()
-                });
-            container(iced::widget::scrollable(column(items)))
-                .width(250)
-                .height(Fill)
-                .padding(4)
-                .into()
-        });
-        container(row(columns).height(Fill))
-            .height(Fill)
-            .padding(1)
-            .style(|theme| container::Style {
-                border: Border {
-                    color: Color::WHITE,
-                    width: 1.0,
-                    radius: 6.0.into(),
-                },
-                ..ghost_shell_theme::surface(theme, 1.0)
-            })
-            .into()
+        .into()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+fn menu_items(
+    items: &[MenuItem],
+) -> iced_aw::menu::Menu<'_, TrayMessage, iced::Theme, iced::Renderer> {
+    use iced_aw::menu::{Item, Menu};
 
-    fn item(id: i32, children: Vec<MenuItem>) -> MenuItem {
-        MenuItem {
-            id,
-            item_type: MenuItemType::Standard,
-            label: id.to_string(),
-            enabled: true,
-            visible: true,
-            icon_name: None,
-            icon_data: vec![],
-            shortcut: vec![],
-            toggle_type: None,
-            toggle_state: 0,
-            children_display: None,
-            children,
-        }
+    let mut entries: Vec<_> = items
+        .iter()
+        .filter(|item| item.visible)
+        .map(|item| {
+            if item.item_type == MenuItemType::Separator {
+                return Item::new(iced::widget::rule::horizontal(1))
+                    .close_on_click(false);
+            }
+            let submenu = item.enabled
+                && item
+                    .children
+                    .iter()
+                    .any(|child| child.visible);
+            let label = format!(
+                "{}{}{}",
+                if item.toggle_state == 1 { "✓ " } else { "" },
+                item.label.replace('_', ""),
+                if submenu { "  ‹" } else { "" }
+            );
+            let mut entry = button(text(label))
+                .width(Fill)
+                .height(30)
+                .style(|theme: &iced::Theme, status| {
+                    if matches!(status, button::Status::Hovered | button::Status::Pressed)
+                    {
+                        button::Style {
+                            background: Some(theme.palette().primary.into()),
+                            text_color: Color::BLACK,
+                            ..button::Style::default()
+                        }
+                    } else {
+                        ghost_shell_theme::plain(theme, status)
+                    }
+                });
+            if item.enabled {
+                entry = entry.on_press(TrayMessage::Activate(item.id));
+            }
+            if submenu {
+                Item::with_menu(entry, menu_items(&item.children))
+            } else {
+                Item::new(entry)
+            }
+            .close_on_click(false)
+        })
+        .collect();
+
+    // iced_aw requires at least one item when laying out an open menu.
+    if entries.is_empty() {
+        entries.push(Item::new(text("No actions").height(30)));
     }
-    #[test]
-    fn hovering_submenu_does_not_break_clicks_in_parent_column() {
-        let mut state = MenuState::new(MenuLayout {
-            id: MenuId::new("test", "/menu"),
-            revision: 1,
-            root: item(0, vec![item(1, vec![item(2, vec![])]), item(3, vec![])]),
-        });
-        assert_eq!(state.update(&TrayMessage::Hover(0, 1)), None);
-        assert_eq!(state.path, vec![1]);
-        assert_eq!(state.update(&TrayMessage::Activate(1, 2)), Some(2));
-        assert_eq!(state.update(&TrayMessage::Activate(0, 3)), Some(3));
-        assert!(state.path.is_empty());
-        state.update(&TrayMessage::Hover(0, 1));
-        assert_eq!(state.update(&TrayMessage::Back), None);
-        assert_eq!(state.selected, Some(1));
-        assert_eq!(state.update(&TrayMessage::Enter), None);
-        assert_eq!(state.path, vec![1]);
-    }
+
+    Menu::new(entries)
+        .width(250)
+        .padding(4)
+        .offset(8.0)
 }

@@ -1,6 +1,7 @@
 # Clock
 
-[Widgets](../Widgets.md) · [Bar](../Bar.md) · [Wiki](../README.md)
+[Wiki](../README.md#configuration) · [Introduction](Introduction.md) ·
+[Bar](Bar.md)
 
 Status: **Implemented.**
 
@@ -14,8 +15,8 @@ configuration are shared by all bars.
 format = "%H:%M"
 ```
 
-`format` is a string and defaults to `"%H:%M"` (24-hour hours and minutes).
-For a date alongside the time:
+`format` is a string and defaults to `"%H:%M"` (24-hour hours and minutes). For
+a date alongside the time:
 
 ```toml
 [clock]
@@ -28,6 +29,8 @@ time zone; there is no separate time-zone setting.
 ## Current limitations
 
 The display updates on minute boundaries by default. Common second-bearing
-directives (`%S`, `%T`, `%r`, `%X`, `%c`, `%s`, `%f`, `%N`) enable second updates. There is no calendar popup or click action yet.
+directives (`%S`, `%T`, `%r`, `%X`, `%c`, `%s`, `%f`, `%N`) enable second
+updates. There is no calendar popup or click action yet.
 
-Implementation: [widget crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-clock/src/clock.rs).
+Implementation: [widget
+crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-clock/src/clock.rs).

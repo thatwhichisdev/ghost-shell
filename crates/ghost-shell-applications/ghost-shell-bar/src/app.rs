@@ -16,7 +16,8 @@ use iced_exwlshell::{
     actions::IcedNewPopupSettings,
     reexport::{
         Anchor, BlurOption, KeyboardInteractivity, Layer, LayerSize,
-        NewLayerShellSettings, OutputOption, PixelSize, Position,
+        NewLayerShellSettings, OutputOption, PixelSize, PopupAnchor,
+        PopupConstraintAdjustment, PopupGravity, Position,
     },
     settings::{ExWlSettings, LayerShellSettings, StartMode},
     to_exwlshell_message,
@@ -50,6 +51,7 @@ enum Message {
     Key(Id, iced::keyboard::key::Named, bool),
     Cursor(Id, iced::Point),
     Closed(Id),
+    FocusLost(Id),
     MenuLayout(Id, u64, Result<ghost_shell_dbus::MenuLayout, String>),
     MenuActivated(Result<(), String>),
     SystemTheme(iced::theme::Mode),
@@ -287,6 +289,9 @@ impl Shell {
                 {
                     Some(Message::Key(window, key, modifiers.shift()))
                 }
+                iced::Event::Window(iced::window::Event::Unfocused) => {
+                    Some(Message::FocusLost(window))
+                }
                 iced::Event::Mouse(iced::mouse::Event::CursorMoved { position }) => {
                     Some(Message::Cursor(window, position))
                 }
@@ -379,7 +384,8 @@ impl Shell {
                             anchor: Anchor::Top | Anchor::Left | Anchor::Right,
                             size: LayerSize::fill_width(config.height.max(1.0) as u32),
                             exclusive_zone: Some(config.exclusive_zone as i32),
-                            keyboard_interactivity: KeyboardInteractivity::None,
+                            // Niri only grants popup keyboard grabs to focusable parent layers.
+                            keyboard_interactivity: KeyboardInteractivity::OnDemand,
                             output_option: OutputOption::GlobalName(output),
                             namespace: Some("ghost-shell-bar".into()),
                             blur_option: if config.appearance == BarAppearance::Blur {
@@ -471,6 +477,11 @@ impl Shell {
             PixelSize::px(width, height),
             Position::new(position.x as i32, position.y as i32),
             PixelSize::px(1, 1),
+        )
+        .anchor(PopupAnchor::BottomRight)
+        .gravity(PopupGravity::BottomLeft)
+        .constraint_adjustment(
+            PopupConstraintAdjustment::SlideX | PopupConstraintAdjustment::SlideY,
         );
 
         self.popup_settings.insert(id, settings);
@@ -497,7 +508,8 @@ impl Shell {
         }
         match request {
             PopupRequest::Audio(parent) => {
-                self.popup(parent, Surface::Audio, 380, 500)
+                let (width, height) = AudioPopup::SIZE;
+                self.popup(parent, Surface::Audio, width, height)
                     .1
             }
             PopupRequest::Menu(parent, menu) => self.open_menu(parent, menu),
@@ -684,6 +696,14 @@ impl Shell {
                 self.cursor.insert(window, position);
             }
             Message::Key(window, key, shift) => return self.key(window, key, shift),
+            Message::FocusLost(window) => {
+                if matches!(
+                    self.surfaces.get(&window),
+                    Some(Surface::Audio | Surface::Menu)
+                ) {
+                    return self.close(window);
+                }
+            }
             Message::MenuLayout(window, generation, result)
                 if generation == self.menu_generation
                     && (self.surfaces.get(&window) == Some(&Surface::Menu)
@@ -712,6 +732,12 @@ impl Shell {
                                 PixelSize::px(width, height),
                                 Position::new(position.x as i32, position.y as i32),
                                 PixelSize::px(1, 1),
+                            )
+                            .anchor(PopupAnchor::BottomRight)
+                            .gravity(PopupGravity::BottomLeft)
+                            .constraint_adjustment(
+                                PopupConstraintAdjustment::SlideX
+                                    | PopupConstraintAdjustment::SlideY,
                             );
                             self.menu_state = Some(state);
                             self.surfaces.insert(window, Surface::Menu);
@@ -727,22 +753,7 @@ impl Shell {
                             self.menu_state = Some(MenuState::new(layout));
                         }
 
-                        if let (Some(state), Some(settings)) =
-                            (&self.menu_state, self.popup_settings.get_mut(&window))
-                        {
-                            let (width, height) = state.size();
-
-                            let size = PixelSize::px(width, height);
-                            if settings.size == size {
-                                return Task::none();
-                            }
-                            settings.size = size;
-
-                            return Task::done(Message::PopUpReposition {
-                                id: window,
-                                settings: *settings,
-                            });
-                        }
+                        return self.resize_menu(window);
                     }
                     Err(error) => {
                         self.cancel_loading_menu();
@@ -763,6 +774,24 @@ impl Shell {
         }
 
         Task::none()
+    }
+
+    fn resize_menu(&mut self, window: Id) -> Task<Message> {
+        let (Some(state), Some(settings)) =
+            (&self.menu_state, self.popup_settings.get_mut(&window))
+        else {
+            return Task::none();
+        };
+        let (width, height) = state.size();
+        let size = PixelSize::px(width, height);
+        if settings.size == size {
+            return Task::none();
+        }
+        settings.size = size;
+        Task::done(Message::PopUpReposition {
+            id: window,
+            settings: *settings,
+        })
     }
 
     fn bar_message(
@@ -794,6 +823,10 @@ impl Shell {
             BarMessage::Tray(TrayMessage::Open(menu)) => {
                 return self.request_popup(PopupRequest::Menu(window, menu));
             }
+            BarMessage::Tray(TrayMessage::Dismiss)
+            | BarMessage::Audio(AudioMessage::Dismiss) => {
+                return self.close(window);
+            }
             BarMessage::Tray(message) => {
                 if let Some(state) = &mut self.menu_state {
                     if let Some(item) = state.update(&message) {
@@ -814,6 +847,7 @@ impl Shell {
                         }
                     }
                 }
+                return self.resize_menu(window);
             }
             BarMessage::Audio(message) => self
                 .audio_popup
@@ -836,38 +870,6 @@ impl Shell {
         if key == Named::Escape && matches!(surface, Some(Surface::Audio | Surface::Menu))
         {
             return self.close(window);
-        }
-
-        if matches!(key, Named::ArrowUp | Named::ArrowDown) {
-            let forward = key == Named::ArrowDown;
-
-            match surface {
-                Some(Surface::Menu) => {
-                    return self.bar_message(
-                        window,
-                        ghost_shell_bar::Message::Tray(TrayMessage::Move(forward)),
-                    );
-                }
-                _ => {}
-            }
-        }
-
-        if surface == Some(Surface::Menu) {
-            match key {
-                Named::Enter | Named::ArrowRight => {
-                    return self.bar_message(
-                        window,
-                        ghost_shell_bar::Message::Tray(TrayMessage::Enter),
-                    );
-                }
-                Named::ArrowLeft => {
-                    return self.bar_message(
-                        window,
-                        ghost_shell_bar::Message::Tray(TrayMessage::Back),
-                    );
-                }
-                _ => {}
-            }
         }
 
         if key == Named::Tab {

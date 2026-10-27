@@ -68,6 +68,7 @@ ghost-shell-widget-workspaces = { path = "crates/ghost-shell-widgets/ghost-shell
 
 # iced gui framework
 iced = { version = "0.14.0", default-features = false }
+iced_aw = { version = "=0.14.1", default-features = false }
 iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91", default-features = false }
 iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91" }
 

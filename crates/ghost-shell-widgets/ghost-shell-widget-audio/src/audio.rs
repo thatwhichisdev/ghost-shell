@@ -7,6 +7,7 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Open,
+    Dismiss,
     Volume(AudioEndpointId, f32),
     Mute(AudioEndpointId, bool),
     Default(AudioEndpointId),
@@ -48,6 +49,8 @@ pub struct AudioPopup {
     pub error: Option<String>,
 }
 impl AudioPopup {
+    pub const SIZE: (u32, u32) = (380, 500);
+
     pub fn view<'a>(&'a self, audio: Option<&'a AudioState>) -> Element<'a, Message> {
         let mut content = column![text("Audio")].spacing(10);
         if let Some(audio) = audio {
@@ -103,18 +106,31 @@ impl AudioPopup {
         if let Some(error) = &self.error {
             content = content.push(text(error));
         }
-        container(iced::widget::scrollable(content))
+        let content = container(iced::widget::scrollable(content))
             .padding(12)
             .width(Fill)
             .height(Fill)
-            .style(|theme| ghost_shell_theme::surface(theme, 1.0))
-            .into()
+            .style(|theme| ghost_shell_theme::surface(theme, 1.0));
+        let (width, height) = Self::SIZE;
+        // The bar owns the Wayland popup; anchor its already-open menu at the origin.
+        iced_aw::DropDown::new(
+            iced::widget::Space::new()
+                .width(width as f32)
+                .height(0),
+            content,
+            true,
+        )
+        .width(width as f32)
+        .height(height as f32)
+        .offset(0.0)
+        .on_dismiss(Message::Dismiss)
+        .into()
     }
 }
 
 impl AudioPopup {
     pub fn update(&mut self, message: Message, audio: Option<&Audio>) {
-        if matches!(message, Message::Open) {
+        if matches!(message, Message::Open | Message::Dismiss) {
             return;
         }
         let Some(audio) = audio else {
@@ -125,7 +141,7 @@ impl AudioPopup {
             Message::Volume(id, volume) => audio.set_volume(id, volume),
             Message::Mute(id, muted) => audio.set_muted(id, muted),
             Message::Default(id) => audio.set_default(id),
-            Message::Open => return,
+            Message::Open | Message::Dismiss => return,
         };
         if let Err(error) = result {
             self.error = Some(error.to_string());

@@ -1,41 +1,47 @@
 # Ghost Shell wiki
 
 Ghost Shell is an early-alpha desktop shell for the Niri Wayland compositor,
-built with iced. It provides a bar, an application launcher, a file finder,
-wallpapers, and a lockscreen, while delegating window management to Niri.
+built with iced. It provides a bar, launcher, finder, desktop wallpapers,
+lockscreen, and optional boot greeter, while delegating window management to
+Niri.
 
-These guides describe the current implementation. The
-[project README](../../README.md) contains screenshots and the roadmap; unfinished
-features are called out in the relevant guide.
+Start with Installation to set up Ghost Shell on NixOS using flakes and Home
+Manager. Configuration describes supported settings and current limitations.
+Development defines the principles for designing and implementing Ghost Shell.
+The [project README](../../README.md) contains screenshots and the roadmap.
 
-## Getting started
+## Getting Started
 
-- [Installation](Installation.md): build or install the executables.
-- [First session](Getting-Started.md): configure outputs, start the daemons, and
-  connect Niri key bindings.
-- [Commands](Commands.md): control the running shell.
-- [Troubleshooting](Troubleshooting.md): diagnose setup and alpha limitations.
+- [Installation](getting-started/Installation.md): NixOS flakes, Home Manager,
+  first session, Niri bindings, commands, and troubleshooting.
 
-## Configuration and features
+## Configuration
 
-- [Configuration](Configuration.md): file location, defaults, and general options.
-- [Bar and outputs](Bar.md): monitor selection, dimensions, and appearance.
-- [Widgets](Widgets.md): behavior, setup, and supported settings for each widget.
-- [Theming](Theming.md): fonts, appearance mode, and Base16 palettes.
-- [Launcher](Launcher.md): find and launch applications.
-- [Finder](Finder.md): search files and directories.
-- [Wallpapers](Wallpapers.md): static images, GIFs, and background colors.
-- [Lockscreen](Lockscreen.md): locking and authentication setup.
-- [Greeter](Greeter.md): boot login through greetd and NixOS configuration.
+- [Introduction](configuration/Introduction.md): file discovery, defaults,
+  shared settings, themes, wallpapers, and configuration migration.
+- [Bar](configuration/Bar.md): outputs, appearance, fixed layout, and widget
+  status.
+- [Menu](configuration/Menu.md): launcher shortcut and current limits.
+- [Tray](configuration/Tray.md): session integration and application menus.
+- [Audio](configuration/Audio.md): PipeWire devices, volume, and mute controls.
+- [Clock](configuration/Clock.md): time format and update frequency.
+- [Workspaces](configuration/Workspaces.md): Niri workspace indicators.
+- [Launcher](configuration/Launcher.md): application discovery and appearance.
+- [Finder](configuration/Finder.md): file search and appearance.
+- [Lockscreen](configuration/Lockscreen.md): PAM setup, wallpaper, and locking.
+- [Greeter](configuration/Greeter.md): greetd, NixOS setup, and login
+  configuration.
 
-## Understanding and developing Ghost Shell
+## Development
 
-- [Architecture](Architecture.md): surface coordination, feature state,
-  and backend boundaries.
-- [Contributing guide](../CONTRIBUTING.md): toolchain, builds, checks, and writing docs.
-- [Agent guide](../../AGENTS.md): coding conventions and iced patterns.
+- [Design Principles and
+  Architecture](development/Design-Principles-and-Architecture.md): crate
+  responsibilities, runtime ownership, state flow, and implementation rules.
+- [UI/UX](development/UI-UX.md): visual identity, interaction, focus, feedback,
+  and interface validation.
 
-The organization takes inspiration from [Niri's wiki](https://github.com/niri-wm/niri/wiki):
-a getting-started path, focused configuration pages, and separate development
-material. This directory is the repository's documentation source; it is not
-currently synchronized to a separate GitHub Wiki.
+For toolchain setup and development commands, see
+[Contributing](../CONTRIBUTING.md). [AGENTS.md](../../AGENTS.md) links these
+design guides and supplies actionable instructions for coding agents. This wiki
+is plain Markdown browsable in the repository; no publishing pipeline is
+required.
