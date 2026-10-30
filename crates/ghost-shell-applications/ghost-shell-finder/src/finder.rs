@@ -221,6 +221,7 @@ impl Finder {
 
         let input = text_input("Search files (Enter)", &self.query)
             .id("finder-query")
+            .style(ghost_shell_theme::text_input)
             .padding(8);
 
         let input = input
@@ -229,7 +230,11 @@ impl Finder {
 
         let mut content = column![input, list, text(status).size(12)].spacing(6);
         if let Some(error) = &self.error {
-            content = content.push(text(error).size(12));
+            content = content.push(
+                text(error)
+                    .style(iced::widget::text::danger)
+                    .size(12),
+            );
         }
 
         container(content)

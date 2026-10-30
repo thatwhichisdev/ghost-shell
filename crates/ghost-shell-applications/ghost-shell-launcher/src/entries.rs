@@ -21,9 +21,9 @@ pub struct DesktopEntries {
     pub items: Vec<DesktopEntry>,
 }
 
-pub fn load() -> DesktopEntries {
+pub fn load(theme: Option<String>) -> DesktopEntries {
     let locales = freedesktop_desktop_entry::get_languages_from_env();
-    let theme = freedesktop_icons::default_theme_gtk();
+    let theme = theme.or_else(freedesktop_icons::default_theme_gtk);
 
     let apps = freedesktop_desktop_entry::desktop_entries(&locales)
         .into_iter()

@@ -13,8 +13,10 @@ impl Power {
 
     pub fn view<'a, Message: 'a>(&'a self) -> Element<'a, Message> {
         match self.icon {
-            Some(icon) => ghost_shell_assets::icon(icon, 24.0),
-            None => Space::new().into(),
+            Some(icon) => ghost_shell_theme::bar::outer(ghost_shell_theme::bar::inner(
+                ghost_shell_theme::bar::icon(icon),
+            )),
+            None => Space::new().width(0).height(0).into(),
         }
     }
 }
@@ -29,17 +31,45 @@ pub fn battery() -> Result<Option<&'static str>, String> {
     };
     let battery = battery.map_err(|error| error.to_string())?;
     let icon = match battery.state() {
-        State::Full => "icons/battery-full.svg",
-        State::Charging => "icons/battery-charging.svg",
-        State::Unknown | State::Empty => "icons/battery-empty.svg",
-        State::Discharging | State::Paused => {
+        State::Full
+            if external_power_connected().map_err(|error| error.to_string())? =>
+        {
+            "icons/battery-plus-vertical.svg"
+        }
+        State::Full => "icons/battery-vertical-full.svg",
+        State::Charging => "icons/battery-vertical-charging.svg",
+        State::Unknown | State::Empty | State::Discharging | State::Paused => {
             match battery.state_of_charge().get::<percent>() {
-                level if level <= 25.0 => "icons/battery-25.svg",
-                level if level <= 50.0 => "icons/battery-50.svg",
-                level if level <= 75.0 => "icons/battery-75.svg",
-                _ => "icons/battery-full.svg",
+                level if level < 25.0 => "icons/battery-vertical-low.svg",
+                level if level < 50.0 => "icons/battery-vertical-medium.svg",
+                level if level < 76.0 => "icons/battery-vertical-high.svg",
+                _ => "icons/battery-vertical-full.svg",
             }
         }
     };
     Ok(Some(icon))
+}
+
+fn external_power_connected() -> std::io::Result<bool> {
+    // Battery status alone does not confirm that an external supply is online.
+    for supply in std::fs::read_dir("/sys/class/power_supply")? {
+        let path = supply?.path();
+        let kind = std::fs::read_to_string(path.join("type"))?;
+        if kind.trim() == "Battery" {
+            continue;
+        }
+        match std::fs::read_to_string(path.join("scope")) {
+            Ok(scope) if scope.trim() == "Device" => continue,
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+        match std::fs::read_to_string(path.join("online")) {
+            Ok(online) if online.trim() == "1" => return Ok(true),
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(false)
 }

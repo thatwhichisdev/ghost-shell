@@ -73,7 +73,7 @@ enum Surface {
 }
 
 enum PopupRequest {
-    Audio(Id),
+    Audio(Id, ghost_shell_audio::AudioDirection),
     Menu(Id, ghost_shell_dbus::MenuId),
 }
 
@@ -234,6 +234,10 @@ impl Shell {
             }
         };
 
+        let bar = Bar {
+            tray: ghost_shell_widget_tray::Tray::new(config.general.theme.clone()),
+            ..Bar::default()
+        };
         let mut shell = Self {
             config,
             default_bar: BarConfig::default(),
@@ -246,7 +250,7 @@ impl Shell {
             pending_popup: None,
             niri: Default::default(),
             wallpaper,
-            bar: Default::default(),
+            bar,
             bars_visible: true,
             audio,
             audio_popup: Default::default(),
@@ -492,7 +496,7 @@ impl Shell {
     fn request_popup(&mut self, request: PopupRequest) -> Task<Message> {
         self.cancel_loading_menu();
         let parent = match &request {
-            PopupRequest::Audio(parent) | PopupRequest::Menu(parent, _) => *parent,
+            PopupRequest::Audio(parent, _) | PopupRequest::Menu(parent, _) => *parent,
         };
         if !self.bars_visible
             || !matches!(self.surfaces.get(&parent), Some(Surface::Bar(_)))
@@ -507,8 +511,13 @@ impl Shell {
             return self.close(window);
         }
         match request {
-            PopupRequest::Audio(parent) => {
-                let (width, height) = AudioPopup::SIZE;
+            PopupRequest::Audio(parent, direction) => {
+                let (width, height) = self.audio_popup.open(
+                    direction,
+                    self.audio
+                        .as_ref()
+                        .map(|audio| audio.state()),
+                );
                 self.popup(parent, Surface::Audio, width, height)
                     .1
             }
@@ -681,10 +690,7 @@ impl Shell {
             Message::Audio(update) => {
                 if let Some(audio) = &mut self.audio {
                     for event in audio.apply(update) {
-                        if let ghost_shell_audio::AudioEvent::CommandFailed(error) = event
-                        {
-                            self.audio_popup.error = Some(error.message);
-                        }
+                        self.audio_popup.handle_event(event);
                     }
                 }
             }
@@ -777,12 +783,16 @@ impl Shell {
     }
 
     fn resize_menu(&mut self, window: Id) -> Task<Message> {
-        let (Some(state), Some(settings)) =
-            (&self.menu_state, self.popup_settings.get_mut(&window))
-        else {
+        let Some(state) = &self.menu_state else {
             return Task::none();
         };
-        let (width, height) = state.size();
+        self.resize_popup(window, state.size())
+    }
+
+    fn resize_popup(&mut self, window: Id, (width, height): (u32, u32)) -> Task<Message> {
+        let Some(settings) = self.popup_settings.get_mut(&window) else {
+            return Task::none();
+        };
         let size = PixelSize::px(width, height);
         if settings.size == size {
             return Task::none();
@@ -812,13 +822,15 @@ impl Shell {
                     Message::CommandResult(result.map_err(|error| error.to_string()))
                 });
             }
-            BarMessage::Audio(AudioMessage::Open) => {
-                if let Some(window) = self.find(Surface::Audio) {
+            BarMessage::Audio(AudioMessage::Open(direction)) => {
+                if let Some(window) = self.find(Surface::Audio)
+                    && self.audio_popup.direction() == direction
+                {
                     self.pending_popup = None;
                     return self.close(window);
                 }
 
-                return self.request_popup(PopupRequest::Audio(window));
+                return self.request_popup(PopupRequest::Audio(window, direction));
             }
             BarMessage::Tray(TrayMessage::Open(menu)) => {
                 return self.request_popup(PopupRequest::Menu(window, menu));
@@ -848,6 +860,11 @@ impl Shell {
                     }
                 }
                 return self.resize_menu(window);
+            }
+            BarMessage::Audio(AudioMessage::Resize(width, height)) => {
+                if self.surfaces.get(&window) == Some(&Surface::Audio) {
+                    return self.resize_popup(window, (width, height));
+                }
             }
             BarMessage::Audio(message) => self
                 .audio_popup

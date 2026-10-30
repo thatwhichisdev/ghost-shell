@@ -98,7 +98,8 @@ impl App {
             system_dark: true,
         };
         let open = app.open();
-        let load = ghost_shell_launcher::Launcher::load().map(Message::Feature);
+        let load = ghost_shell_launcher::Launcher::load(app.config.general.theme.clone())
+            .map(Message::Feature);
         (
             app,
             Task::batch([open, load, iced::system::theme().map(Message::Theme)]),

@@ -23,7 +23,8 @@ The [project README](../../README.md) contains screenshots and the roadmap.
   status.
 - [Menu](configuration/Menu.md): launcher shortcut and current limits.
 - [Tray](configuration/Tray.md): session integration and application menus.
-- [Audio](configuration/Audio.md): PipeWire devices, volume, and mute controls.
+- [Audio](configuration/Audio.md): PipeWire devices, active-device selection,
+  and volume controls.
 - [Clock](configuration/Clock.md): time format and update frequency.
 - [Workspaces](configuration/Workspaces.md): Niri workspace indicators.
 - [Launcher](configuration/Launcher.md): application discovery and appearance.

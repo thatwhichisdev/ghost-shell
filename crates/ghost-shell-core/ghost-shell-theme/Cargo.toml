@@ -12,5 +12,6 @@ publish.workspace = true
 path = "src/theme.rs"
 
 [dependencies]
-iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
+iced = { workspace = true, features = ["advanced", "svg", "image-without-codecs", "tokio", "wayland", "wgpu"] }
 ghost-shell-config.workspace = true
+ghost-shell-assets.workspace = true

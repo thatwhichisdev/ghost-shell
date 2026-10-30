@@ -133,6 +133,39 @@ mod tests {
         }
     }
 
+    #[test]
+    fn default_requests_and_failures_do_not_change_the_confirmed_device() -> Result<()> {
+        let (mut audio, _) = AudioAdapter::<RecordingBackend>::start()?;
+        audio.apply(AudioUpdate::Connection(AudioConnectionStatus::Connected));
+        for (number, name) in [(1, "speakers"), (2, "headphones")] {
+            audio.apply(AudioUpdate::Endpoint(AudioEndpoint {
+                id: AudioEndpointId(number),
+                direction: AudioDirection::Output,
+                name: name.into(),
+                description: name.into(),
+                volume: Some(0.5),
+                muted: Some(false),
+            }));
+        }
+        audio.apply(AudioUpdate::Default(
+            AudioDirection::Output,
+            Some("speakers".into()),
+        ));
+        audio.set_default(AudioEndpointId(2))?;
+        assert_eq!(audio.state().default_output(), Some(AudioEndpointId(1)));
+        audio.apply(AudioUpdate::CommandFailed(AudioCommandError {
+            endpoint: Some(AudioEndpointId(2)),
+            message: "activation rejected".into(),
+        }));
+        assert_eq!(audio.state().default_output(), Some(AudioEndpointId(1)));
+        audio.apply(AudioUpdate::Default(
+            AudioDirection::Output,
+            Some("headphones".into()),
+        ));
+        assert_eq!(audio.state().default_output(), Some(AudioEndpointId(2)));
+        Ok(())
+    }
+
     #[tokio::test]
     async fn replacement_backend_preserves_validation_and_state_ownership() -> Result<()>
     {

@@ -58,6 +58,7 @@ pub struct GreeterSessionConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
+    pub theme: Option<String>,
     pub font_family: String,
     pub font_size: f32,
 }
@@ -65,6 +66,7 @@ pub struct GeneralConfig {
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
+            theme: None,
             font_family: "monospace".into(),
             font_size: 13.0,
         }

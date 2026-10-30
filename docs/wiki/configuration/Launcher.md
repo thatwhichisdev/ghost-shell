@@ -43,6 +43,9 @@ background_opacity = 0.8
   | `blur`               | `false`   | Requests compositor blur behind the launcher             |
   | `background_opacity` | Automatic | `0.8` with blur, otherwise `1.0`; clamped to `0.0`–`1.0` |
 
+Application icon lookup uses [general.theme](Introduction.md#icon-theme), with
+GTK icon-theme detection when omitted.
+
 The [general font and theme](Introduction.md#theming) also apply. There are no
 launcher-specific terminal, application-directory, or key-binding settings in
 the TOML schema.

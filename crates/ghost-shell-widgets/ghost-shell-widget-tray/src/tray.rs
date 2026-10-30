@@ -7,7 +7,7 @@ use ghost_shell_dbus::{
     MenuId, MenuItem, MenuItemType, MenuLayout, StatusNotifierId, StatusNotifierItem,
 };
 use iced::{
-    Color, ContentFit, Element, Fill,
+    ContentFit, Element, Fill,
     widget::{button, container, row, text},
 };
 mod menu_popup;
@@ -21,6 +21,7 @@ pub enum TrayMessage {
 }
 
 enum Icon {
+    Symbolic(iced::widget::svg::Handle),
     Svg(iced::widget::svg::Handle),
     Image(iced::widget::image::Handle),
 }
@@ -32,15 +33,31 @@ struct Item {
 
 #[derive(Default)]
 pub struct Tray {
+    theme: Option<String>,
     items: BTreeMap<StatusNotifierId, Item>,
 }
 
 impl Tray {
+    pub fn new(theme: Option<String>) -> Self {
+        Self {
+            theme,
+            ..Self::default()
+        }
+    }
+
     pub fn remove(&mut self, id: &StatusNotifierId) {
         self.items.remove(id);
     }
     pub fn update(&mut self, item: StatusNotifierItem) {
-        let icon = match icon(&item) {
+        log::debug!(
+            "Tray item {}: identifier={:?}, icon_name={:?}, icon_theme_path={:?}, pixmaps={}",
+            item.id,
+            item.identifier,
+            item.icon_name,
+            item.icon_theme_path,
+            item.icon_pixmaps.len(),
+        );
+        let icon = match icon(&item, self.theme.as_deref()) {
             Ok(icon) => icon,
             Err(error) => {
                 log::warn!("Tray icon: {error:#}");
@@ -56,40 +73,63 @@ impl Tray {
     }
 
     pub fn view(&self) -> Element<'_, TrayMessage> {
-        row(self.items.values().map(|item| {
-            let icon: Element<'_, TrayMessage> = match &item.icon {
-                Some(Icon::Svg(handle)) => iced::widget::svg(handle.clone())
-                    .width(18)
-                    .height(18)
-                    .content_fit(ContentFit::Contain)
-                    .into(),
-                Some(Icon::Image(handle)) => iced::widget::image(handle.clone())
-                    .width(18)
-                    .height(18)
-                    .content_fit(ContentFit::Contain)
-                    .into(),
-                None => text("•").into(),
-            };
-            let button = button(container(icon).center_y(Fill))
-                .width(18)
-                .height(Fill)
-                .padding(0)
-                .style(|theme, _| button::Style {
-                    text_color: theme.palette().text,
-                    ..button::Style::default()
-                });
-            let button = if let Some(menu) = &item.menu {
-                button.on_press(TrayMessage::Open(menu.clone()))
-            } else {
-                button
-            };
-            button.into()
-        }))
-        .spacing(4)
-        .into()
+        if self.items.is_empty() {
+            return iced::widget::Space::new()
+                .width(0)
+                .height(0)
+                .into();
+        }
+        ghost_shell_theme::bar::outer(
+            row(self
+                .items
+                .values()
+                .enumerate()
+                .map(|(index, item)| {
+                    let icon: Element<'_, TrayMessage> = match &item.icon {
+                        Some(Icon::Symbolic(handle)) => {
+                            ghost_shell_theme::bar::svg(handle.clone())
+                        }
+                        Some(Icon::Svg(handle)) => iced::widget::svg(handle.clone())
+                            .width(ghost_shell_theme::bar::ICON_SIZE)
+                            .height(ghost_shell_theme::bar::ICON_SIZE)
+                            .content_fit(ContentFit::Contain)
+                            .style(|_, _| iced::widget::svg::Style { color: None })
+                            .into(),
+                        Some(Icon::Image(handle)) => iced::widget::image(handle.clone())
+                            .width(ghost_shell_theme::bar::ICON_SIZE)
+                            .height(ghost_shell_theme::bar::ICON_SIZE)
+                            .content_fit(ContentFit::Contain)
+                            .into(),
+                        None => container(text("•"))
+                            .center(ghost_shell_theme::bar::ICON_SIZE)
+                            .into(),
+                    };
+                    let content = ghost_shell_theme::bar::group_inner(
+                        icon,
+                        index == 0,
+                        index == self.items.len().saturating_sub(1),
+                    );
+                    if let Some(menu) = &item.menu {
+                        button(content)
+                            .padding(0)
+                            .style(ghost_shell_theme::bar::transparent_button)
+                            .on_press(TrayMessage::Open(menu.clone()))
+                            .into()
+                    } else {
+                        content
+                    }
+                }))
+            .spacing(0),
+        )
     }
 }
-fn icon(item: &StatusNotifierItem) -> anyhow::Result<Option<Icon>> {
+fn icon(item: &StatusNotifierItem, theme: Option<&str>) -> anyhow::Result<Option<Icon>> {
+    if let Some(path) = symbolic_icon(item, theme) {
+        log::debug!("Tray symbolic icon for {}: {}", item.id, path.display());
+        return Ok(Some(Icon::Symbolic(iced::widget::svg::Handle::from_path(
+            path,
+        ))));
+    }
     if let Some(pixmap) = item
         .icon_pixmaps
         .iter()
@@ -116,19 +156,90 @@ fn icon(item: &StatusNotifierItem) -> anyhow::Result<Option<Icon>> {
     let Some(name) = item.icon_name.as_deref() else {
         return Ok(None);
     };
-    let path = resolve_icon(name, item.icon_theme_path.as_deref());
-    Ok(path.map(|path| {
+    let path = resolve_icon(name, item.icon_theme_path.as_deref(), theme);
+    path.map(|path| -> anyhow::Result<Icon> {
         if path
             .extension()
             .is_some_and(|extension| extension == "svg")
         {
-            Icon::Svg(iced::widget::svg::Handle::from_path(path))
+            Ok(Icon::Svg(iced::widget::svg::Handle::from_path(path)))
         } else {
-            Icon::Image(iced::widget::image::Handle::from_path(path))
+            let image = image::open(path)?.into_rgba8();
+            Ok(Icon::Image(iced::widget::image::Handle::from_rgba(
+                image.width(),
+                image.height(),
+                image.into_raw(),
+            )))
         }
-    }))
+    })
+    .transpose()
 }
-fn resolve_icon(name: &str, directory: Option<&str>) -> Option<PathBuf> {
+fn symbolic_icon(
+    item: &StatusNotifierItem,
+    configured_theme: Option<&str>,
+) -> Option<PathBuf> {
+    let detected_theme = configured_theme
+        .is_none()
+        .then(freedesktop_icons::default_theme_gtk)
+        .flatten();
+    let themes = if let Some(theme) = configured_theme {
+        vec![theme]
+    } else {
+        vec![
+            detected_theme
+                .as_deref()
+                .unwrap_or("hicolor"),
+            "Papirus-Dark",
+            "Papirus",
+            "Adwaita",
+        ]
+    };
+    for name in [item.icon_name.as_deref(), item.identifier.as_deref()]
+        .into_iter()
+        .flatten()
+    {
+        let Some(name) = Path::new(name)
+            .file_name()
+            .and_then(|name| name.to_str())
+        else {
+            continue;
+        };
+        let name = name
+            .strip_suffix(".svg")
+            .or_else(|| name.strip_suffix(".png"))
+            .unwrap_or(name);
+        if name.is_empty() {
+            continue;
+        }
+        let symbolic = if name.ends_with("-symbolic") {
+            name.to_owned()
+        } else {
+            format!("{name}-symbolic")
+        };
+        for theme in &themes {
+            if let Some(path) = freedesktop_icons::lookup(&symbolic)
+                .with_theme(theme)
+                .with_size(ghost_shell_theme::bar::ICON_SIZE as u16)
+                .force_svg()
+                .with_cache()
+                .find()
+                .filter(|path| {
+                    path.extension()
+                        .is_some_and(|extension| extension == "svg")
+                })
+            {
+                return Some(path);
+            }
+        }
+    }
+    None
+}
+
+fn resolve_icon(
+    name: &str,
+    directory: Option<&str>,
+    theme: Option<&str>,
+) -> Option<PathBuf> {
     if Path::new(name).is_absolute() {
         return Some(name.into());
     }
@@ -144,11 +255,15 @@ fn resolve_icon(name: &str, directory: Option<&str>) -> Option<PathBuf> {
             }
         }
     }
-    let theme = freedesktop_icons::default_theme_gtk();
+    let detected_theme = theme
+        .is_none()
+        .then(freedesktop_icons::default_theme_gtk)
+        .flatten();
+    let theme = theme.or(detected_theme.as_deref());
     let mut lookup = freedesktop_icons::lookup(name)
         .with_size(24)
         .with_cache();
-    if let Some(theme) = theme.as_deref() {
+    if let Some(theme) = theme {
         lookup = lookup.with_theme(theme);
     }
     lookup.find()
@@ -166,7 +281,7 @@ impl MenuState {
             .filter(|item| item.visible)
             .map(|item| {
                 if item.item_type == MenuItemType::Separator {
-                    1_u32
+                    15_u32
                 } else {
                     30
                 }
@@ -241,8 +356,13 @@ fn menu_items(
         .filter(|item| item.visible)
         .map(|item| {
             if item.item_type == MenuItemType::Separator {
-                return Item::new(iced::widget::rule::horizontal(1))
-                    .close_on_click(false);
+                return Item::new(
+                    container(iced::widget::rule::horizontal(1))
+                        .width(Fill)
+                        .padding([0, 9])
+                        .center_y(15),
+                )
+                .close_on_click(false);
             }
             let submenu = item.enabled
                 && item
@@ -255,24 +375,30 @@ fn menu_items(
                 item.label.replace('_', ""),
                 if submenu { "  ‹" } else { "" }
             );
-            let mut entry = button(text(label))
-                .width(Fill)
-                .height(30)
-                .style(|theme: &iced::Theme, status| {
-                    if matches!(status, button::Status::Hovered | button::Status::Pressed)
-                    {
-                        button::Style {
-                            background: Some(theme.palette().primary.into()),
-                            text_color: Color::BLACK,
-                            ..button::Style::default()
-                        }
-                    } else {
-                        ghost_shell_theme::plain(theme, status)
-                    }
-                });
+            let mut entry = button(
+                row![
+                    iced::widget::Space::new()
+                        .width(0)
+                        .height(22),
+                    text(label).width(Fill),
+                ]
+                .align_y(iced::Center),
+            )
+            .width(Fill)
+            .padding([0, 5])
+            .style(|theme: &iced::Theme, status| {
+                if matches!(status, button::Status::Hovered | button::Status::Pressed) {
+                    let mut style = ghost_shell_theme::selected(theme, status);
+                    style.border.radius = 4.0.into();
+                    style
+                } else {
+                    ghost_shell_theme::plain(theme, status)
+                }
+            });
             if item.enabled {
                 entry = entry.on_press(TrayMessage::Activate(item.id));
             }
+            let entry = container(entry).width(Fill).padding(4);
             if submenu {
                 Item::with_menu(entry, menu_items(&item.children))
             } else {

@@ -44,11 +44,14 @@ impl Bar {
             self.tray.view().map(Message::Tray),
             ghost_shell_widget_audio::view(audio).map(Message::Audio),
             self.power.view(),
-            self.clock.view(),
+            ghost_shell_theme::bar::outer(ghost_shell_theme::bar::inner(
+                self.clock.view()
+            )),
         ]
-        .spacing(8)
+        .spacing(0)
         .align_y(iced::Center)
-        .width(Fill);
+        .width(Fill)
+        .height(Fill);
 
         let center = ghost_shell_widget_focus::view(niri);
 
@@ -57,7 +60,7 @@ impl Bar {
             .width(Fill)
             .height(Fill)
             .style(move |theme| {
-                ghost_shell_theme::surface(theme, config.background_opacity())
+                ghost_shell_theme::panel(theme, config.background_opacity())
             })
             .into()
     }

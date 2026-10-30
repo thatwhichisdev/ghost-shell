@@ -91,6 +91,7 @@ impl Lockscreen {
         let input = text_input("Password", &self.password)
             .secure(true)
             .id("lock-password")
+            .style(ghost_shell_theme::text_input)
             .padding(12)
             .width(280);
         let input = if self.authenticating {
@@ -107,7 +108,7 @@ impl Lockscreen {
             content = content.push(text("Authenticating…"));
         }
         if let Some(error) = &self.error {
-            content = content.push(text(error));
+            content = content.push(text(error).style(iced::widget::text::danger));
         }
         stack![
             wallpaper.view(),

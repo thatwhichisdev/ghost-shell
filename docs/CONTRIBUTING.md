@@ -143,13 +143,13 @@ Add `svg`, `image-without-codecs`, or other capabilities where used. The
 launcher and tray explicitly enable raster codecs through an `image` dependency
 because iced decodes their icons using that crate. Wallpaper requests its
 supported GIF, PNG and JPEG codecs. Keep default features disabled centrally for
-iced, iced_aw, Waycrate, image and zbus. Tray selects iced_aw's `menu` feature;
-audio selects `drop_down`. The tray's popup adapter opens an inert menu root and
-measures iced_aw's overlay layout to resize the Wayland surface. Its layout
-contract is covered by headless interaction tests, so iced_aw is pinned exactly
-to 0.14.1 and the adapter must be checked when upgrading. This release uses iced
-0.14; upstream main targets iced development APIs and must not be substituted
-without checking compatibility.
+iced, iced_aw, Waycrate, image and zbus. Tray and audio select iced_aw's `menu`
+feature. Each widget owns a popup adapter that opens an inert menu root and
+measures iced_aw's overlay layout to resize its Wayland surface. These layout
+contracts are covered by headless interaction tests, so iced_aw is pinned
+exactly to 0.14.1 and both adapters must be checked when upgrading. This release
+uses iced 0.14; upstream main targets iced development APIs and must not be
+substituted without checking compatibility.
 
 Check affected members separately, including test targets, before checking the
 whole workspace. Unified workspace features can otherwise hide an incomplete

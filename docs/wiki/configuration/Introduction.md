@@ -91,6 +91,38 @@ defaults](../../../crates/ghost-shell-core/ghost-shell-config/src/config.rs) and
 [startup
 fallback](../../../crates/ghost-shell-applications/ghost-shell-bar/src/app.rs).
 
+### Icon theme
+
+Set `general.theme` to an installed icon theme's exact, case-sensitive directory
+name. It controls launcher application icons and bar tray icon lookup; it does
+not change the Base16 palette or bundled audio/battery icons.
+
+```toml
+[general]
+theme = "Papirus"
+```
+
+This is a free-form string, not a fixed enum. Examples include `Papirus`,
+`Papirus-Dark`, `Papirus-Light`, `Adwaita`, and `hicolor`, when installed.
+Use the directory name under `share/icons`, not the package name or the display
+name inside `index.theme`. For Home Manager:
+
+```nix
+home.packages = [ pkgs.papirus-icon-theme ];
+programs.ghost-shell.settings.general.theme = "Papirus";
+```
+
+The theme must be available through the session's icon search paths (including
+`XDG_DATA_DIRS`). Lookup uses the selected theme, its inherited themes, and the
+library's hicolor/file fallbacks. Missing icons retain the existing application
+fallback behavior. Setting a name does not install a theme or manufacture
+symbolic icons for applications that do not have them.
+
+When omitted, the launcher uses GTK icon-theme detection (otherwise hicolor).
+The tray retains its automatic symbolic search through GTK/hicolor,
+Papirus-Dark, Papirus, and Adwaita. An explicit setting replaces that automatic
+list. Restart the bar and reopen the launcher after changes.
+
 ## Theming
 
 Each desktop application builds its theme from the shared `config.toml` at
@@ -147,7 +179,9 @@ Home Manager preserves strings in generated TOML; numeric values may be emitted
 as decimal integers. This color syntax also applies to the greeter's theme.
 Wallpaper `bg` remains a numeric `0xRRGGBBAA` value.
 
-For the exact mapping from palette entries to UI roles, see [theme
+For the required UI roles, see the [Base16 color
+contract](../development/UI-UX.md#base16-color-contract). For the implementation
+of palette mapping, see [theme
 mapping](../../../crates/ghost-shell-core/ghost-shell-theme/src/theme.rs). Mode
 selection is implemented in the
 [application](../../../crates/ghost-shell-applications/ghost-shell-launcher/src/app.rs);

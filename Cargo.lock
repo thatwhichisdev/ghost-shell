@@ -2029,6 +2029,7 @@ dependencies = [
 name = "ghost-shell-theme"
 version = "0.1.0"
 dependencies = [
+ "ghost-shell-assets",
  "ghost-shell-config",
  "iced",
 ]
@@ -2090,6 +2091,7 @@ name = "ghost-shell-widget-power"
 version = "0.1.0"
 dependencies = [
  "ghost-shell-assets",
+ "ghost-shell-theme",
  "iced",
  "starship-battery",
 ]

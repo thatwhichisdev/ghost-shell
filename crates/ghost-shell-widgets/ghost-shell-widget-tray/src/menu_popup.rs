@@ -40,22 +40,30 @@ impl<'a, R: renderer::Renderer + 'a> Popup<'a, R> {
         .safe_bounds_margin(f32::MAX)
         .close_on_item_click_global(false)
         .close_on_background_click_global(false)
-        .style(|theme: &Theme, _| iced_aw::menu::Style {
-            bar_background: iced::Color::TRANSPARENT.into(),
-            menu_background: theme.palette().background.into(),
-            menu_border: iced::Border {
-                color: iced::Color::WHITE,
-                width: 1.0,
-                radius: 6.0.into(),
-            },
-            menu_shadow: iced::Shadow::default(),
-            ..Default::default()
-        });
+        .style(|theme: &Theme, _| menu_style(theme));
         Self {
             menu: menu.into(),
             canvas: Size::new((depth.max(1) as f32 + 1.0) * 270.0, 702.0),
             generation,
         }
+    }
+}
+
+fn menu_style(theme: &Theme) -> iced_aw::menu::Style {
+    iced_aw::menu::Style {
+        bar_background: iced::Color::TRANSPARENT.into(),
+        menu_background: theme.palette().background.into(),
+        menu_border: iced::Border {
+            color: theme
+                .extended_palette()
+                .background
+                .strong
+                .color,
+            width: 1.0,
+            radius: 6.0.into(),
+        },
+        menu_shadow: iced::Shadow::default(),
+        ..Default::default()
     }
 }
 
@@ -205,9 +213,13 @@ impl<R: renderer::Renderer> overlay::Overlay<TrayMessage, Theme, R>
             .reduce(|left, right| left.union(&right))
             .unwrap_or(Rectangle::new(Point::ORIGIN, Size::new(258.0, 38.0)));
         self.measured = (visible.width.ceil() as u32, visible.height.ceil() as u32);
-        let translation = Vector::new(-visible.x, -visible.y);
+        // Wayland applies popup resizing asynchronously. Keep existing menus at
+        // the current surface's right edge until its new size is configured;
+        // otherwise opening a submenu pushes the root outside the old buffer.
+        let translation =
+            Vector::new(bounds.width - visible.x - visible.width, -visible.y);
         let content = Node::with_children(
-            visible.size(),
+            bounds,
             node.children()
                 .iter()
                 .cloned()
@@ -305,6 +317,28 @@ impl<R: renderer::Renderer> overlay::Overlay<TrayMessage, Theme, R>
 mod tests {
     use super::*;
 
+    #[test]
+    fn menu_background_uses_the_exact_surface_color() {
+        for background in [iced::Color::from_rgb8(10, 12, 16), iced::Color::WHITE] {
+            let theme = Theme::custom(
+                "Menu regression",
+                iced::theme::Palette {
+                    background,
+                    ..Theme::Dark.palette()
+                },
+            );
+            assert_ne!(
+                background,
+                theme
+                    .extended_palette()
+                    .background
+                    .weak
+                    .color
+            );
+            assert_eq!(menu_style(&theme).menu_background, background.into());
+        }
+    }
+
     fn popup() -> Popup<'static, ()> {
         let leaf = |id| {
             Item::new(
@@ -370,6 +404,23 @@ mod tests {
             &mut iced::advanced::clipboard::Null,
             &mut Shell::new(&mut messages),
         );
+        // The submenu exists before the compositor acknowledges the wider surface.
+        let pending = overlay
+            .as_overlay_mut()
+            .layout(&(), viewport.size());
+        let pending_menus: Vec<_> = menu_bounds(
+            Layout::new(&pending)
+                .children()
+                .next()
+                .unwrap(),
+        )
+        .collect();
+        assert_eq!(pending_menus.len(), 2);
+        assert_eq!(
+            pending_menus[0], root,
+            "root must not jump out of the old surface"
+        );
+        assert_eq!(pending_menus[1].x + pending_menus[1].width, root.x);
         let expanded = overlay
             .as_overlay_mut()
             .layout(&(), Size::new(516.0, 68.0));
@@ -437,6 +488,21 @@ mod tests {
             &(),
             &mut iced::advanced::clipboard::Null,
             &mut Shell::new(&mut messages),
+        );
+        let pending = overlay
+            .as_overlay_mut()
+            .layout(&(), Size::new(516.0, 68.0));
+        let pending_menus: Vec<_> = menu_bounds(
+            Layout::new(&pending)
+                .children()
+                .next()
+                .unwrap(),
+        )
+        .collect();
+        assert_eq!(pending_menus.len(), 1);
+        assert_eq!(
+            pending_menus[0], menus[0],
+            "root must stay anchored while shrinking"
         );
         let collapsed = overlay
             .as_overlay_mut()

@@ -27,12 +27,14 @@ pub struct Launcher {
     pub error: Option<String>,
 }
 impl Launcher {
-    pub fn load() -> Task<Message> {
+    pub fn load(theme: Option<String>) -> Task<Message> {
         Task::perform(
-            async {
-                tokio::task::spawn_blocking(|| Arc::new(crate::entries::load().items))
-                    .await
-                    .map_err(|error| error.to_string())
+            async move {
+                tokio::task::spawn_blocking(move || {
+                    Arc::new(crate::entries::load(theme).items)
+                })
+                .await
+                .map_err(|error| error.to_string())
             },
             |result| match result {
                 Ok(entries) => Message::Loaded(entries),
@@ -178,6 +180,7 @@ impl Launcher {
         );
         let mut input = text_input("Search applications", &self.query)
             .id("launcher-query")
+            .style(ghost_shell_theme::text_input)
             .on_input(Message::Query)
             .padding(8);
         if let Some(command) = self.command() {
@@ -195,7 +198,11 @@ impl Launcher {
         ]
         .spacing(6);
         if let Some(error) = &self.error {
-            content = content.push(text(error).size(12));
+            content = content.push(
+                text(error)
+                    .style(iced::widget::text::danger)
+                    .size(12),
+            );
         }
         container(content)
             .padding(8)

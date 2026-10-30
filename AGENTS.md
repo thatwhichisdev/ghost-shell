@@ -56,6 +56,13 @@ Run development commands from the repository root.
   Keep their runtimes independent. The boot greeter reads a separate
   system-owned configuration file; greetd owns login authentication.
 
+### UI colors
+
+Follow the [Base16 color contract](docs/wiki/development/UI-UX.md#base16-color-contract).
+Use shared theme styles for surfaces, panels, selections, and text inputs.
+Choose colors by semantic slot, not by the current hue, and do not hard-code
+black/white foregrounds or borders for ordinary widgets.
+
 ### Rust
 
 * Prioritize code correctness and clarity. Speed and efficiency are secondary

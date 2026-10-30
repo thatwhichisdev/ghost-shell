@@ -54,10 +54,26 @@ disconnected output's bar is removed and can return on reconnection.
   | Center  | Focused window            |
   | End     | Tray, audio, power, clock |
 
-Bar content has a 9px inset on both the left and right edges. The menu,
-workspace dots and speaker use 18px icons; the battery uses a 24px state icon.
-Icons are vertically centered, with filled and outlined dots marking active and
-inactive workspaces respectively. This layout is currently fixed in code. TOML
+Bar content has a 9px inset on both the left and right edges. Start-section
+icons remain 18px, with filled and outlined dots marking active and inactive
+workspaces respectively.
+
+Each end-section widget has a transparent, full-height outer container with a
+2px horizontal inset and a 4px vertical inset around its 20px-high inner
+container. Set `height` and `exclusive_zone` to `28.0` for this layout. Content width follows its text and icons. Inner containers have 4px horizontal padding and a 4px outer corner radius. Tray
+icons each occupy a 16×16px square inside a 24×20px inner container, with no
+gap between items; audio and battery icons are also 16×16px. Empty tray and missing battery widgets take no space.
+
+Inner containers use a `base00` background with `base07` text and monochrome
+icons. Hovering changes only the background to `base02`. Tray items prefer available symbolic SVGs in `base07`; original fallback
+icons retain their own colors in both states. Tray and audio items join without
+gaps: only the first item's left corners and last item's right corners are
+rounded. A single item has all four corners rounded. The outer margins do not
+highlight. Audio and tray menu actions retain their existing behavior; battery
+and clock highlighting does not add click actions. These dimensions are fixed
+in code; configurable inner height and margins are not yet available.
+
+ This layout is currently fixed in code. TOML
 cannot add, remove, reorder, or independently configure widget instances per
 output. Network and notifications are not rendered. See
 [widgets](Bar.md#widgets) for current behavior and limits.
@@ -117,9 +133,13 @@ crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-focus/src/focus.rs
 
 Status: **Partial battery indicator.**
 
-Displays a 24px icon for the first enumerated battery using `starship-battery`.
-Charging and full batteries use dedicated icons; discharging and paused
-batteries use charge-level icons. A missing battery leaves the indicator empty
+Displays a 16px icon for the first enumerated battery using `starship-battery`.
+Charging uses `battery-vertical-charging.svg`. A full battery uses
+`battery-vertical-charging-2.svg` when an external system power supply reports
+online through Linux sysfs, and `battery-vertical-4.svg` otherwise.
+Other states select by charge: `battery-vertical-1.svg` below 25%,
+`battery-vertical-2.svg` from 25% to below 50%, `battery-vertical-3.svg` from
+50% to below 76%, and `battery-vertical-4.svg` at 76% or above. A missing battery leaves the indicator empty
 and does not prevent bars from appearing. Read errors are logged.
 
 ### Setup and configuration

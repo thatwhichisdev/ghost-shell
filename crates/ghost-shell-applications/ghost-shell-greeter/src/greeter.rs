@@ -222,6 +222,7 @@ impl Greeter {
     ) -> Element<'a, Message> {
         let username = text_input("Username", &self.username)
             .id("greeter-username")
+            .style(ghost_shell_theme::text_input)
             .padding(12);
         let username = if matches!(self.phase, Phase::Username) {
             username
@@ -246,6 +247,7 @@ impl Greeter {
                         )
                         .secure(*secret)
                         .id("greeter-answer")
+                        .style(ghost_shell_theme::text_input)
                         .padding(12)
                         .on_input(Message::Answer)
                         .on_submit(Message::Submit),
@@ -257,6 +259,7 @@ impl Greeter {
                 form = form
                     .push(
                         text_input("Password", "")
+                            .style(ghost_shell_theme::text_input)
                             .secure(true)
                             .padding(12),
                     )
@@ -281,7 +284,7 @@ impl Greeter {
             form = form.push(text(notice));
         }
         if let Some(error) = &self.error {
-            form = form.push(text(error));
+            form = form.push(text(error).style(iced::widget::text::danger));
         }
         let content = column![text(clock).size(128), form]
             .spacing(32)
