@@ -77,7 +77,7 @@ confident that Ghost Shell is robust and performant enough for a proper release.
   - [ ] Widget: Power Control (Battery/Power modes)
   - [x] Widget: Clock
   - [ ] Widget: Screenshot & Screen recording
-  - [ ] Widget: Theme Polarity Changer
+  - [x] Widget: Theme Polarity Changer
   - [ ] Widget: Weather
 - [x] Launcher
 - [x] Finder

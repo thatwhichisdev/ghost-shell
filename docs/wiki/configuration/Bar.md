@@ -87,7 +87,7 @@ their own styling.
 
 | Section | Widgets, in order |
 | --- | --- |
-| Start | System menu, workspaces |
+| Start | System menu, theme toggle, workspaces |
 | Center | Focused window |
 | End | Tray, audio, power, clock |
 
@@ -175,6 +175,7 @@ configuration. Their fonts and colors follow the shared theme.
   | Widget                                  | Current state                            | Dedicated configuration |
   | --------------------------------------- | ---------------------------------------- | ----------------------- |
   | [System menu](Menu.md)                  | Shutdown, reboot, lock, styling                        | None                    |
+  | [Theme toggle](#theme-toggle) | Live dark/light toggle | None |
   | [Workspaces](Workspaces.md)             | Implemented indicator                    | None                    |
   | [Focused window](Bar.md#focused-window) | Implemented indicator                    | None                    |
   | [System tray](Tray.md)                  | Implemented with incomplete interactions | None                    |
@@ -189,9 +190,20 @@ limits. Status here describes what exists; the
 [roadmap](../../../README.md#roadmap) tracks whether a feature is considered
 complete.
 
-Camera, Bluetooth, screenshot/recording, theme-switch, and weather widgets
+Camera, Bluetooth, screenshot/recording, and weather widgets
 remain roadmap items without corresponding widget crates. Add reference pages
 when an implementation or concrete configuration contract exists.
+
+## Theme toggle
+
+The half-circle icon between the system menu and workspaces switches all bars
+and their popups between dark and light palettes. In system mode, the first
+click selects the opposite of the currently displayed appearance.
+
+This is an in-memory override, like the Appearance panel. It leaves the saved
+configuration and other applications unchanged. Use Appearance → Copy Nix to
+persist the selected mode, or Reset from file to restore it (including system
+mode). The icon follows the shared bar widget dimensions and decoration.
 
 ## Focused window
 

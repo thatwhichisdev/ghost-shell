@@ -25,6 +25,7 @@ members = [
   "crates/ghost-shell-widgets/ghost-shell-widget-tray",
   "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
   "crates/ghost-shell-widgets/ghost-shell-widget-styling",
+  "crates/ghost-shell-widgets/ghost-shell-widget-theme",
 ]
 default-members = [
   "crates/ghost-shell-applications/ghost-shell-bar",
@@ -68,6 +69,8 @@ ghost-shell-widget-tray = { path = "crates/ghost-shell-widgets/ghost-shell-widge
 ghost-shell-widget-workspaces = { path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces" }
 
 ghost-shell-widget-styling = { path = "crates/ghost-shell-widgets/ghost-shell-widget-styling" }
+
+ghost-shell-widget-theme = { path = "crates/ghost-shell-widgets/ghost-shell-widget-theme" }
 
 # iced gui framework
 iced = { version = "0.14.0", default-features = false }

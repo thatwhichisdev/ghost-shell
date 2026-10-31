@@ -1867,6 +1867,7 @@ dependencies = [
  "ghost-shell-widget-menu",
  "ghost-shell-widget-power",
  "ghost-shell-widget-styling",
+ "ghost-shell-widget-theme",
  "ghost-shell-widget-tray",
  "ghost-shell-widget-workspaces",
  "iced",
@@ -2109,6 +2110,14 @@ dependencies = [
  "ghost-shell-theme",
  "iced",
  "serde_json",
+]
+
+[[package]]
+name = "ghost-shell-widget-theme"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-theme",
+ "iced",
 ]
 
 [[package]]

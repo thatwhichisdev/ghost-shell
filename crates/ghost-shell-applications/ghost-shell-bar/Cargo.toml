@@ -32,3 +32,4 @@ ghost-shell-widget-power.workspace = true
 ghost-shell-widget-tray.workspace = true
 ghost-shell-widget-workspaces.workspace = true
 ghost-shell-widget-styling.workspace = true
+ghost-shell-widget-theme.workspace = true

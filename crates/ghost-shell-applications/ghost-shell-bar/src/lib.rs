@@ -12,6 +12,7 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Menu(ghost_shell_widget_menu::Message),
+    Theme(ghost_shell_widget_theme::Message),
     Audio(ghost_shell_widget_audio::Message),
     Tray(ghost_shell_widget_tray::TrayMessage),
     Decorations(Vec<ghost_shell_theme::bar::Decoration>),
@@ -41,6 +42,7 @@ impl Bar {
         };
         let start = row![
             ghost_shell_widget_menu::view(style).map(Message::Menu),
+            ghost_shell_widget_theme::view(style).map(Message::Theme),
             ghost_shell_widget_workspaces::view(output, niri, style),
         ]
         .spacing(0)

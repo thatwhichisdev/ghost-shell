@@ -164,9 +164,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     })
     .redraw_scope(|message| match message {
         Message::Cursor(..) => iced_exwlshell::redraw::Scope::None,
-        Message::Bar(_, ghost_shell_bar::Message::Styling(_)) => {
-            iced_exwlshell::redraw::Scope::All
-        }
+        Message::Bar(
+            _,
+            ghost_shell_bar::Message::Styling(_) | ghost_shell_bar::Message::Theme(_),
+        ) => iced_exwlshell::redraw::Scope::All,
         Message::Bar(window, _) => iced_exwlshell::redraw::Scope::Window(*window),
         _ => iced_exwlshell::redraw::Scope::All,
     })
@@ -1063,6 +1064,24 @@ impl Shell {
         use ghost_shell_bar::Message as BarMessage;
 
         match message {
+            BarMessage::Theme(ghost_shell_widget_theme::Message::Toggle) => {
+                use ghost_shell_config::ThemeMode;
+                let dark = match self.config.theme.mode {
+                    ThemeMode::Dark => true,
+                    ThemeMode::Light => false,
+                    ThemeMode::System => self.system_dark,
+                };
+                let mut config = self.config.clone();
+                self.styling.update(
+                    ghost_shell_widget_styling::Message::Mode(if dark {
+                        ThemeMode::Light
+                    } else {
+                        ThemeMode::Dark
+                    }),
+                    &mut config,
+                );
+                return self.apply_config(config);
+            }
             BarMessage::Styling(message) => {
                 use ghost_shell_widget_styling::Message as StylingMessage;
                 match message {
@@ -1448,6 +1467,38 @@ mod tests {
         assert_eq!(shell.system_error.as_deref(), Some("Access denied"));
         assert_eq!(shell.find(Surface::SystemMenu), Some(menu));
         assert!(shell.closing_popup.is_none());
+    }
+
+    #[test]
+    fn theme_toggle_uses_visible_polarity_and_preserves_saved_settings() {
+        use ghost_shell_config::ThemeMode;
+        for (mode, system_dark, expected) in [
+            (ThemeMode::Dark, false, ThemeMode::Light),
+            (ThemeMode::Light, true, ThemeMode::Dark),
+            (ThemeMode::System, true, ThemeMode::Light),
+            (ThemeMode::System, false, ThemeMode::Dark),
+        ] {
+            let mut shell = shell();
+            shell.config.theme.mode = mode;
+            shell.system_dark = system_dark;
+            let saved = shell.file_config.clone();
+            drop(shell.bar_message(
+                Id::unique(),
+                ghost_shell_bar::Message::Theme(
+                    ghost_shell_widget_theme::Message::Toggle,
+                ),
+            ));
+            assert_eq!(shell.config.theme.mode, expected);
+            assert_eq!(shell.file_config, saved);
+            drop(shell.bar_message(
+                Id::unique(),
+                ghost_shell_bar::Message::Theme(
+                    ghost_shell_widget_theme::Message::Toggle,
+                ),
+            ));
+            assert_ne!(shell.config.theme.mode, expected);
+            assert_ne!(shell.config.theme.mode, ThemeMode::System);
+        }
     }
 
     #[test]
