@@ -11,8 +11,11 @@ impl Clock {
     pub fn update(&mut self, now: &jiff::Zoned, format: &str) {
         self.label = now.strftime(format).to_string();
     }
-    pub fn view<Message>(&self) -> Element<'_, Message> {
-        text(&self.label).into()
+    pub fn view<Message>(&self, font: iced::Font, size: f32) -> Element<'_, Message> {
+        text(&self.label)
+            .font(font)
+            .size(size)
+            .into()
     }
 }
 

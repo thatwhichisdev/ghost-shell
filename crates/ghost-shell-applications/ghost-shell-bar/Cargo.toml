@@ -8,7 +8,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "process"] }
 anyhow.workspace = true
 futures.workspace = true
 jiff.workspace = true
@@ -21,7 +21,7 @@ log.workspace = true
 ghost-shell-ipc = { workspace = true, features = ["iced"] }
 iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
 ghost-shell-theme.workspace = true
-ghost-shell-config.workspace = true
+ghost-shell-config = { workspace = true, features = ["watch"] }
 ghost-shell-niri.workspace = true
 ghost-shell-audio.workspace = true
 ghost-shell-widget-audio.workspace = true
@@ -31,3 +31,4 @@ ghost-shell-widget-menu.workspace = true
 ghost-shell-widget-power.workspace = true
 ghost-shell-widget-tray.workspace = true
 ghost-shell-widget-workspaces.workspace = true
+ghost-shell-widget-styling.workspace = true

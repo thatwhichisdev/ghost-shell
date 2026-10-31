@@ -9,6 +9,8 @@ use iced::{
 
 #[derive(Clone, Copy)]
 pub struct Style {
+    pub font: iced::Font,
+    pub font_size: f32,
     pub widgets: ghost_shell_config::BarWidgetsConfig,
     pub decoration: ghost_shell_config::BarDecorationConfig,
 }
@@ -16,6 +18,8 @@ pub struct Style {
 impl From<&ghost_shell_config::BarConfig> for Style {
     fn from(config: &ghost_shell_config::BarConfig) -> Self {
         Self {
+            font: iced::Font::MONOSPACE,
+            font_size: 13.0,
             widgets: config.widgets,
             decoration: config.decoration,
         }
@@ -51,13 +55,40 @@ pub fn inner<'a, Message: 'a>(
     content: impl Into<Element<'a, Message>>,
     style: Style,
 ) -> Element<'a, Message> {
-    group_inner(content, true, true, style)
+    item_inner(content, true, true, true, style)
 }
 
 pub fn group_inner<'a, Message: 'a>(
     content: impl Into<Element<'a, Message>>,
     first: bool,
     last: bool,
+    style: Style,
+) -> Element<'a, Message> {
+    item_inner(content, first, last, false, style)
+}
+
+pub fn group<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    style: Style,
+) -> Element<'a, Message> {
+    // Paint translucent islands once: adjacent independently blended quads
+    // can leave a visible seam even when their layout bounds touch.
+    Element::new(Hover {
+        radius: style.decoration.radius.into(),
+        style,
+        root: false,
+        background: true,
+        interactive: false,
+        report: None,
+        content: content.into(),
+    })
+}
+
+fn item_inner<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    first: bool,
+    last: bool,
+    background: bool,
     style: Style,
 ) -> Element<'a, Message> {
     Element::new(Hover {
@@ -69,6 +100,8 @@ pub fn group_inner<'a, Message: 'a>(
         },
         style,
         root: false,
+        background,
+        interactive: true,
         report: None,
         content: container(content)
             .padding([0.0, style.widgets.padding_horizontal])
@@ -86,6 +119,8 @@ pub fn decorated<'a, Message: 'a>(
         radius: style.decoration.radius.into(),
         style,
         root: true,
+        background: true,
+        interactive: false,
         report: style
             .decoration
             .blur
@@ -112,6 +147,8 @@ struct Hover<'a, Message> {
     radius: iced::border::Radius,
     style: Style,
     root: bool,
+    background: bool,
+    interactive: bool,
     report: Option<Box<dyn Fn(Vec<Decoration>) -> Message + 'a>>,
     content: Element<'a, Message>,
 }
@@ -149,7 +186,7 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
         renderer: &Renderer,
         operation: &mut dyn Operation,
     ) {
-        if !self.root {
+        if !self.root && self.background {
             operation.custom(None, layout.bounds(), &mut self.radius);
         }
         self.content.as_widget_mut().operate(
@@ -170,8 +207,9 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        let hovered =
-            !self.root && cursor.is_over(layout.bounds()) && cursor.is_over(*viewport);
+        let hovered = self.interactive
+            && cursor.is_over(layout.bounds())
+            && cursor.is_over(*viewport);
         let state = tree.state.downcast_mut::<State>();
         if state.hovered != hovered {
             state.hovered = hovered;
@@ -199,6 +237,9 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
                 shell.publish(report(decorations.clone()));
                 state.decorations = Some(decorations);
             }
+        }
+        if self.report.is_none() {
+            state.decorations = None;
         }
         self.content.as_widget_mut().update(
             &mut tree.children[0],
@@ -238,11 +279,13 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
         viewport: &Rectangle,
     ) {
         let pair = theme.extended_palette().background.neutral;
-        let hovered =
-            !self.root && cursor.is_over(layout.bounds()) && cursor.is_over(*viewport);
-        let decorated = self.root
-            == (self.style.decoration.layout
-                == ghost_shell_config::BarLayout::Continuous);
+        let hovered = self.interactive
+            && cursor.is_over(layout.bounds())
+            && cursor.is_over(*viewport);
+        let decorated = self.background
+            && self.root
+                == (self.style.decoration.layout
+                    == ghost_shell_config::BarLayout::Continuous);
         let background = if hovered {
             Some(
                 theme
@@ -264,12 +307,16 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
         if let Some(background) = background {
             container::draw_background(
                 renderer,
-                &container::Style::default()
-                    .background(background)
-                    .border(iced::Border {
-                        radius: self.radius,
-                        ..Default::default()
-                    }),
+                &container::Style {
+                    // Keep individual hover edges aligned to physical pixels.
+                    snap: true,
+                    ..Default::default()
+                }
+                .background(background)
+                .border(iced::Border {
+                    radius: self.radius,
+                    ..Default::default()
+                }),
                 layout.bounds(),
             );
         }

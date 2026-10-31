@@ -41,16 +41,16 @@ pub fn battery() -> Result<Option<&'static str>, String> {
         State::Full
             if external_power_connected().map_err(|error| error.to_string())? =>
         {
-            "icons/battery-plus-vertical.svg"
+            "icons/battery-plus-vertical-fill.svg"
         }
-        State::Full => "icons/battery-vertical-full.svg",
-        State::Charging => "icons/battery-vertical-charging.svg",
+        State::Full => "icons/battery-vertical-full-fill.svg",
+        State::Charging => "icons/battery-vertical-charging-fill.svg",
         State::Unknown | State::Empty | State::Discharging | State::Paused => {
             match battery.state_of_charge().get::<percent>() {
-                level if level < 25.0 => "icons/battery-vertical-low.svg",
-                level if level < 50.0 => "icons/battery-vertical-medium.svg",
-                level if level < 76.0 => "icons/battery-vertical-high.svg",
-                _ => "icons/battery-vertical-full.svg",
+                level if level < 25.0 => "icons/battery-vertical-low-fill.svg",
+                level if level < 50.0 => "icons/battery-vertical-medium-fill.svg",
+                level if level < 76.0 => "icons/battery-vertical-high-fill.svg",
+                _ => "icons/battery-vertical-full-fill.svg",
             }
         }
     };

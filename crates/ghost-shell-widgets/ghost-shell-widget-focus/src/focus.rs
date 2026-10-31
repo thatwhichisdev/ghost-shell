@@ -23,8 +23,13 @@ pub fn view<'a, Message: 'a>(
     }
     ghost_shell_theme::bar::outer(
         ghost_shell_theme::bar::inner(
-            container(text(title).wrapping(iced::widget::text::Wrapping::None))
-                .clip(true),
+            container(
+                text(title)
+                    .font(style.font)
+                    .size(style.font_size)
+                    .wrapping(iced::widget::text::Wrapping::None),
+            )
+            .clip(true),
             style,
         ),
         style,

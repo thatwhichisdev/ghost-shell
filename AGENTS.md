@@ -53,6 +53,8 @@ Run development commands from the repository root.
   usable independently. Bar owns wallpaper backgrounds; lockscreen alone owns
   session locking and unlock authentication. Desktop applications read shared
   `config.toml`, deserializing only their relevant sections and shared settings.
+  Bar reloads valid config changes live; retain the last working config on errors
+  and keep styling previews in memory until the user persists them in Nix.
   Keep their runtimes independent. The boot greeter reads a separate
   system-owned configuration file; greetd owns login authentication.
 

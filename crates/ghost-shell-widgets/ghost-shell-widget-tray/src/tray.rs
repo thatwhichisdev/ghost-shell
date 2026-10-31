@@ -1,6 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use ghost_shell_dbus::{
@@ -20,21 +21,55 @@ pub enum TrayMessage {
     Activate(i32),
 }
 
+#[derive(Clone)]
 enum Icon {
     Symbolic(iced::widget::svg::Handle),
     Svg(iced::widget::svg::Handle),
     Image(iced::widget::image::Handle),
 }
 
+pub struct IconRequest {
+    snapshot: Arc<StatusNotifierItem>,
+    revision: u64,
+    generation: u64,
+    theme: Option<String>,
+    size: u16,
+}
+
+#[derive(Clone)]
+pub struct IconUpdate {
+    id: StatusNotifierId,
+    revision: u64,
+    generation: u64,
+    icon: Result<Option<Icon>, String>,
+}
+
+pub fn resolve_icons(requests: Vec<IconRequest>) -> Vec<IconUpdate> {
+    requests
+        .into_iter()
+        .map(|request| IconUpdate {
+            icon: icon(&request.snapshot, request.theme.as_deref(), request.size)
+                .map_err(|error| error.to_string()),
+            id: request.snapshot.id.clone(),
+            revision: request.revision,
+            generation: request.generation,
+        })
+        .collect()
+}
+
 struct Item {
+    revision: u64,
     icon: Option<Icon>,
     menu: Option<MenuId>,
+    snapshot: Arc<StatusNotifierItem>,
 }
 
 #[derive(Default)]
 pub struct Tray {
     theme: Option<String>,
     icon_size: u16,
+    generation: u64,
+    revision: u64,
     items: BTreeMap<StatusNotifierId, Item>,
 }
 
@@ -45,6 +80,49 @@ impl Tray {
             icon_size: icon_size.ceil().clamp(1.0, u16::MAX as f32) as u16,
             ..Self::default()
         }
+    }
+
+    pub fn configure(
+        &mut self,
+        theme: Option<String>,
+        icon_size: f32,
+    ) -> Vec<IconRequest> {
+        let icon_size = icon_size.ceil().clamp(1.0, u16::MAX as f32) as u16;
+        if self.theme == theme && self.icon_size == icon_size {
+            return Vec::new();
+        }
+        self.theme = theme;
+        self.icon_size = icon_size;
+        self.generation = self.generation.wrapping_add(1);
+        self.items
+            .values()
+            .map(|item| IconRequest {
+                snapshot: item.snapshot.clone(),
+                revision: item.revision,
+                generation: self.generation,
+                theme: self.theme.clone(),
+                size: self.icon_size,
+            })
+            .collect()
+    }
+
+    pub fn apply_icons(&mut self, updates: Vec<IconUpdate>) -> Vec<String> {
+        let mut errors = Vec::new();
+        for update in updates {
+            if update.generation != self.generation {
+                continue;
+            }
+            if let Some(item) = self.items.get_mut(&update.id) {
+                if item.revision != update.revision {
+                    continue;
+                }
+                match update.icon {
+                    Ok(icon) => item.icon = icon,
+                    Err(error) => errors.push(error),
+                }
+            }
+        }
+        errors
     }
 
     pub fn remove(&mut self, id: &StatusNotifierId) {
@@ -68,10 +146,19 @@ impl Tray {
         };
         let menu = item
             .menu
+            .clone()
             .filter(|path| path != "/")
             .map(|path| MenuId::new(item.id.service(), path));
-        self.items
-            .insert(item.id, Item { icon, menu });
+        self.revision = self.revision.wrapping_add(1);
+        self.items.insert(
+            item.id.clone(),
+            Item {
+                revision: self.revision,
+                icon,
+                menu,
+                snapshot: Arc::new(item),
+            },
+        );
     }
 
     pub fn view(&self, style: ghost_shell_theme::bar::Style) -> Element<'_, TrayMessage> {
@@ -82,48 +169,57 @@ impl Tray {
                 .into();
         }
         ghost_shell_theme::bar::outer(
-            row(self
-                .items
-                .values()
-                .enumerate()
-                .map(|(index, item)| {
-                    let icon: Element<'_, TrayMessage> = match &item.icon {
-                        Some(Icon::Symbolic(handle)) => ghost_shell_theme::bar::svg(
-                            handle.clone(),
-                            style.widgets.icon_size,
-                        ),
-                        Some(Icon::Svg(handle)) => iced::widget::svg(handle.clone())
-                            .width(style.widgets.icon_size)
-                            .height(style.widgets.icon_size)
-                            .content_fit(ContentFit::Contain)
-                            .style(|_, _| iced::widget::svg::Style { color: None })
-                            .into(),
-                        Some(Icon::Image(handle)) => iced::widget::image(handle.clone())
-                            .width(style.widgets.icon_size)
-                            .height(style.widgets.icon_size)
-                            .content_fit(ContentFit::Contain)
-                            .into(),
-                        None => container(text("•"))
+            ghost_shell_theme::bar::group(
+                row(self
+                    .items
+                    .values()
+                    .enumerate()
+                    .map(|(index, item)| {
+                        let icon: Element<'_, TrayMessage> = match &item.icon {
+                            Some(Icon::Symbolic(handle)) => ghost_shell_theme::bar::svg(
+                                handle.clone(),
+                                style.widgets.icon_size,
+                            ),
+                            Some(Icon::Svg(handle)) => iced::widget::svg(handle.clone())
+                                .width(style.widgets.icon_size)
+                                .height(style.widgets.icon_size)
+                                .content_fit(ContentFit::Contain)
+                                .style(|_, _| iced::widget::svg::Style { color: None })
+                                .into(),
+                            Some(Icon::Image(handle)) => {
+                                iced::widget::image(handle.clone())
+                                    .width(style.widgets.icon_size)
+                                    .height(style.widgets.icon_size)
+                                    .content_fit(ContentFit::Contain)
+                                    .into()
+                            }
+                            None => container(
+                                text("•")
+                                    .font(style.font)
+                                    .size(style.font_size),
+                            )
                             .center(style.widgets.icon_size)
                             .into(),
-                    };
-                    let content = ghost_shell_theme::bar::group_inner(
-                        icon,
-                        index == 0,
-                        index == self.items.len().saturating_sub(1),
-                        style,
-                    );
-                    if let Some(menu) = &item.menu {
-                        button(content)
-                            .padding(0)
-                            .style(ghost_shell_theme::bar::transparent_button)
-                            .on_press(TrayMessage::Open(menu.clone()))
-                            .into()
-                    } else {
-                        content
-                    }
-                }))
-            .spacing(0),
+                        };
+                        let content = ghost_shell_theme::bar::group_inner(
+                            icon,
+                            index == 0,
+                            index == self.items.len().saturating_sub(1),
+                            style,
+                        );
+                        if let Some(menu) = &item.menu {
+                            button(content)
+                                .padding(0)
+                                .style(ghost_shell_theme::bar::transparent_button)
+                                .on_press(TrayMessage::Open(menu.clone()))
+                                .into()
+                        } else {
+                            content
+                        }
+                    }))
+                .spacing(0),
+                style,
+            ),
             style,
         )
     }
@@ -338,7 +434,7 @@ impl MenuState {
         self.size
     }
 
-    pub fn view(&self) -> Element<'_, TrayMessage> {
+    pub fn view(&self, font: iced::Font, font_size: f32) -> Element<'_, TrayMessage> {
         fn depth(items: &[MenuItem]) -> usize {
             items
                 .iter()
@@ -349,7 +445,7 @@ impl MenuState {
         }
 
         menu_popup::Popup::new(
-            menu_items(self.layout.items()),
+            menu_items(self.layout.items(), font, font_size),
             depth(self.layout.items()),
             self.generation,
         )
@@ -359,6 +455,8 @@ impl MenuState {
 
 fn menu_items(
     items: &[MenuItem],
+    font: iced::Font,
+    font_size: f32,
 ) -> iced_aw::menu::Menu<'_, TrayMessage, iced::Theme, iced::Renderer> {
     use iced_aw::menu::{Item, Menu};
 
@@ -391,27 +489,19 @@ fn menu_items(
                     iced::widget::Space::new()
                         .width(0)
                         .height(22),
-                    text(label).width(Fill),
+                    ghost_shell_theme::label(label, font, font_size).width(Fill),
                 ]
                 .align_y(iced::Center),
             )
             .width(Fill)
             .padding([0, 5])
-            .style(|theme: &iced::Theme, status| {
-                if matches!(status, button::Status::Hovered | button::Status::Pressed) {
-                    let mut style = ghost_shell_theme::selected(theme, status);
-                    style.border.radius = 4.0.into();
-                    style
-                } else {
-                    ghost_shell_theme::plain(theme, status)
-                }
-            });
+            .style(ghost_shell_theme::menu_item);
             if item.enabled {
                 entry = entry.on_press(TrayMessage::Activate(item.id));
             }
             let entry = container(entry).width(Fill).padding(4);
             if submenu {
-                Item::with_menu(entry, menu_items(&item.children))
+                Item::with_menu(entry, menu_items(&item.children, font, font_size))
             } else {
                 Item::new(entry)
             }
@@ -421,7 +511,9 @@ fn menu_items(
 
     // iced_aw requires at least one item when laying out an open menu.
     if entries.is_empty() {
-        entries.push(Item::new(text("No actions").height(30)));
+        entries.push(Item::new(
+            ghost_shell_theme::label("No actions", font, font_size).height(30),
+        ));
     }
 
     Menu::new(entries)

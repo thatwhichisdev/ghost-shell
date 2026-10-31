@@ -21,7 +21,8 @@ The project's name is inspired by the anime Ghost in the Shell.
 
 The bar follows a widely adopted layout with three sections: start, center, and
 end. Its current widget layout is fixed; appearance and outputs are
-configurable. See the [bar guide](docs/wiki/configuration/Bar.md) and [widget
+configurable, with live reload and a [styling panel](docs/wiki/configuration/Styling.md)
+for previewing changes and copying Nix settings. See the [bar guide](docs/wiki/configuration/Bar.md) and [widget
 reference](docs/wiki/configuration/Bar.md#widgets).
 
 ![bar](assets/bar.png)

@@ -2,9 +2,9 @@ use std::{collections::HashMap, path::PathBuf};
 
 use config::{Config, ConfigError, File};
 use directories::ProjectDirs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BarAppConfig {
     pub general: GeneralConfig,
@@ -14,7 +14,7 @@ pub struct BarAppConfig {
     pub theme: ThemeConfig,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LauncherConfig {
     pub general: GeneralConfig,
@@ -22,7 +22,7 @@ pub struct LauncherConfig {
     pub theme: ThemeConfig,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FinderConfig {
     pub general: GeneralConfig,
@@ -30,7 +30,7 @@ pub struct FinderConfig {
     pub theme: ThemeConfig,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct LockscreenConfig {
     pub general: GeneralConfig,
@@ -38,7 +38,7 @@ pub struct LockscreenConfig {
     pub theme: ThemeConfig,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GreeterConfig {
     pub general: GeneralConfig,
@@ -47,17 +47,18 @@ pub struct GreeterConfig {
     pub session: GreeterSessionConfig,
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GreeterSessionConfig {
     pub command: Vec<String>,
     pub environment: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
     pub font_family: String,
+    #[serde(deserialize_with = "positive_dimension")]
     pub font_size: f32,
 }
 
@@ -70,7 +71,7 @@ impl Default for GeneralConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct BarConfig {
     #[serde(deserialize_with = "positive_dimension")]
@@ -94,13 +95,13 @@ impl Default for BarConfig {
     }
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct BarOutputConfig {
     pub primary: bool,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct BarDecorationConfig {
     pub layout: BarLayout,
@@ -122,7 +123,7 @@ impl Default for BarDecorationConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BarLayout {
     #[default]
@@ -130,7 +131,7 @@ pub enum BarLayout {
     Islands,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct BarWidgetsConfig {
     #[serde(deserialize_with = "positive_dimension")]
@@ -190,7 +191,7 @@ fn opacity<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f32, D::
     }
 }
 
-#[derive(Default, Debug, Clone, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WindowConfig {
     pub blur: bool,
@@ -210,7 +211,7 @@ fn background_opacity(blur: bool, configured_opacity: Option<f32>) -> f32 {
         .clamp(0.0, 1.0)
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ClockConfig {
     pub format: String,
@@ -224,7 +225,7 @@ impl Default for ClockConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WallpaperConfig {
     pub path: Option<String>,
@@ -240,7 +241,7 @@ impl Default for WallpaperConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ThemeConfig {
     pub icons: Option<String>,
@@ -260,7 +261,7 @@ impl Default for ThemeConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeMode {
     #[default]
@@ -269,7 +270,7 @@ pub enum ThemeMode {
     System,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Base16Config {
     #[serde(deserialize_with = "deserialize_theme_color")]
     pub base00: u32,
@@ -402,9 +403,20 @@ impl Base16Config {
 }
 
 pub fn load<T: serde::de::DeserializeOwned>(name: &str) -> Result<T, ConfigError> {
-    let directory = config_dir()?;
+    load_directory(&config_dir()?, name)
+}
+
+pub(crate) fn load_directory<T: serde::de::DeserializeOwned>(
+    directory: &std::path::Path,
+    name: &str,
+) -> Result<T, ConfigError> {
     let shared_path = directory.join("config.toml");
-    let shared_exists = shared_path.try_exists().map_err(|error| {
+    let shared_exists = match shared_path.symlink_metadata() {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+    .map_err(|error| {
         ConfigError::Message(format!(
             "Could not inspect {}: {error}",
             shared_path.display()

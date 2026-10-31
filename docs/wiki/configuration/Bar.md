@@ -108,6 +108,22 @@ edges. Workspaces share one inner container. Empty widgets take no space.
 The focused title is constrained to the center section and clipped if too long.
 All three sections use these settings. Widget ordering remains fixed.
 
+## Live configuration
+
+The bar watches its configuration directory for file changes, including atomic
+editor saves and Home Manager symlink replacements. Events are debounced for
+150ms; there is no periodic polling. Reload applies all bar settings, theme
+mode and palettes, icon theme, fonts, clock format and wallpaper. Existing bars
+resize and change reserved space in place; output selection adds/removes bars.
+Tray icon lookup and wallpaper loading run on workers, and stale results cannot
+replace newer settings. Blur can be enabled and disabled while running.
+
+An invalid file or removal after a successful load preserves current settings.
+The system menu’s **Appearance!** label indicates a reload failure; open it to read the error.
+A valid change to bar-relevant file settings replaces the in-memory preview.
+The panel's **Reset from file** restores the most recent valid file settings.
+Restarting the process discards all unpersisted preview changes.
+
 ## Migration
 
 This replaces the old per-output schema; old `[bar."OUTPUT"]` tables are
@@ -142,7 +158,8 @@ programs.ghost-shell.settings = {
 };
 ```
 
-Install the icon theme separately. Restart the bar after rebuilding the configuration.
+Install the icon theme separately. Valid configuration changes reload live.
+Open **Appearance** in the system menu for [live styling](Styling.md).
 
 Implementation: [bar layout](../../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs),
 [shared decoration](../../../crates/ghost-shell-core/ghost-shell-theme/src/bar.rs),
@@ -157,7 +174,7 @@ configuration. Their fonts and colors follow the shared theme.
 
   | Widget                                  | Current state                            | Dedicated configuration |
   | --------------------------------------- | ---------------------------------------- | ----------------------- |
-  | [System menu](Menu.md)                  | Launcher shortcut                        | None                    |
+  | [System menu](Menu.md)                  | Shutdown, reboot, lock, styling                        | None                    |
   | [Workspaces](Workspaces.md)             | Implemented indicator                    | None                    |
   | [Focused window](Bar.md#focused-window) | Implemented indicator                    | None                    |
   | [System tray](Tray.md)                  | Implemented with incomplete interactions | None                    |

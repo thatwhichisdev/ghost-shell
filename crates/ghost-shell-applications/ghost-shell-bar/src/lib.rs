@@ -15,6 +15,7 @@ pub enum Message {
     Audio(ghost_shell_widget_audio::Message),
     Tray(ghost_shell_widget_tray::TrayMessage),
     Decorations(Vec<ghost_shell_theme::bar::Decoration>),
+    Styling(ghost_shell_widget_styling::Message),
 }
 
 #[derive(Default)]
@@ -28,11 +29,16 @@ impl Bar {
     pub fn view<'a>(
         &'a self,
         config: &'a BarConfig,
+        general: &ghost_shell_config::GeneralConfig,
         output: &str,
         niri: &'a NiriState,
         audio: Option<&'a AudioState>,
     ) -> Element<'a, Message> {
-        let style = ghost_shell_theme::bar::Style::from(config);
+        let style = ghost_shell_theme::bar::Style {
+            font: ghost_shell_theme::font(&general.font_family),
+            font_size: general.font_size,
+            ..ghost_shell_theme::bar::Style::from(config)
+        };
         let start = row![
             ghost_shell_widget_menu::view(style).map(Message::Menu),
             ghost_shell_widget_workspaces::view(output, niri, style),
@@ -47,7 +53,10 @@ impl Bar {
             ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
             self.power.view(style),
             ghost_shell_theme::bar::outer(
-                ghost_shell_theme::bar::inner(self.clock.view(), style),
+                ghost_shell_theme::bar::inner(
+                    self.clock.view(style.font, style.font_size),
+                    style
+                ),
                 style
             ),
         ]

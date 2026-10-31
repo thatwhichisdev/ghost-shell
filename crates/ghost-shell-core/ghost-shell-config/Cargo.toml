@@ -7,7 +7,13 @@ rust-version.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[features]
+watch = ["dep:notify", "dep:tokio", "dep:futures"]
+
 [dependencies]
 config = "0.15.23"
 directories.workspace = true
 serde = { workspace = true, features = ["derive"] }
+notify = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["sync", "rt", "time", "macros"] }
+futures = { workspace = true, optional = true }

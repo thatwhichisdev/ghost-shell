@@ -136,7 +136,8 @@ journalctl --user -u ghost-shell-bar.service -b
 The bar restarts on failure. The lockscreen does not automatically restart after
 a crash; stopping or restarting it while locked waits for authentication.
 Rebuild after changing Home Manager settings. Changes to the generated config
-restart enabled services. Launcher and finder read the file on each invocation.
+reload the bar live and restart the lockscreen service. Launcher and finder
+read the file on each invocation.
 
 ## Integrate with Niri
 

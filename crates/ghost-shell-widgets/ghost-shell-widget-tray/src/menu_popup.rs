@@ -53,15 +53,7 @@ fn menu_style(theme: &Theme) -> iced_aw::menu::Style {
     iced_aw::menu::Style {
         bar_background: iced::Color::TRANSPARENT.into(),
         menu_background: theme.palette().background.into(),
-        menu_border: iced::Border {
-            color: theme
-                .extended_palette()
-                .background
-                .strong
-                .color,
-            width: 1.0,
-            radius: 6.0.into(),
-        },
+        menu_border: ghost_shell_theme::menu_surface(theme).border,
         menu_shadow: iced::Shadow::default(),
         ..Default::default()
     }

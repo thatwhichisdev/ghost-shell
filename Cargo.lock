@@ -1866,6 +1866,7 @@ dependencies = [
  "ghost-shell-widget-focus",
  "ghost-shell-widget-menu",
  "ghost-shell-widget-power",
+ "ghost-shell-widget-styling",
  "ghost-shell-widget-tray",
  "ghost-shell-widget-workspaces",
  "iced",
@@ -1893,7 +1894,10 @@ version = "0.1.0"
 dependencies = [
  "config",
  "directories",
+ "futures",
+ "notify",
  "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -2095,6 +2099,16 @@ dependencies = [
  "ghost-shell-theme",
  "iced",
  "starship-battery",
+]
+
+[[package]]
+name = "ghost-shell-widget-styling"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-config",
+ "ghost-shell-theme",
+ "iced",
+ "serde_json",
 ]
 
 [[package]]

@@ -100,6 +100,25 @@ Render useful initial UI while work runs, retain current input, and release work
 and resources when their owner closes. Update only affected state; avoid
 full-state recomputation and unnecessary redraws.
 
+### Live bar configuration
+
+The config crate's optional `watch` feature exposes an owned, event-driven stream.
+Directory watches survive atomic editor saves and Home Manager symlink replacement;
+a 150ms debounce runs only after changes. Parsing runs off the UI thread. The bar
+keeps its last valid file configuration separate from its effective preview.
+Invalid reloads preserve both and expose feedback in the styling panel. A valid
+change replaces the preview; resetting restores the file baseline. Other
+applications retain their startup-loading lifecycle.
+
+The bar owns surface updates and applies geometry/exclusive-zone changes in place.
+The styling widget emits edits and renders controls; it does not own the runtime,
+write config files, or create D-Bus clients. Preview values are process-local.
+Nix export copies only general/bar/theme settings to the clipboard for the user
+to merge into their source configuration. Shared theme changes in a preview do
+not modify other running applications. Async icon and wallpaper refreshes guard
+against stale completion. Home Manager uses live reload for the bar and retains
+its restart trigger for the lockscreen.
+
 ### Wallpaper rendering
 
 GIFs are decoded on a worker and stored as an initial RGBA frame plus compressed

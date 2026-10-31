@@ -27,7 +27,9 @@ controls widget dimensions, and `[bar.decoration]` controls continuous or island
 backgrounds, opacity, blur and rounding. Defaults are 28px bar height, 20px
 inner height, 16px icons, 4px horizontal padding, 2px horizontal/4px vertical
 outer margins and 4px corner radius. All sections share these dimensions.
-Joined tray/audio items round only outside edges; workspaces share one island.
+Joined tray/audio items round only outside edges and share one painted island
+background and blur region; individual items paint only their hover highlight.
+Workspaces share one island.
 
 Continuous mode decorates the full bar; islands decorate only widget inner
 containers. Resting backgrounds use `base00` at configured opacity, contents
@@ -237,3 +239,16 @@ behavior or remaining limitations; do not describe intended behavior as shipped.
 
 Launcher and finder hovered result backgrounds use the same 4px rounding as
 selected results. Hovered, pressed, and dragged scrollbar handles use `base08`.
+
+## Live styling
+
+The system menu's **Appearance** action opens an ordinary popup shared with system,
+audio and tray menus. It closes with Escape or an outside click. Live edits affect all bars;
+closing the popup keeps the preview. Keep reset and Nix-copy actions explicit,
+leave Nix-managed files untouched, and retain working settings after an invalid
+file reload. Incomplete color text must remain editable without applying an
+invalid palette. Feedback appears at the top of the panel, and reload errors
+also change the system menu entry to **Appearance!**. The styling panel uses
+`base08` in place of `base0D` for control accents; palette swatches and exported
+values keep their original slots. Its controls use stable startup typography so large font
+previews remain recoverable.

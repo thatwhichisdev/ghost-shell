@@ -85,7 +85,7 @@ in
             After = [ "graphical-session.target" ];
             Requisite = [ "graphical-session.target" ];
             ConditionEnvironment = "WAYLAND_DISPLAY";
-            X-Restart-Triggers = [ "${configFile}" ];
+            X-Restart-Triggers = lib.optionals (name == "lockscreen") [ "${configFile}" ];
           };
           Service = {
             ExecStart = lib.getExe' cfg.package "ghost-shell-${name}";

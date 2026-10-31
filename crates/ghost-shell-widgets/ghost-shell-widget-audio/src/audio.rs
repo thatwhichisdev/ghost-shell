@@ -3,7 +3,7 @@ mod menu_popup;
 use ghost_shell_audio::{Audio, AudioDirection, AudioEndpointId, AudioEvent, AudioState};
 use iced::{
     Element, Fill,
-    widget::{button, container, row, slider, text},
+    widget::{button, container, row, slider},
 };
 
 #[derive(Debug, Clone)]
@@ -21,46 +21,54 @@ pub fn view(
     style: ghost_shell_theme::bar::Style,
 ) -> Element<'_, Message> {
     ghost_shell_theme::bar::outer(
-        row(
-            [AudioDirection::Input, AudioDirection::Output].map(|direction| {
-                let endpoint = audio.and_then(|state| {
-                    let id = match direction {
-                        AudioDirection::Input => state.default_input(),
-                        AudioDirection::Output => state.default_output(),
-                    }?;
-                    state.endpoints().get(&id)
-                });
-                let muted = endpoint.is_some_and(|endpoint| endpoint.muted == Some(true));
-                let icon = match direction {
-                    AudioDirection::Input if muted => "icons/microphone-slash.svg",
-                    AudioDirection::Input => "icons/microphone.svg",
-                    AudioDirection::Output if muted => "icons/speaker-simple-slash.svg",
-                    AudioDirection::Output => {
-                        match endpoint.and_then(|endpoint| endpoint.volume) {
-                            Some(volume) if volume <= 0.0 => {
-                                "icons/speaker-simple-none.svg"
-                            }
-                            Some(volume) if volume < 0.5 => {
-                                "icons/speaker-simple-low.svg"
-                            }
-                            _ => "icons/speaker-simple-high.svg",
+        ghost_shell_theme::bar::group(
+            row(
+                [AudioDirection::Input, AudioDirection::Output].map(|direction| {
+                    let endpoint = audio.and_then(|state| {
+                        let id = match direction {
+                            AudioDirection::Input => state.default_input(),
+                            AudioDirection::Output => state.default_output(),
+                        }?;
+                        state.endpoints().get(&id)
+                    });
+                    let muted =
+                        endpoint.is_some_and(|endpoint| endpoint.muted == Some(true));
+                    let icon = match direction {
+                        AudioDirection::Input if muted => {
+                            "icons/microphone-slash-fill.svg"
                         }
-                    }
-                };
-                button(ghost_shell_theme::bar::group_inner(
-                    ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
-                    direction == AudioDirection::Input,
-                    direction == AudioDirection::Output,
-                    style,
-                ))
-                .padding(0)
-                .on_press(Message::Open(direction))
-                .style(ghost_shell_theme::bar::transparent_button)
-                .into()
-            }),
-        )
-        .spacing(0)
-        .align_y(iced::Center),
+                        AudioDirection::Input => "icons/microphone-fill.svg",
+                        AudioDirection::Output if muted => {
+                            "icons/speaker-simple-slash-fill.svg"
+                        }
+                        AudioDirection::Output => {
+                            match endpoint.and_then(|endpoint| endpoint.volume) {
+                                Some(volume) if volume <= 0.0 => {
+                                    "icons/speaker-simple-none-fill.svg"
+                                }
+                                Some(volume) if volume < 0.5 => {
+                                    "icons/speaker-simple-low-fill.svg"
+                                }
+                                _ => "icons/speaker-simple-high-fill.svg",
+                            }
+                        }
+                    };
+                    button(ghost_shell_theme::bar::group_inner(
+                        ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
+                        direction == AudioDirection::Input,
+                        direction == AudioDirection::Output,
+                        style,
+                    ))
+                    .padding(0)
+                    .on_press(Message::Open(direction))
+                    .style(ghost_shell_theme::bar::transparent_button)
+                    .into()
+                }),
+            )
+            .spacing(0)
+            .align_y(iced::Center),
+            style,
+        ),
         style,
     )
 }
@@ -124,7 +132,12 @@ impl AudioPopup {
         }
     }
 
-    pub fn view<'a>(&'a self, audio: Option<&'a AudioState>) -> Element<'a, Message> {
+    pub fn view<'a>(
+        &'a self,
+        audio: Option<&'a AudioState>,
+        font: iced::Font,
+        font_size: f32,
+    ) -> Element<'a, Message> {
         use iced_aw::menu::{Item, Menu};
 
         let mut entries = Vec::new();
@@ -159,7 +172,7 @@ impl AudioPopup {
                         iced::widget::Space::new()
                             .width(0)
                             .height(22),
-                        text(&endpoint.description)
+                        ghost_shell_theme::label(&endpoint.description, font, font_size)
                     ]
                     .align_y(iced::Center),
                 )
@@ -209,27 +222,32 @@ impl AudioPopup {
                             })
                             .into()
                     }
-                    None => text("Volume unavailable").into(),
+                    None => {
+                        ghost_shell_theme::label("Volume unavailable", font, font_size)
+                            .into()
+                    }
                 };
                 let muted = endpoint.muted == Some(true);
-                let mute = button(text("M").center())
-                    .width(22)
-                    .height(22)
-                    .padding(0)
-                    .on_press_maybe(
-                        endpoint
-                            .muted
-                            .map(|muted| Message::Muted(id, !muted)),
-                    )
-                    .style(move |theme, status| {
-                        if muted {
-                            let mut style = ghost_shell_theme::selected(theme, status);
-                            style.border.radius = 4.0.into();
-                            style
-                        } else {
-                            ghost_shell_theme::plain(theme, status)
-                        }
-                    });
+                let mute =
+                    button(ghost_shell_theme::label("M", font, font_size).center())
+                        .width(22)
+                        .height(22)
+                        .padding(0)
+                        .on_press_maybe(
+                            endpoint
+                                .muted
+                                .map(|muted| Message::Muted(id, !muted)),
+                        )
+                        .style(move |theme, status| {
+                            if muted {
+                                let mut style =
+                                    ghost_shell_theme::selected(theme, status);
+                                style.border.radius = 4.0.into();
+                                style
+                            } else {
+                                ghost_shell_theme::plain(theme, status)
+                            }
+                        });
                 entries.push(
                     Item::new(
                         container(
@@ -247,10 +265,14 @@ impl AudioPopup {
         if !found {
             entries.push(
                 Item::new(
-                    container(text(match direction {
-                        AudioDirection::Output => "No output devices available",
-                        AudioDirection::Input => "No input devices available",
-                    }))
+                    container(ghost_shell_theme::label(
+                        match direction {
+                            AudioDirection::Output => "No output devices available",
+                            AudioDirection::Input => "No input devices available",
+                        },
+                        font,
+                        font_size,
+                    ))
                     .padding([4, 9]),
                 )
                 .close_on_click(false),
@@ -262,9 +284,13 @@ impl AudioPopup {
             {
                 entries.push(
                     Item::new(
-                        container(text(format!("{:?}", audio.connection_status())))
-                            .padding([4, 9])
-                            .width(Fill),
+                        container(ghost_shell_theme::label(
+                            format!("{:?}", audio.connection_status()),
+                            font,
+                            font_size,
+                        ))
+                        .padding([4, 9])
+                        .width(Fill),
                     )
                     .close_on_click(false),
                 );
@@ -272,9 +298,13 @@ impl AudioPopup {
         } else {
             entries.push(
                 Item::new(
-                    container(text("Audio service unavailable"))
-                        .padding([4, 9])
-                        .width(Fill),
+                    container(ghost_shell_theme::label(
+                        "Audio service unavailable",
+                        font,
+                        font_size,
+                    ))
+                    .padding([4, 9])
+                    .width(Fill),
                 )
                 .close_on_click(false),
             );
@@ -282,9 +312,12 @@ impl AudioPopup {
         if let Some(error) = &self.error {
             entries.push(
                 Item::new(
-                    container(text(error).style(iced::widget::text::danger))
-                        .padding([4, 9])
-                        .width(Fill),
+                    container(
+                        ghost_shell_theme::label(error, font, font_size)
+                            .style(iced::widget::text::danger),
+                    )
+                    .padding([4, 9])
+                    .width(Fill),
                 )
                 .close_on_click(false),
             );

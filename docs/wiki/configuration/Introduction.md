@@ -14,8 +14,8 @@ Desktop applications independently read
 `~/.config/ghost-shell/config.toml`. Each deserializes only its relevant
 sections; there is no shared runtime or dependency on another application. There
 is no desktop command-line config override or environment-variable option for
-individual settings. Restart affected applications after edits. Configuration is
-not live-reloaded.
+individual settings. The bar reloads valid file changes live. Launcher and finder
+read settings on invocation; restart other applications after edits.
 
   | Application | Sections read                                                      |
   | ----------- | ------------------------------------------------------------------ |
@@ -31,7 +31,9 @@ its own system-owned `/etc/ghost-shell/greeter.toml`, accessible before login.
 
 Omitted sections and fields use defaults, except that an explicitly supplied
 Base16 palette requires all sixteen colors. Invalid configuration logs
-`Configuration:` and falls back to that application's defaults. With no
+`Configuration:` and falls back to that application's defaults at startup.
+During bar reloads, invalid or removed files preserve the last working settings
+and show an error in the styling panel. With no
 `[bar.outputs.*]` entries, the bar appears on every connected output. Unknown sections
 and fields are generally ignored (bar settings reject unknown fields), so a type error in an unrelated application's section
 does not prevent another application from reading its own settings. TOML syntax
@@ -52,9 +54,8 @@ takes precedence. If neither file exists, defaults apply.
 Home Manager generates the shared file through `programs.ghost-shell.settings`.
 Move sections out of `applications.<name>.settings` into that option; the
 removed options report a migration error. `applications.<name>.enable` still
-controls the bar and lockscreen services. A shared configuration change triggers
-all enabled services to restart; lockscreen restart still waits for
-authentication while locked. See
+controls the bar and lockscreen services. A shared configuration change is reloaded by the bar without a service restart.
+Lockscreen still restarts and waits for authentication while locked. See
 [installation](../getting-started/Installation.md#home-manager).
 
 Launcher and finder let Niri select the active output. They do not read the
@@ -118,12 +119,14 @@ symbolic icons for applications that do not have them.
 When omitted, the launcher uses GTK icon-theme detection (otherwise hicolor).
 The tray retains its automatic symbolic search through GTK/hicolor,
 Papirus-Dark, Papirus, and Adwaita. An explicit setting replaces that automatic
-list. Restart the bar and reopen the launcher after changes.
+list. The bar refreshes existing tray icons after changes; reopen the launcher
+to use the updated icon theme. Installing a new theme during a running session
+may still require restarting the bar to rebuild the icon library's theme index.
 
 ## Theming
 
-Each desktop application builds its theme from the shared `config.toml` at
-startup. Define `[theme]` and `[general]` once for a consistent appearance.
+Each desktop application builds its theme from the shared `config.toml`.
+The bar follows file changes while running; other applications load at startup. Define `[theme]` and `[general]` once for a consistent appearance.
 Fonts come from `[general]`; background blur and opacity are configured
 separately for each surface.
 
@@ -136,7 +139,8 @@ mode = "dark"
 
 `mode` accepts `"dark"` (the default), `"light"`, and `"system"`. System mode
 uses iced's reported system theme and follows appearance changes while running.
-Restart the affected application after editing its configuration file.
+The bar applies mode and palette edits live; reopen other applications after
+editing their configuration.
 
 ### Base16 palettes
 

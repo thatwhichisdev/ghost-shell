@@ -21,7 +21,9 @@ The [project README](../../README.md) contains screenshots and the roadmap.
   shared settings, themes, wallpapers, and configuration migration.
 - [Bar](configuration/Bar.md): outputs, appearance, fixed layout, and widget
   status.
-- [Menu](configuration/Menu.md): launcher shortcut and current limits.
+- [Styling](configuration/Styling.md): live bar configuration, preview/reset,
+  palette editing, and exporting Nix settings.
+- [Menu](configuration/Menu.md): shutdown, reboot, lock, and live styling.
 - [Tray](configuration/Tray.md): session integration and application menus.
 - [Audio](configuration/Audio.md): PipeWire devices, active-device selection,
   and volume controls.

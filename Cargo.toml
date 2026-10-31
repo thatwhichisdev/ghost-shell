@@ -24,6 +24,7 @@ members = [
   "crates/ghost-shell-widgets/ghost-shell-widget-power",
   "crates/ghost-shell-widgets/ghost-shell-widget-tray",
   "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
+  "crates/ghost-shell-widgets/ghost-shell-widget-styling",
 ]
 default-members = [
   "crates/ghost-shell-applications/ghost-shell-bar",
@@ -66,6 +67,8 @@ ghost-shell-widget-power = { path = "crates/ghost-shell-widgets/ghost-shell-widg
 ghost-shell-widget-tray = { path = "crates/ghost-shell-widgets/ghost-shell-widget-tray" }
 ghost-shell-widget-workspaces = { path = "crates/ghost-shell-widgets/ghost-shell-widget-workspaces" }
 
+ghost-shell-widget-styling = { path = "crates/ghost-shell-widgets/ghost-shell-widget-styling" }
+
 # iced gui framework
 iced = { version = "0.14.0", default-features = false }
 iced_aw = { version = "=0.14.1", default-features = false }
@@ -81,6 +84,7 @@ log = "0.4.33"
 env_logger = "0.11.11"
 
 # integrations
+notify = { version = "=9.0.0-rc.4", default-features = false }
 fff-search = "0.10.1"
 freedesktop-desktop-entry = "0.8.1"
 freedesktop-icons = "0.4.0"

@@ -7,6 +7,44 @@ use iced::{
     widget::{Space, column, container, scrollable},
 };
 
+pub fn font(family: &str) -> iced::Font {
+    use std::{
+        collections::HashMap,
+        sync::{LazyLock, Mutex},
+    };
+    static FAMILIES: LazyLock<Mutex<HashMap<String, &'static str>>> =
+        LazyLock::new(|| Mutex::new(HashMap::new()));
+    let family = match family {
+        "monospace" => iced::font::Family::Monospace,
+        "sans-serif" => iced::font::Family::SansSerif,
+        "serif" => iced::font::Family::Serif,
+        name => {
+            let mut families = FAMILIES
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            // iced font names require static storage; intern each applied family once.
+            let name = *families
+                .entry(name.to_owned())
+                .or_insert_with(|| Box::leak(name.to_owned().into_boxed_str()));
+            iced::font::Family::Name(name)
+        }
+    };
+    iced::Font {
+        family,
+        ..Default::default()
+    }
+}
+
+pub fn label<'a>(
+    value: impl iced::advanced::text::IntoFragment<'a>,
+    font: iced::Font,
+    size: f32,
+) -> iced::widget::Text<'a> {
+    iced::widget::text(value)
+        .font(font)
+        .size(size)
+}
+
 pub fn color(value: u32) -> Color {
     Color::from_rgb8((value >> 16) as u8, (value >> 8) as u8, value as u8)
 }
@@ -522,5 +560,33 @@ mod tests {
             assert_eq!(input.placeholder, color(source.base03));
             assert_eq!(input.value, color(source.base05));
         }
+    }
+}
+
+pub fn menu_surface(theme: &Theme) -> container::Style {
+    surface(theme, 1.0).border(iced::Border {
+        color: theme
+            .extended_palette()
+            .background
+            .strong
+            .color,
+        width: 1.0,
+        radius: 6.0.into(),
+    })
+}
+
+pub fn menu_item(
+    theme: &Theme,
+    status: iced::widget::button::Status,
+) -> iced::widget::button::Style {
+    if matches!(
+        status,
+        iced::widget::button::Status::Hovered | iced::widget::button::Status::Pressed
+    ) {
+        let mut style = selected(theme, status);
+        style.border.radius = 4.0.into();
+        style
+    } else {
+        plain(theme, status)
     }
 }
