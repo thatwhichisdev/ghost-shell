@@ -193,7 +193,10 @@ impl App {
             .width(Fill)
             .height(Fill)
             .style(|theme| {
-                ghost_shell_theme::surface(theme, self.config.finder.background_opacity())
+                ghost_shell_theme::search_window(
+                    theme,
+                    self.config.finder.background_opacity(),
+                )
             })
             .into()
     }

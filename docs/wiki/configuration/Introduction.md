@@ -19,7 +19,7 @@ not live-reloaded.
 
   | Application | Sections read                                                      |
   | ----------- | ------------------------------------------------------------------ |
-  | Bar         | `[general]`, `[theme]`, `[bar."OUTPUT"]`, `[clock]`, `[wallpaper]` |
+  | Bar         | `[general]`, `[theme]`, `[bar]`, `[clock]`, `[wallpaper]` |
   | Launcher    | `[general]`, `[theme]`, `[launcher]`                               |
   | Finder      | `[general]`, `[theme]`, `[finder]`                                 |
   | Lockscreen  | `[general]`, `[theme]`, `[wallpaper]`                              |
@@ -32,17 +32,17 @@ its own system-owned `/etc/ghost-shell/greeter.toml`, accessible before login.
 Omitted sections and fields use defaults, except that an explicitly supplied
 Base16 palette requires all sixteen colors. Invalid configuration logs
 `Configuration:` and falls back to that application's defaults. With no
-`[bar.*]` entries, the bar appears on every connected output. Unknown sections
-and fields are ignored, so a type error in an unrelated application's section
+`[bar.outputs.*]` entries, the bar appears on every connected output. Unknown sections
+and fields are generally ignored (bar settings reject unknown fields), so a type error in an unrelated application's section
 does not prevent another application from reading its own settings. TOML syntax
 errors still affect the whole file.
 
 ## Migrating to config.toml
 
-Existing combined configurations using `[bar.*]`, `[clock]`, `[finder]`,
-`[general]`, `[launcher]`, `[theme]` and `[wallpaper]` work without changes. If
-you split your configuration, combine those sections into `config.toml`,
-choosing one shared theme, general configuration and wallpaper.
+Combine application sections into `config.toml`, choosing one shared theme,
+general configuration and wallpaper. Bar settings now use global `[bar]`,
+`[bar.decoration]`, `[bar.widgets]` and `[bar.outputs."OUTPUT"]` tables; see
+[bar migration](Bar.md#migration). Move `general.theme` to `theme.icons`.
 
 For compatibility, when `config.toml` is absent, each application falls back to
 its previous `bar.toml`, `launcher.toml`, `finder.toml` or `lockscreen.toml`.
@@ -76,15 +76,12 @@ font_size = 13.0
 
 ## Surface opacity
 
-Bars, the launcher, and the finder each have independent `background_opacity`
-settings. Values are clamped to `0.0`–`1.0`. When omitted, opacity is `0.8` for
-blurred surfaces and `1.0` otherwise. Transparent bars always use `0.0`. Blur
-also requires compositor support.
-
-Bars use `appearance = "blur"`, `"themed"`, or `"transparent"`. If migrating an
-older configuration, replace bar `blur = true` with `appearance = "blur"`, and
-bar `blur = false` with `appearance = "themed"`. Launcher and finder still use
-`blur = true` or `false`.
+Bars use global `bar.decoration.opacity` (default `1.0`, validated from zero to
+one) and `bar.decoration.blur` (default `false`). Decoration can cover the whole
+bar or just widget islands. See [bar decoration](Bar.md#decoration).
+Launcher and finder retain their independent `background_opacity` and `blur`
+settings: opacity is clamped to zero through one and defaults to `0.8` with blur,
+otherwise `1.0`. Blur requires compositor support.
 
 Implementation: [schema and
 defaults](../../../crates/ghost-shell-core/ghost-shell-config/src/config.rs) and
@@ -93,13 +90,13 @@ fallback](../../../crates/ghost-shell-applications/ghost-shell-bar/src/app.rs).
 
 ### Icon theme
 
-Set `general.theme` to an installed icon theme's exact, case-sensitive directory
+Set `theme.icons` to an installed icon theme's exact, case-sensitive directory
 name. It controls launcher application icons and bar tray icon lookup; it does
 not change the Base16 palette or bundled audio/battery icons.
 
 ```toml
-[general]
-theme = "Papirus"
+[theme]
+icons = "Papirus"
 ```
 
 This is a free-form string, not a fixed enum. Examples include `Papirus`,
@@ -109,7 +106,7 @@ name inside `index.theme`. For Home Manager:
 
 ```nix
 home.packages = [ pkgs.papirus-icon-theme ];
-programs.ghost-shell.settings.general.theme = "Papirus";
+programs.ghost-shell.settings.theme.icons = "Papirus";
 ```
 
 The theme must be available through the session's icon search paths (including

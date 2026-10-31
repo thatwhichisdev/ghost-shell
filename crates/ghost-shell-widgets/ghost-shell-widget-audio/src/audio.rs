@@ -16,7 +16,10 @@ pub enum Message {
     Default(AudioEndpointId),
 }
 
-pub fn view(audio: Option<&AudioState>) -> Element<'_, Message> {
+pub fn view(
+    audio: Option<&AudioState>,
+    style: ghost_shell_theme::bar::Style,
+) -> Element<'_, Message> {
     ghost_shell_theme::bar::outer(
         row(
             [AudioDirection::Input, AudioDirection::Output].map(|direction| {
@@ -45,9 +48,10 @@ pub fn view(audio: Option<&AudioState>) -> Element<'_, Message> {
                     }
                 };
                 button(ghost_shell_theme::bar::group_inner(
-                    ghost_shell_theme::bar::icon(icon),
+                    ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
                     direction == AudioDirection::Input,
                     direction == AudioDirection::Output,
+                    style,
                 ))
                 .padding(0)
                 .on_press(Message::Open(direction))
@@ -57,6 +61,7 @@ pub fn view(audio: Option<&AudioState>) -> Element<'_, Message> {
         )
         .spacing(0)
         .align_y(iced::Center),
+        style,
     )
 }
 

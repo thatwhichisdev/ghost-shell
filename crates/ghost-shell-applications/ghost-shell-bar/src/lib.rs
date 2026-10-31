@@ -14,6 +14,7 @@ pub enum Message {
     Menu(ghost_shell_widget_menu::Message),
     Audio(ghost_shell_widget_audio::Message),
     Tray(ghost_shell_widget_tray::TrayMessage),
+    Decorations(Vec<ghost_shell_theme::bar::Decoration>),
 }
 
 #[derive(Default)]
@@ -31,37 +32,40 @@ impl Bar {
         niri: &'a NiriState,
         audio: Option<&'a AudioState>,
     ) -> Element<'a, Message> {
+        let style = ghost_shell_theme::bar::Style::from(config);
         let start = row![
-            ghost_shell_widget_menu::view().map(Message::Menu),
-            ghost_shell_widget_workspaces::view(output, niri),
+            ghost_shell_widget_menu::view(style).map(Message::Menu),
+            ghost_shell_widget_workspaces::view(output, niri, style),
         ]
-        .spacing(8)
+        .spacing(0)
         .align_y(iced::Center)
         .width(Fill);
 
         let end = row![
             Space::new().width(Fill),
-            self.tray.view().map(Message::Tray),
-            ghost_shell_widget_audio::view(audio).map(Message::Audio),
-            self.power.view(),
-            ghost_shell_theme::bar::outer(ghost_shell_theme::bar::inner(
-                self.clock.view()
-            )),
+            self.tray.view(style).map(Message::Tray),
+            ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
+            self.power.view(style),
+            ghost_shell_theme::bar::outer(
+                ghost_shell_theme::bar::inner(self.clock.view(), style),
+                style
+            ),
         ]
         .spacing(0)
         .align_y(iced::Center)
         .width(Fill)
         .height(Fill);
 
-        let center = ghost_shell_widget_focus::view(niri);
+        let center =
+            container(ghost_shell_widget_focus::view(niri, style)).center_x(Fill);
 
-        container(row![start, center, end].align_y(iced::Center))
-            .padding([0, 9])
-            .width(Fill)
-            .height(Fill)
-            .style(move |theme| {
-                ghost_shell_theme::panel(theme, config.background_opacity())
-            })
-            .into()
+        ghost_shell_theme::bar::decorated(
+            container(row![start, center, end].align_y(iced::Center))
+                .padding([0, 9])
+                .width(Fill)
+                .height(Fill),
+            style,
+            Message::Decorations,
+        )
     }
 }

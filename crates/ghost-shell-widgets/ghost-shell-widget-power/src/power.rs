@@ -11,11 +11,18 @@ impl Power {
         self.icon = icon;
     }
 
-    pub fn view<'a, Message: 'a>(&'a self) -> Element<'a, Message> {
+    pub fn view<'a, Message: 'a>(
+        &'a self,
+        style: ghost_shell_theme::bar::Style,
+    ) -> Element<'a, Message> {
         match self.icon {
-            Some(icon) => ghost_shell_theme::bar::outer(ghost_shell_theme::bar::inner(
-                ghost_shell_theme::bar::icon(icon),
-            )),
+            Some(icon) => ghost_shell_theme::bar::outer(
+                ghost_shell_theme::bar::inner(
+                    ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
+                    style,
+                ),
+                style,
+            ),
             None => Space::new().width(0).height(0).into(),
         }
     }

@@ -2075,6 +2075,7 @@ name = "ghost-shell-widget-focus"
 version = "0.1.0"
 dependencies = [
  "ghost-shell-niri",
+ "ghost-shell-theme",
  "iced",
 ]
 
@@ -2082,7 +2083,7 @@ dependencies = [
 name = "ghost-shell-widget-menu"
 version = "0.1.0"
 dependencies = [
- "ghost-shell-assets",
+ "ghost-shell-theme",
  "iced",
 ]
 
@@ -2114,8 +2115,8 @@ dependencies = [
 name = "ghost-shell-widget-workspaces"
 version = "0.1.0"
 dependencies = [
- "ghost-shell-assets",
  "ghost-shell-niri",
+ "ghost-shell-theme",
  "iced",
 ]
 

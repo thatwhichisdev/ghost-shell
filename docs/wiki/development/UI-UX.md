@@ -22,37 +22,35 @@ Check dark and light modes, and retain readable foregrounds on themed, blurred,
 and transparent surfaces. Blur is optional compositor behavior; content must
 remain understandable when it is unavailable.
 
-The bar retains a 27 logical-pixel configuration default and 9px horizontal
-insets. The start group uses 8px spacing and 18px icons. The end group uses
-transparent full-height widget containers, each with 2px horizontal and 4px
-vertical margins around 20px-high inner containers; configure a 28px bar to fit
-these dimensions. Inner containers have 4px horizontal padding and a 4px corner
-radius on the outside edges of each widget group. End icons occupy 16px squares.
-Tray and audio inner containers have no gaps: first items round only their left
-corners, last items only their right corners, and middle items have square
-corners. Single items round all four corners. Inner containers use `base00`
-backgrounds and `base07` text and monochrome icons; hovering changes only the
-background to `base02`. Tray symbolic replacements use `base07`; fallback icons retain their original colors. Keep passive
-clock and battery indicators free of click actions. Inner dimensions remain
-fixed in code. Center icons vertically, preserve aspect ratios, and truncate
-long titles without displacing adjacent controls. See [bar
-layout](../../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs).
+Bar styling is global across outputs: `[bar]` controls geometry, `[bar.widgets]`
+controls widget dimensions, and `[bar.decoration]` controls continuous or island
+backgrounds, opacity, blur and rounding. Defaults are 28px bar height, 20px
+inner height, 16px icons, 4px horizontal padding, 2px horizontal/4px vertical
+outer margins and 4px corner radius. All sections share these dimensions.
+Joined tray/audio items round only outside edges; workspaces share one island.
+
+Continuous mode decorates the full bar; islands decorate only widget inner
+containers. Resting backgrounds use `base00` at configured opacity, contents
+use `base07`, and hover highlights use `base02`. Original tray icons retain
+their colors. Compositor blur regions follow decoration bounds, approximating
+rounded corners with integer rectangles and preserving clear gaps. No new
+background, foreground or hover-color fields are exposed. The icon theme is
+`theme.icons`; `[general]` owns fonts only. See [bar configuration](../configuration/Bar.md).
 
 ## Base16 color contract
 
-Ghost uses its own high-contrast UI mapping of the Base16 palette. The slot
-names remain compatible with configuration, but UI selection deliberately
-inverts the background and foreground instead of following the conventional
-`base02` selection fill. These rules apply to both dark and light polarity:
+Ghost uses its own UI mapping of the Base16 palette. The slot
+names remain compatible with configuration. Menus use inverted selection;
+launcher and finder result rows use `base02` selection fill. These rules apply to both dark and light polarity:
 select the whole configured palette without reversing or renumbering slots.
 
 ### Surfaces and selection
 
 - Application surfaces, bars, audio panels, and tray menus use `base00`.
-- Ordinary text and monochrome icons use `base05`. Bar end-section inner
-  containers use `base07` foreground over `base00`, switching the background
-  to `base02` on hover.
-- Selected launcher/finder rows and highlighted tray options use `base07` for
+- Ordinary text and monochrome icons use `base05`. Bar inner
+  containers use `base07` foreground, with `base00` island backgrounds or
+  transparent resting backgrounds in continuous mode, and `base02` on hover.
+- Highlighted tray options use `base07` for
   both background and their 1px border, with `base00` text.
 - Keep this selected fill, border, and text in active, hovered, and pressed
   states. Do not substitute a primary-accent border or choose a different text
@@ -65,9 +63,18 @@ select the whole configured palette without reversing or renumbering slots.
 - Tray menu outer borders remain `base03`; this is distinct from an option's
   selection border.
 
+Launcher and finder windows use `ghost_shell_theme::search_window`: a 4px
+corner radius and 1px `base07` border over the configured surface background.
+Their search inputs use `search_input`, with `base07` borders and 4px rounded corners in every state.
+Their result rows use `search_item`: `base02` with 4px rounded corners when
+selected (including hover),
+`base01` when only hovered or pressed, and transparent otherwise. Text remains
+`base05`; selected rows do not have an inverted fill or border.
+
 Use `ghost_shell_theme::surface` for application backgrounds,
-`ghost_shell_theme::panel` for bars and panels, and
-`ghost_shell_theme::selected` for selected rows and menu highlights. Both
+`ghost_shell_theme::bar` for bar decorations, `ghost_shell_theme::panel` for
+panels, and
+`ghost_shell_theme::selected` for inverted menu selections. Both
 surface helpers use `base00`; configured opacity and transparency still apply.
 Use `ghost_shell_theme::text_input` for text fields.
 
@@ -149,7 +156,7 @@ iced 0.14 text inputs have a single value color for selected and unselected
 text. They therefore retain `base02` for text selection and `base05` for glyphs;
 using the inverted row fill without an independent selected-text color would
 make text unreadable. Choose those two slots with sufficient contrast. This
-exception is limited to text inputs, not selectable result rows or menu items.
+exception is limited to text inputs, not inverted menu items.
 
 Transparent Wayland clear colors and image-rendering fallbacks are rendering
 concerns, not semantic UI colors. Transparency and wallpaper can affect
@@ -227,3 +234,6 @@ Check light and dark themes, scaling, long content, and loading/empty states.
 For authentication changes, also test failed authentication and the appropriate
 unlock or session-start handoff. Update the configuration guide with any new
 behavior or remaining limitations; do not describe intended behavior as shipped.
+
+Launcher and finder hovered result backgrounds use the same 4px rounding as
+selected results. Hovered, pressed, and dragged scrollbar handles use `base08`.

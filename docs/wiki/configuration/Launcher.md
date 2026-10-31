@@ -28,6 +28,10 @@ skipped. The application logs a warning with the desktop file path and reason,
 so a rejected entry does not prevent startup. If an application is missing,
 check the application logs for `Skipping desktop entry`.
 
+Windows have 4px rounded corners and a 1px `base07` border. Search input
+borders also use `base07` with 4px rounded corners. Selected results have 4px rounded corners and use `base02`, including when
+hovered; other hovered results use `base01`. Result text uses `base05`.
+
 ## Configuration
 
 Put these settings in `~/.config/ghost-shell/config.toml`.
@@ -43,7 +47,7 @@ background_opacity = 0.8
   | `blur`               | `false`   | Requests compositor blur behind the launcher             |
   | `background_opacity` | Automatic | `0.8` with blur, otherwise `1.0`; clamped to `0.0`–`1.0` |
 
-Application icon lookup uses [general.theme](Introduction.md#icon-theme), with
+Application icon lookup uses [theme.icons](Introduction.md#icon-theme), with
 GTK icon-theme detection when omitted.
 
 The [general font and theme](Introduction.md#theming) also apply. There are no
@@ -56,3 +60,9 @@ Implementation:
 discovery](../../../crates/ghost-shell-applications/ghost-shell-launcher/src/entries.rs),
 and [launch
 action](../../../crates/ghost-shell-applications/ghost-shell-launcher/src/view.rs).
+
+Arrow-key navigation scrolls only when the selected row leaves the visible
+list, moving just enough to reveal it.
+
+Hovered result backgrounds also have 4px rounded corners. Hovering, pressing, or
+dragging the scrollbar colors its handle `base08`.

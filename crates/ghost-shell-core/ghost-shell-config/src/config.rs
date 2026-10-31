@@ -8,8 +8,7 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct BarAppConfig {
     pub general: GeneralConfig,
-    #[serde(rename = "bar")]
-    pub bars: HashMap<String, BarConfig>,
+    pub bar: BarConfig,
     pub clock: ClockConfig,
     pub wallpaper: WallpaperConfig,
     pub theme: ThemeConfig,
@@ -58,7 +57,6 @@ pub struct GreeterSessionConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
-    pub theme: Option<String>,
     pub font_family: String,
     pub font_size: f32,
 }
@@ -66,7 +64,6 @@ pub struct GeneralConfig {
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
-            theme: None,
             font_family: "monospace".into(),
             font_size: 13.0,
         }
@@ -74,47 +71,123 @@ impl Default for GeneralConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct BarConfig {
-    pub output: String,
+    #[serde(deserialize_with = "positive_dimension")]
     pub height: f32,
+    #[serde(deserialize_with = "nonnegative_dimension")]
     pub exclusive_zone: f32,
-    pub primary: bool,
-    pub appearance: BarAppearance,
-    pub background_opacity: Option<f32>,
+    pub outputs: HashMap<String, BarOutputConfig>,
+    pub decoration: BarDecorationConfig,
+    pub widgets: BarWidgetsConfig,
 }
 
 impl Default for BarConfig {
     fn default() -> Self {
         Self {
-            output: "<default>".to_string(),
-            height: 27.0,
-            exclusive_zone: 27.0,
-            primary: false,
-            appearance: BarAppearance::default(),
-            background_opacity: None,
+            height: 28.0,
+            exclusive_zone: 28.0,
+            outputs: HashMap::new(),
+            decoration: BarDecorationConfig::default(),
+            widgets: BarWidgetsConfig::default(),
         }
     }
 }
 
-impl BarConfig {
-    pub fn background_opacity(&self) -> f32 {
-        match self.appearance {
-            BarAppearance::Themed => background_opacity(false, self.background_opacity),
-            BarAppearance::Blur => background_opacity(true, self.background_opacity),
-            BarAppearance::Transparent => 0.0,
+#[derive(Default, Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BarOutputConfig {
+    pub primary: bool,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BarDecorationConfig {
+    pub layout: BarLayout,
+    #[serde(deserialize_with = "opacity")]
+    pub opacity: f32,
+    pub blur: bool,
+    #[serde(deserialize_with = "nonnegative_dimension")]
+    pub radius: f32,
+}
+
+impl Default for BarDecorationConfig {
+    fn default() -> Self {
+        Self {
+            layout: BarLayout::Continuous,
+            opacity: 1.0,
+            blur: false,
+            radius: 4.0,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum BarAppearance {
+pub enum BarLayout {
     #[default]
-    #[serde(alias = "default")]
-    Themed,
-    Blur,
-    Transparent,
+    Continuous,
+    Islands,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BarWidgetsConfig {
+    #[serde(deserialize_with = "positive_dimension")]
+    pub height: f32,
+    #[serde(deserialize_with = "positive_dimension")]
+    pub icon_size: f32,
+    #[serde(deserialize_with = "nonnegative_dimension")]
+    pub padding_horizontal: f32,
+    #[serde(deserialize_with = "nonnegative_dimension")]
+    pub margin_horizontal: f32,
+    #[serde(deserialize_with = "nonnegative_dimension")]
+    pub margin_vertical: f32,
+}
+
+impl Default for BarWidgetsConfig {
+    fn default() -> Self {
+        Self {
+            height: 20.0,
+            icon_size: 16.0,
+            padding_horizontal: 4.0,
+            margin_horizontal: 2.0,
+            margin_vertical: 4.0,
+        }
+    }
+}
+
+fn positive_dimension<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<f32, D::Error> {
+    let value = nonnegative_dimension(deserializer)?;
+    if value > 0.0 {
+        Ok(value)
+    } else {
+        Err(serde::de::Error::custom("dimension must be positive"))
+    }
+}
+
+fn nonnegative_dimension<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<f32, D::Error> {
+    let value = f32::deserialize(deserializer)?;
+    if value.is_finite() && (0.0..=16384.0).contains(&value) {
+        Ok(value)
+    } else {
+        Err(serde::de::Error::custom(
+            "dimension must be finite and between 0 and 16384",
+        ))
+    }
+}
+
+fn opacity<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f32, D::Error> {
+    let value = f32::deserialize(deserializer)?;
+    if value.is_finite() && (0.0..=1.0).contains(&value) {
+        Ok(value)
+    } else {
+        Err(serde::de::Error::custom("opacity must be between 0 and 1"))
+    }
 }
 
 #[derive(Default, Debug, Clone, Deserialize)]
@@ -170,6 +243,7 @@ impl Default for WallpaperConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
 pub struct ThemeConfig {
+    pub icons: Option<String>,
     pub mode: ThemeMode,
     pub dark: Base16Config,
     pub light: Base16Config,
@@ -178,6 +252,7 @@ pub struct ThemeConfig {
 impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
+            icons: None,
             mode: ThemeMode::Dark,
             dark: Base16Config::default_dark(),
             light: Base16Config::default_light(),
@@ -455,15 +530,22 @@ mod tests {
     }
 
     #[test]
-    fn blur_settings_are_independent_and_default_to_disabled() -> Result<(), ConfigError>
-    {
+    fn global_bar_settings_and_icon_theme() -> Result<(), ConfigError> {
         let source = r#"
-            [bar.first]
-            appearance = "blur"
-
-            [bar.second]
-            appearance = "themed"
-
+            [bar]
+            height = 32
+            exclusive_zone = 32
+            [bar.outputs.first]
+            primary = true
+            [bar.outputs.second]
+            [bar.decoration]
+            layout = "islands"
+            opacity = 0.6
+            blur = true
+            [bar.widgets]
+            icon_size = 18
+            [theme]
+            icons = "Papirus-Dark"
             [launcher]
             blur = true
             background_opacity = 0.6
@@ -472,37 +554,45 @@ mod tests {
             .add_source(File::from_str(source, FileFormat::Toml))
             .build()?
             .try_deserialize()?;
-
-        assert_eq!(
+        assert_eq!(config.bar.outputs.len(), 2);
+        assert!(
             config
-                .bars
+                .bar
+                .outputs
                 .get("first")
-                .map(|bar| bar.appearance),
-            Some(BarAppearance::Blur)
+                .is_some_and(|output| output.primary)
         );
-        assert_eq!(
-            config
-                .bars
-                .get("second")
-                .map(|bar| bar.appearance),
-            Some(BarAppearance::Themed)
-        );
-        assert_eq!(
-            config
-                .bars
-                .get("first")
-                .map(BarConfig::background_opacity),
-            Some(0.8)
-        );
+        assert_eq!(config.bar.height, 32.0);
+        assert_eq!(config.bar.decoration.layout, BarLayout::Islands);
+        assert!(config.bar.decoration.blur);
+        assert_eq!(config.bar.decoration.opacity, 0.6);
+        assert_eq!(config.bar.widgets.icon_size, 18.0);
+        assert_eq!(config.bar.widgets.height, 20.0);
         let launcher: LauncherConfig = Config::builder()
             .add_source(File::from_str(source, FileFormat::Toml))
             .build()?
             .try_deserialize()?;
+        assert_eq!(config.theme.icons, launcher.theme.icons);
+        assert_eq!(launcher.theme.icons.as_deref(), Some("Papirus-Dark"));
         assert!(launcher.launcher.blur);
-        assert_eq!(launcher.launcher.background_opacity(), 0.6);
-        let finder = FinderConfig::default();
-        assert!(!finder.finder.blur);
-        assert_eq!(finder.finder.background_opacity(), 1.0);
+        assert!(!BarConfig::default().decoration.blur);
         Ok(())
+    }
+
+    #[test]
+    fn invalid_bar_values_are_rejected() {
+        for source in [
+            "[bar]\nheight = -1",
+            "[bar.widgets]\nicon_size = 0",
+            "[bar.decoration]\nopacity = 1.5",
+            "[bar.decoration]\nradius = nan",
+            "[bar.first]\nappearance = \"blur\"",
+        ] {
+            let parsed = Config::builder()
+                .add_source(File::from_str(source, FileFormat::Toml))
+                .build()
+                .and_then(|config| config.try_deserialize::<BarAppConfig>());
+            assert!(parsed.is_err(), "accepted {source}");
+        }
     }
 }

@@ -2,87 +2,151 @@
 
 [Wiki](../README.md#configuration) · [Introduction](Introduction.md)
 
-The bar is a top-anchored Wayland layer-shell surface. Without `[bar.*]`
-entries, a default bar opens on every connected output, including newly
-connected displays. Explicit entries restrict bars to the named outputs.
-Configure a separate bar for each output on which it should appear in
-`~/.config/ghost-shell/config.toml`:
+The bar is a top-anchored Wayland layer-shell surface. Geometry, decoration and
+widget dimensions are global across outputs. Use the shared `config.toml`:
 
 ```toml
-[bar."eDP-1"]
-output = "eDP-1"
-height = 27.0
-exclusive_zone = 27.0
-appearance = "themed"
+[bar]
+height = 28.0
+exclusive_zone = 28.0
 
-[bar."DP-1"]
-output = "DP-1"
+[bar.outputs."eDP-1"]
 primary = true
-height = 27.0
-exclusive_zone = 27.0
-appearance = "blur"
-background_opacity = 0.8
+
+[bar.outputs."DP-1"]
+primary = false
+
+[bar.decoration]
+layout = "islands"
+opacity = 0.8
+blur = true
+radius = 4.0
+
+[bar.widgets]
+height = 20.0
+icon_size = 16.0
+padding_horizontal = 4.0
+margin_horizontal = 2.0
+margin_vertical = 4.0
 ```
 
-Use `niri msg outputs` to find output names. The **table key**, such as `DP-1`,
-is what the current implementation matches to a connected display. The `output`
-field exists in the schema but does not select the display; keep it identical to
-the table key. Arbitrary table names such as `[bar.main]` will not match `DP-1`.
+## Outputs and geometry
 
-  | Option               | Default       | Behavior                                                       |
-  | -------------------- | ------------- | -------------------------------------------------------------- |
-  | `output`             | `"<default>"` | Schema field; output selection currently uses the table key    |
-  | `height`             | `27.0`        | Bar height in logical pixels                                   |
-  | `exclusive_zone`     | `27.0`        | Space reserved for the bar in logical pixels                   |
-  | `primary`            | `false`       | Preferred fallback output within the bar application           |
-  | `appearance`         | `"themed"`    | `"themed"` (alias `"default"`), `"blur"`, or `"transparent"`   |
-  | `background_opacity` | Automatic     | `1.0` for themed, `0.8` for blur, always `0.0` for transparent |
+With no `bar.outputs` entries, bars open on all connected outputs, including
+newly connected displays. Otherwise the keys select outputs by exact name from
+`niri msg outputs`. Disconnecting an output removes its bar; reconnecting it
+restores the bar. There is no redundant `output` field or per-output styling.
+The `primary` flag is retained as output metadata; current popups attach to the
+bar that was clicked, and launcher/finder use Niri's active output.
 
-Themed bars use the active palette's `base00` background without blur. Blur uses
-the theme background and asks the compositor to blur behind it. Transparent bars
-retain visible widgets without a background or blur.
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `bar.height` | `28.0` | Bar height in logical pixels |
+| `bar.exclusive_zone` | `28.0` | Space reserved for the bar; zero reserves none |
+| `bar.outputs.NAME.primary` | `false` | Output metadata |
 
-The primary-output setting is local to the bar application. Launcher and finder
-use their own focused-output selection. Bars reconcile when displays change; a
-disconnected output's bar is removed and can return on reconnection.
+Choose a bar height at least `widgets.height + 2 * widgets.margin_vertical`.
+Choose an icon size that fits inside the widget height. Dimensions must be
+finite, nonnegative and no greater than 16384; heights and icon size must be
+positive. Invalid settings log a configuration error and use application defaults.
+
+## Decoration
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `layout` | `"continuous"` | `"continuous"` decorates the bar; `"islands"` decorates widget inner containers |
+| `opacity` | `1.0` | Background opacity, from zero to one |
+| `blur` | `false` | Request compositor blur behind decorated areas |
+| `radius` | `4.0` | Decoration corner radius in logical pixels |
+
+Backgrounds use the active palette's `base00`. Text and monochrome icons use
+`base07`, and inner containers highlight with `base02` on hover. These colors
+are not separate bar options. Opacity affects resting backgrounds, not content
+or hover highlights. Original tray icons retain their own colors.
+
+| Appearance | Opacity | Blur |
+| --- | --- | --- |
+| Solid | `1.0` | `false` |
+| Transparent | `0.0` | `false` |
+| Translucent | Between zero and one | `false` |
+| Blurred with a tint | Below one | `true` |
+| Blurred without a tint | `0.0` | `true` |
+
+Both layouts support all combinations. Continuous mode leaves inner containers
+transparent at rest. Islands mode leaves the surrounding bar and gaps transparent.
+Joined tray/audio controls round only their group's outside edges.
+
+Blur requires compositor support; without it the configured background still
+renders. Ghost updates explicit surface-local blur regions when decoration
+bounds change, including tray changes and output resizing. Rounded corners are
+approximated conservatively using integer logical-pixel rectangles, leaving gaps
+clear. Blur is not simulated and has no configurable strength. Popups retain
+their own styling.
 
 ## Widget layout
 
-  | Section | Widgets, in order         |
-  | ------- | ------------------------- |
-  | Start   | System menu, workspaces   |
-  | Center  | Focused window            |
-  | End     | Tray, audio, power, clock |
+| Section | Widgets, in order |
+| --- | --- |
+| Start | System menu, workspaces |
+| Center | Focused window |
+| End | Tray, audio, power, clock |
 
-Bar content has a 9px inset on both the left and right edges. Start-section
-icons remain 18px, with filled and outlined dots marking active and inactive
-workspaces respectively.
+The bar retains 9px horizontal insets. Global widget defaults are:
 
-Each end-section widget has a transparent, full-height outer container with a
-2px horizontal inset and a 4px vertical inset around its 20px-high inner
-container. Set `height` and `exclusive_zone` to `28.0` for this layout. Content width follows its text and icons. Inner containers have 4px horizontal padding and a 4px outer corner radius. Tray
-icons each occupy a 16×16px square inside a 24×20px inner container, with no
-gap between items; audio and battery icons are also 16×16px. Empty tray and missing battery widgets take no space.
+| `bar.widgets` option | Default |
+| --- | --- |
+| `height` | `20.0` |
+| `icon_size` | `16.0` |
+| `padding_horizontal` | `4.0` |
+| `margin_horizontal` | `2.0` |
+| `margin_vertical` | `4.0` |
 
-Inner containers use a `base00` background with `base07` text and monochrome
-icons. Hovering changes only the background to `base02`. Tray items prefer available symbolic SVGs in `base07`; original fallback
-icons retain their own colors in both states. Tray and audio items join without
-gaps: only the first item's left corners and last item's right corners are
-rounded. A single item has all four corners rounded. The outer margins do not
-highlight. Audio and tray menu actions retain their existing behavior; battery
-and clock highlighting does not add click actions. These dimensions are fixed
-in code; configurable inner height and margins are not yet available.
+Outer containers are transparent and span the bar height. Inner containers
+follow content width, with the configured padding and height. Icons preserve
+aspect ratio. Tray and audio controls have no internal gap and join at square
+edges. Workspaces share one inner container. Empty widgets take no space.
+The focused title is constrained to the center section and clipped if too long.
+All three sections use these settings. Widget ordering remains fixed.
 
- This layout is currently fixed in code. TOML
-cannot add, remove, reorder, or independently configure widget instances per
-output. Network and notifications are not rendered. See
-[widgets](Bar.md#widgets) for current behavior and limits.
+## Migration
 
-Implementation: [bar
-manager](../../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs),
-[layout](../../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs),
-and [output
-selection](../../../crates/ghost-shell-applications/ghost-shell-bar/src/app.rs).
+This replaces the old per-output schema; old `[bar."OUTPUT"]` tables are
+rejected instead of being interpreted as global settings.
+
+- Move output keys to `[bar.outputs."OUTPUT"]`, retaining only `primary`.
+- Move height and exclusive zone to `[bar]`, choosing one value for all outputs.
+- Replace `appearance = "themed"` with opacity `1.0`, blur `false`;
+  `"transparent"` with opacity `0.0`, blur `false`; and `"blur"` with opacity
+  `0.8`, blur `true`. Preserve an explicit old background opacity where applicable.
+- Choose `layout = "islands"` for decorated widget containers on a clear bar.
+- Move `[general] theme = "Papirus-Dark"` to `[theme] icons = "Papirus-Dark"`.
+
+Home Manager uses the same structure:
+
+```nix
+programs.ghost-shell.settings = {
+  theme = { mode = "dark"; icons = "Papirus-Dark"; };
+  bar = {
+    height = 28;
+    exclusive_zone = 28;
+    outputs."eDP-1".primary = true;
+    decoration = { layout = "islands"; opacity = 0.8; blur = true; radius = 4; };
+    widgets = {
+      height = 20;
+      icon_size = 16;
+      padding_horizontal = 4;
+      margin_horizontal = 2;
+      margin_vertical = 4;
+    };
+  };
+};
+```
+
+Install the icon theme separately. Restart the bar after rebuilding the configuration.
+
+Implementation: [bar layout](../../../crates/ghost-shell-applications/ghost-shell-bar/src/lib.rs),
+[shared decoration](../../../crates/ghost-shell-core/ghost-shell-theme/src/bar.rs),
+[blur regions](../../../crates/ghost-shell-applications/ghost-shell-bar/src/blur.rs).
 
 ## Widgets
 

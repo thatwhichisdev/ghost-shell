@@ -132,6 +132,67 @@ pub fn surface(theme: &Theme, opacity: f32) -> container::Style {
         .color(theme.palette().text)
 }
 
+pub fn search_window(theme: &Theme, opacity: f32) -> container::Style {
+    surface(theme, opacity).border(iced::Border {
+        color: theme
+            .extended_palette()
+            .background
+            .neutral
+            .color,
+        width: 1.0,
+        radius: 4.0.into(),
+    })
+}
+
+pub fn search_input(
+    theme: &Theme,
+    status: iced::widget::text_input::Status,
+) -> iced::widget::text_input::Style {
+    let mut style = text_input(theme, status);
+    style.border.color = theme
+        .extended_palette()
+        .background
+        .neutral
+        .color;
+    style.border.radius = 4.0.into();
+    style
+}
+
+pub fn search_item(
+    theme: &Theme,
+    status: iced::widget::button::Status,
+    selected: bool,
+) -> iced::widget::button::Style {
+    let mut style = iced::widget::button::text(theme, status);
+    style.text_color = theme.palette().text;
+    style.background = if selected {
+        Some(
+            theme
+                .extended_palette()
+                .secondary
+                .strong
+                .color
+                .into(),
+        )
+    } else if matches!(
+        status,
+        iced::widget::button::Status::Hovered | iced::widget::button::Status::Pressed
+    ) {
+        Some(
+            theme
+                .extended_palette()
+                .background
+                .weak
+                .color
+                .into(),
+        )
+    } else {
+        None
+    };
+    style.border.radius = 4.0.into();
+    style
+}
+
 pub fn selected(
     theme: &Theme,
     status: iced::widget::button::Status,
@@ -158,6 +219,37 @@ pub fn plain(
     iced::widget::button::text(theme, status)
 }
 
+pub fn search_scrollable(theme: &Theme, status: scrollable::Status) -> scrollable::Style {
+    let mut style = scrollable::default(theme, status);
+    let (horizontal, vertical) = match status {
+        scrollable::Status::Hovered {
+            is_horizontal_scrollbar_hovered,
+            is_vertical_scrollbar_hovered,
+            ..
+        } => (
+            is_horizontal_scrollbar_hovered,
+            is_vertical_scrollbar_hovered,
+        ),
+        scrollable::Status::Dragged {
+            is_horizontal_scrollbar_dragged,
+            is_vertical_scrollbar_dragged,
+            ..
+        } => (
+            is_horizontal_scrollbar_dragged,
+            is_vertical_scrollbar_dragged,
+        ),
+        scrollable::Status::Active { .. } => (false, false),
+    };
+    let background = theme.palette().danger.into();
+    if horizontal {
+        style.horizontal_rail.scroller.background = background;
+    }
+    if vertical {
+        style.vertical_rail.scroller.background = background;
+    }
+    style
+}
+
 pub fn virtual_list<'a, Message: Clone + 'a>(
     count: usize,
     offset: f32,
@@ -182,10 +274,96 @@ pub fn virtual_list<'a, Message: Clone + 'a>(
     }
     content = content.push(Space::new().height((count - end) as f32 * row_height));
     scrollable(content)
+        .style(search_scrollable)
         .id(id)
         .on_scroll(on_scroll)
         .height(Fill)
         .into()
+}
+
+pub fn reveal_list_row(id: &'static str, top: f32, height: f32) -> iced::Task<f32> {
+    iced::advanced::widget::operate(RevealRow {
+        list: id.into(),
+        target: None,
+        row: Some((top, height)),
+        viewport: None,
+    })
+}
+
+pub fn reveal_list_item(id: &'static str, target: &'static str) -> iced::Task<f32> {
+    iced::advanced::widget::operate(RevealRow {
+        list: id.into(),
+        target: Some(target.into()),
+        row: None,
+        viewport: None,
+    })
+}
+
+struct RevealRow {
+    list: iced::advanced::widget::Id,
+    target: Option<iced::advanced::widget::Id>,
+    row: Option<(f32, f32)>,
+    viewport: Option<(iced::Rectangle, iced::Rectangle, f32)>,
+}
+
+impl iced::advanced::widget::Operation<f32> for RevealRow {
+    fn traverse(
+        &mut self,
+        operate: &mut dyn FnMut(&mut dyn iced::advanced::widget::Operation<f32>),
+    ) {
+        operate(self);
+    }
+
+    fn container(
+        &mut self,
+        id: Option<&iced::advanced::widget::Id>,
+        bounds: iced::Rectangle,
+    ) {
+        if self.target.is_some() && id == self.target.as_ref() {
+            if let Some((_, content, _)) = self.viewport {
+                self.row = Some((bounds.y - content.y, bounds.height));
+            }
+        }
+    }
+
+    fn scrollable(
+        &mut self,
+        id: Option<&iced::advanced::widget::Id>,
+        bounds: iced::Rectangle,
+        content: iced::Rectangle,
+        translation: iced::Vector,
+        _state: &mut dyn iced::advanced::widget::operation::Scrollable,
+    ) {
+        if id == Some(&self.list) {
+            self.viewport = Some((bounds, content, translation.y));
+        }
+    }
+
+    fn finish(&self) -> iced::advanced::widget::operation::Outcome<f32> {
+        use iced::advanced::widget::operation::Outcome;
+        let (Some((top, height)), Some((bounds, content, offset))) =
+            (self.row, self.viewport)
+        else {
+            return Outcome::None;
+        };
+        let next = visible_row_offset(offset, bounds.height, top, height)
+            .clamp(0.0, (content.height - bounds.height).max(0.0));
+        if (next - offset).abs() > 0.5 {
+            Outcome::Some(next)
+        } else {
+            Outcome::None
+        }
+    }
+}
+
+fn visible_row_offset(offset: f32, viewport: f32, top: f32, height: f32) -> f32 {
+    if top < offset || height > viewport {
+        top
+    } else if top + height > offset + viewport {
+        top + height - viewport
+    } else {
+        offset
+    }
 }
 
 pub fn selection(current: Option<usize>, count: usize, forward: bool) -> Option<usize> {
@@ -205,6 +383,17 @@ mod tests {
     use ghost_shell_config::Base16Config;
 
     use super::*;
+
+    #[test]
+    fn keyboard_navigation_scrolls_only_past_visible_edges() {
+        assert_eq!(visible_row_offset(0.0, 360.0, 48.0, 48.0), 0.0);
+        assert_eq!(visible_row_offset(0.0, 360.0, 336.0, 48.0), 24.0);
+        assert_eq!(visible_row_offset(96.0, 360.0, 48.0, 48.0), 48.0);
+        assert_eq!(visible_row_offset(96.0, 360.0, 128.0, 64.0), 96.0);
+        assert_eq!(visible_row_offset(96.0, 360.0, 416.0, 64.0), 120.0);
+        assert_eq!(visible_row_offset(96.0, 360.0, 0.0, 32.0), 0.0);
+        assert_eq!(visible_row_offset(0.0, 360.0, 480.0, 32.0), 152.0);
+    }
 
     fn assert_mapping(theme: &Theme, source: &Base16Config) {
         let palette = theme.palette();

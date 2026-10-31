@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use futures::SinkExt as _;
 use ghost_shell_bar::Bar;
-use ghost_shell_config::{BarAppConfig, BarAppearance, BarConfig};
+use ghost_shell_config::{BarAppConfig, BarConfig};
 use ghost_shell_dbus::MenuBackend as _;
 use ghost_shell_wallpaper::WallpaperSource;
 use ghost_shell_widget_audio::{AudioPopup, Message as AudioMessage};
@@ -79,7 +79,6 @@ enum PopupRequest {
 
 struct Shell {
     config: BarAppConfig,
-    default_bar: BarConfig,
     events: shell::ShellReceiver,
     outputs: BTreeMap<u32, ExWlOutputInfo>,
     surfaces: HashMap<Id, Surface>,
@@ -110,8 +109,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             BarAppConfig::default()
         });
 
-    if config.bars.is_empty() {
-        log::info!("No bars configured; showing a default bar on each output");
+    if config.bar.outputs.is_empty() {
+        log::info!("No output filter configured; showing the bar on each output");
     }
 
     let font = iced::Font {
@@ -235,12 +234,14 @@ impl Shell {
         };
 
         let bar = Bar {
-            tray: ghost_shell_widget_tray::Tray::new(config.general.theme.clone()),
+            tray: ghost_shell_widget_tray::Tray::new(
+                config.theme.icons.clone(),
+                config.bar.widgets.icon_size,
+            ),
             ..Bar::default()
         };
         let mut shell = Self {
             config,
-            default_bar: BarConfig::default(),
             events,
             outputs: BTreeMap::new(),
             surfaces: HashMap::new(),
@@ -337,11 +338,9 @@ impl Shell {
     }
 
     fn bar_config(&self, output: &str) -> Option<&BarConfig> {
-        if self.config.bars.is_empty() {
-            Some(&self.default_bar)
-        } else {
-            self.config.bars.get(output)
-        }
+        (self.config.bar.outputs.is_empty()
+            || self.config.bar.outputs.contains_key(output))
+        .then_some(&self.config.bar)
     }
 
     fn reconcile(&mut self) -> Task<Message> {
@@ -392,11 +391,7 @@ impl Shell {
                             keyboard_interactivity: KeyboardInteractivity::OnDemand,
                             output_option: OutputOption::GlobalName(output),
                             namespace: Some("ghost-shell-bar".into()),
-                            blur_option: if config.appearance == BarAppearance::Blur {
-                                BlurOption::FullRegion
-                            } else {
-                                BlurOption::None
-                            },
+                            blur_option: BlurOption::None,
                             ..Default::default()
                         },
                     ));
@@ -812,6 +807,21 @@ impl Shell {
         use ghost_shell_bar::Message as BarMessage;
 
         match message {
+            BarMessage::Decorations(decorations) => {
+                if matches!(self.surfaces.get(&window), Some(Surface::Bar(_)))
+                    && self.config.bar.decoration.blur
+                {
+                    let regions = crate::blur::regions(&decorations);
+                    return Task::done(Message::BlurOptionChange {
+                        id: window,
+                        option: if regions.is_empty() {
+                            BlurOption::None
+                        } else {
+                            BlurOption::Region(regions)
+                        },
+                    });
+                }
+            }
             BarMessage::Menu(ghost_shell_widget_menu::Message::OpenLauncher) => {
                 return ghost_shell_niri::send(ghost_shell_niri::Request::Action(
                     ghost_shell_niri::Action::Spawn {

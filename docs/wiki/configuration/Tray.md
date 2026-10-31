@@ -25,7 +25,7 @@ pointer to select actions and open submenus.
 
 Ghost first tries a symbolic SVG from the installed icon themes, using the
 reported icon name (or its filename for absolute paths), then the tray item's
-identifier. It keeps an existing `-symbolic` suffix or appends one. Lookup uses [general.theme](Introduction.md#icon-theme) when set. Otherwise it
+identifier. It keeps an existing `-symbolic` suffix or appends one. Lookup uses [theme.icons](Introduction.md#icon-theme) when set. Otherwise it
 tries the GTK icon theme, Papirus-Dark, Papirus, and Adwaita, including the
 lookup library's inherited-theme fallbacks. Successful replacements use the
 bar's `base07` foreground. This is a best-effort visual experiment: applications
@@ -38,8 +38,7 @@ reports successful replacement paths.
 Icons can come from application pixmaps, absolute file paths, or named icons in
 the desktop icon theme (with hicolor fallback). The application’s icon directory
 is checked first when supplied. Both raster images and SVG icons are supported,
-including GlobalProtect’s symbolic status icons. Icons fit within a 16px
-square and preserve their aspect ratio. They are
+including GlobalProtect’s symbolic status icons. Icons fit within the configured `bar.widgets.icon_size` square (16px by default) and preserve their aspect ratio. They are
 centered vertically in the bar. Hovering a tray icon highlights its inner container while preserving the
 original fallback colors; symbolic replacements use `base07`. No tooltip is shown. Menus use a `base00` background and a 1px `base03` border with 6px
 rounded corners. Highlighted items use `base07` for both fill and outline, with

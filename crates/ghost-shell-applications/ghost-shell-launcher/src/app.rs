@@ -98,7 +98,7 @@ impl App {
             system_dark: true,
         };
         let open = app.open();
-        let load = ghost_shell_launcher::Launcher::load(app.config.general.theme.clone())
+        let load = ghost_shell_launcher::Launcher::load(app.config.theme.icons.clone())
             .map(Message::Feature);
         (
             app,
@@ -210,7 +210,7 @@ impl App {
             .width(Fill)
             .height(Fill)
             .style(|theme| {
-                ghost_shell_theme::surface(
+                ghost_shell_theme::search_window(
                     theme,
                     self.config.launcher.background_opacity(),
                 )

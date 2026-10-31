@@ -1,18 +1,19 @@
-use iced::{
-    Element, Fill,
-    widget::{button, container},
-};
+use iced::{Element, widget::button};
 
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenLauncher,
 }
 
-pub fn view() -> Element<'static, Message> {
-    button(container(ghost_shell_assets::icon("icons/nixos.svg", 18.0)).center_y(Fill))
+pub fn view(style: ghost_shell_theme::bar::Style) -> Element<'static, Message> {
+    ghost_shell_theme::bar::outer(
+        button(ghost_shell_theme::bar::inner(
+            ghost_shell_theme::bar::icon("icons/nixos.svg", style.widgets.icon_size),
+            style,
+        ))
         .padding(0)
-        .height(Fill)
         .on_press(Message::OpenLauncher)
-        .style(button::text)
-        .into()
+        .style(ghost_shell_theme::bar::transparent_button),
+        style,
+    )
 }

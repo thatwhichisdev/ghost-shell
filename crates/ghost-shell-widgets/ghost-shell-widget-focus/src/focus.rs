@@ -1,10 +1,13 @@
 use ghost_shell_niri::NiriState;
 use iced::{
-    Element, Fill,
+    Element,
     widget::{container, text},
 };
 
-pub fn view<'a, Message: 'a>(niri: &'a NiriState) -> Element<'a, Message> {
+pub fn view<'a, Message: 'a>(
+    niri: &'a NiriState,
+    style: ghost_shell_theme::bar::Style,
+) -> Element<'a, Message> {
     let title = niri
         .windows
         .values()
@@ -12,8 +15,18 @@ pub fn view<'a, Message: 'a>(niri: &'a NiriState) -> Element<'a, Message> {
         .and_then(|window| window.title.as_deref())
         .unwrap_or("");
 
-    container(text(title).wrapping(iced::widget::text::Wrapping::None))
-        .center_x(Fill)
-        .clip(true)
-        .into()
+    if title.is_empty() {
+        return iced::widget::Space::new()
+            .width(0)
+            .height(0)
+            .into();
+    }
+    ghost_shell_theme::bar::outer(
+        ghost_shell_theme::bar::inner(
+            container(text(title).wrapping(iced::widget::text::Wrapping::None))
+                .clip(true),
+            style,
+        ),
+        style,
+    )
 }

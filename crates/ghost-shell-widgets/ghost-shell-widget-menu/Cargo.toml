@@ -12,4 +12,4 @@ path = "src/menu.rs"
 
 [dependencies]
 iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
-ghost-shell-assets.workspace = true
+ghost-shell-theme.workspace = true

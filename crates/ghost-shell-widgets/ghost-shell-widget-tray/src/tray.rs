@@ -34,13 +34,15 @@ struct Item {
 #[derive(Default)]
 pub struct Tray {
     theme: Option<String>,
+    icon_size: u16,
     items: BTreeMap<StatusNotifierId, Item>,
 }
 
 impl Tray {
-    pub fn new(theme: Option<String>) -> Self {
+    pub fn new(theme: Option<String>, icon_size: f32) -> Self {
         Self {
             theme,
+            icon_size: icon_size.ceil().clamp(1.0, u16::MAX as f32) as u16,
             ..Self::default()
         }
     }
@@ -57,7 +59,7 @@ impl Tray {
             item.icon_theme_path,
             item.icon_pixmaps.len(),
         );
-        let icon = match icon(&item, self.theme.as_deref()) {
+        let icon = match icon(&item, self.theme.as_deref(), self.icon_size) {
             Ok(icon) => icon,
             Err(error) => {
                 log::warn!("Tray icon: {error:#}");
@@ -72,7 +74,7 @@ impl Tray {
             .insert(item.id, Item { icon, menu });
     }
 
-    pub fn view(&self) -> Element<'_, TrayMessage> {
+    pub fn view(&self, style: ghost_shell_theme::bar::Style) -> Element<'_, TrayMessage> {
         if self.items.is_empty() {
             return iced::widget::Space::new()
                 .width(0)
@@ -86,28 +88,30 @@ impl Tray {
                 .enumerate()
                 .map(|(index, item)| {
                     let icon: Element<'_, TrayMessage> = match &item.icon {
-                        Some(Icon::Symbolic(handle)) => {
-                            ghost_shell_theme::bar::svg(handle.clone())
-                        }
+                        Some(Icon::Symbolic(handle)) => ghost_shell_theme::bar::svg(
+                            handle.clone(),
+                            style.widgets.icon_size,
+                        ),
                         Some(Icon::Svg(handle)) => iced::widget::svg(handle.clone())
-                            .width(ghost_shell_theme::bar::ICON_SIZE)
-                            .height(ghost_shell_theme::bar::ICON_SIZE)
+                            .width(style.widgets.icon_size)
+                            .height(style.widgets.icon_size)
                             .content_fit(ContentFit::Contain)
                             .style(|_, _| iced::widget::svg::Style { color: None })
                             .into(),
                         Some(Icon::Image(handle)) => iced::widget::image(handle.clone())
-                            .width(ghost_shell_theme::bar::ICON_SIZE)
-                            .height(ghost_shell_theme::bar::ICON_SIZE)
+                            .width(style.widgets.icon_size)
+                            .height(style.widgets.icon_size)
                             .content_fit(ContentFit::Contain)
                             .into(),
                         None => container(text("•"))
-                            .center(ghost_shell_theme::bar::ICON_SIZE)
+                            .center(style.widgets.icon_size)
                             .into(),
                     };
                     let content = ghost_shell_theme::bar::group_inner(
                         icon,
                         index == 0,
                         index == self.items.len().saturating_sub(1),
+                        style,
                     );
                     if let Some(menu) = &item.menu {
                         button(content)
@@ -120,11 +124,16 @@ impl Tray {
                     }
                 }))
             .spacing(0),
+            style,
         )
     }
 }
-fn icon(item: &StatusNotifierItem, theme: Option<&str>) -> anyhow::Result<Option<Icon>> {
-    if let Some(path) = symbolic_icon(item, theme) {
+fn icon(
+    item: &StatusNotifierItem,
+    theme: Option<&str>,
+    icon_size: u16,
+) -> anyhow::Result<Option<Icon>> {
+    if let Some(path) = symbolic_icon(item, theme, icon_size) {
         log::debug!("Tray symbolic icon for {}: {}", item.id, path.display());
         return Ok(Some(Icon::Symbolic(iced::widget::svg::Handle::from_path(
             path,
@@ -156,7 +165,7 @@ fn icon(item: &StatusNotifierItem, theme: Option<&str>) -> anyhow::Result<Option
     let Some(name) = item.icon_name.as_deref() else {
         return Ok(None);
     };
-    let path = resolve_icon(name, item.icon_theme_path.as_deref(), theme);
+    let path = resolve_icon(name, item.icon_theme_path.as_deref(), theme, icon_size);
     path.map(|path| -> anyhow::Result<Icon> {
         if path
             .extension()
@@ -177,6 +186,7 @@ fn icon(item: &StatusNotifierItem, theme: Option<&str>) -> anyhow::Result<Option
 fn symbolic_icon(
     item: &StatusNotifierItem,
     configured_theme: Option<&str>,
+    icon_size: u16,
 ) -> Option<PathBuf> {
     let detected_theme = configured_theme
         .is_none()
@@ -219,7 +229,7 @@ fn symbolic_icon(
         for theme in &themes {
             if let Some(path) = freedesktop_icons::lookup(&symbolic)
                 .with_theme(theme)
-                .with_size(ghost_shell_theme::bar::ICON_SIZE as u16)
+                .with_size(icon_size)
                 .force_svg()
                 .with_cache()
                 .find()
@@ -239,6 +249,7 @@ fn resolve_icon(
     name: &str,
     directory: Option<&str>,
     theme: Option<&str>,
+    icon_size: u16,
 ) -> Option<PathBuf> {
     if Path::new(name).is_absolute() {
         return Some(name.into());
@@ -261,7 +272,7 @@ fn resolve_icon(
         .flatten();
     let theme = theme.or(detected_theme.as_deref());
     let mut lookup = freedesktop_icons::lookup(name)
-        .with_size(24)
+        .with_size(icon_size)
         .with_cache();
     if let Some(theme) = theme {
         lookup = lookup.with_theme(theme);

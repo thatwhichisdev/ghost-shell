@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use iced::{
     Element, Fill, Task,
-    widget::{button, column, container, operation, text, text_input},
+    widget::{button, column, container, operation, scrollable, text, text_input},
 };
 use search::{Search, SearchOptions, SearchResult};
 
@@ -16,7 +16,7 @@ pub enum Message {
     Progress(Result<(bool, usize), String>),
     Move(bool),
     Select(usize),
-    Scrolled(f32),
+    Reveal(f32),
 }
 
 impl std::fmt::Debug for Message {
@@ -32,7 +32,6 @@ pub struct Finder {
     generation: u64,
     result: Option<SearchResult>,
     selected: Option<usize>,
-    offset: f32,
     indexing: bool,
     searching: bool,
     pending_search: bool,
@@ -142,7 +141,10 @@ impl Finder {
                         self.selected = (!result.items.is_empty()).then_some(0);
                         self.indexed = result.indexed_files;
                         self.result = Some(result);
-                        self.offset = 0.0;
+                        return operation::scroll_to(
+                            "finder-list",
+                            iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                        );
                     }
                     Err(error) => self.error = Some(error),
                 }
@@ -155,20 +157,21 @@ impl Finder {
                     .map_or(0, |result| result.items.len());
                 self.selected =
                     ghost_shell_theme::selection(self.selected, count, forward);
-                if let Some(index) = self.selected {
-                    self.offset =
-                        (index as f32 * 32.0).min((count as f32 * 32.0 - 600.0).max(0.0));
-                    return operation::scroll_to(
+                if self.selected.is_some() {
+                    return ghost_shell_theme::reveal_list_item(
                         "finder-list",
-                        iced::widget::scrollable::AbsoluteOffset {
-                            x: 0.0,
-                            y: self.offset,
-                        },
-                    );
+                        "finder-selected",
+                    )
+                    .map(Message::Reveal);
                 }
             }
             Message::Select(index) => self.selected = Some(index),
-            Message::Scrolled(offset) => self.offset = offset,
+            Message::Reveal(offset) => {
+                return operation::scroll_to(
+                    "finder-list",
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: offset },
+                );
+            }
         }
         Task::none()
     }
@@ -179,31 +182,39 @@ impl Finder {
             .as_ref()
             .map_or(0, |result| result.items.len());
 
-        let list = ghost_shell_theme::virtual_list(
-            count,
-            self.offset,
-            700.0,
-            32.0,
-            "finder-list",
-            |viewport| Message::Scrolled(viewport.absolute_offset().y),
-            |index| {
-                let label = self
-                    .result
-                    .as_ref()
-                    .and_then(|result| result.items.get(index))
-                    .map(|item| item.path.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                button(text(label))
+        let list = scrollable(column((0..count).map(|index| {
+            let label = self
+                .result
+                .as_ref()
+                .and_then(|result| result.items.get(index))
+                .map(|item| item.path.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let item = button(
+                text(label)
                     .width(Fill)
-                    .style(if self.selected == Some(index) {
-                        ghost_shell_theme::selected
-                    } else {
-                        ghost_shell_theme::plain
-                    })
-                    .on_press(Message::Select(index))
-                    .into()
-            },
-        );
+                    .wrapping(iced::widget::text::Wrapping::Glyph)
+                    .line_height(iced::widget::text::LineHeight::Absolute(24.0.into())),
+            )
+            .padding([0, 5])
+            .width(Fill)
+            .style(move |theme, status| {
+                ghost_shell_theme::search_item(
+                    theme,
+                    status,
+                    self.selected == Some(index),
+                )
+            })
+            .on_press(Message::Select(index));
+            let item = container(item).width(Fill);
+            if self.selected == Some(index) {
+                item.id("finder-selected").into()
+            } else {
+                item.into()
+            }
+        })))
+        .id("finder-list")
+        .style(ghost_shell_theme::search_scrollable)
+        .height(Fill);
 
         let status = if self.indexing {
             format!("Indexing… {} files", self.indexed)
@@ -221,7 +232,7 @@ impl Finder {
 
         let input = text_input("Search files (Enter)", &self.query)
             .id("finder-query")
-            .style(ghost_shell_theme::text_input)
+            .style(ghost_shell_theme::search_input)
             .padding(8);
 
         let input = input

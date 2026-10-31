@@ -19,6 +19,10 @@ and releases the index. Niri chooses the active output for the centered overlay,
 which takes exclusive keyboard focus. A process lock prevents duplicate windows.
 There is no finder service or IPC server.
 
+Windows have 4px rounded corners and a 1px `base07` border. Search input
+borders also use `base07` with 4px rounded corners. Selected results have 4px rounded corners and use `base02`, including when
+hovered; other hovered results use `base01`. Result text uses `base05`.
+
 ## Configuration
 
 Put these settings in `~/.config/ghost-shell/config.toml`.
@@ -46,3 +50,13 @@ Implementation:
 defaults](../../../crates/ghost-shell-applications/ghost-shell-finder/src/search.rs),
 and [result
 handling](../../../crates/ghost-shell-applications/ghost-shell-finder/src/finder.rs).
+
+Arrow-key navigation scrolls only when the selected row leaves the visible
+list, moving just enough to reveal it.
+Paths wrap at the available width. Each line gets 24px of row height, so
+two-line results occupy 48px and longer paths grow further without overlapping.
+The result list lays out at most the 100 returned search results to measure
+these variable row heights.
+
+Hovered result backgrounds also have 4px rounded corners. Hovering, pressing, or
+dragging the scrollbar colors its handle `base08`.

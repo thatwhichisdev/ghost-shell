@@ -14,6 +14,7 @@ pub enum Message {
     Select(usize),
     Launch(Vec<String>),
     Scrolled(f32),
+    Reveal(f32),
     Loaded(Arc<Vec<DesktopEntry>>),
     Failed(String),
 }
@@ -101,21 +102,25 @@ impl Launcher {
                     forward,
                 );
                 if let Some(index) = self.selected {
-                    self.offset = (index as f32 * 48.0)
-                        .min((self.filtered.len() as f32 * 48.0 - 360.0).max(0.0));
-                    return operation::scroll_to(
+                    return ghost_shell_theme::reveal_list_row(
                         "launcher-list",
-                        iced::widget::scrollable::AbsoluteOffset {
-                            x: 0.0,
-                            y: self.offset,
-                        },
-                    );
+                        index as f32 * 48.0,
+                        48.0,
+                    )
+                    .map(Message::Reveal);
                 }
             }
             Message::Select(index) => {
                 self.selected = Some(index);
             }
             Message::Scrolled(offset) => self.offset = offset,
+            Message::Reveal(offset) => {
+                self.offset = offset;
+                return operation::scroll_to(
+                    "launcher-list",
+                    iced::widget::scrollable::AbsoluteOffset { x: 0.0, y: offset },
+                );
+            }
             Message::Failed(error) => self.error = Some(error),
             Message::Launch(_) => {}
         }
@@ -169,10 +174,12 @@ impl Launcher {
                 )
                 .width(Fill)
                 .height(Fill)
-                .style(if self.selected == Some(index) {
-                    ghost_shell_theme::selected
-                } else {
-                    ghost_shell_theme::plain
+                .style(move |theme, status| {
+                    ghost_shell_theme::search_item(
+                        theme,
+                        status,
+                        self.selected == Some(index),
+                    )
                 })
                 .on_press(Message::Select(index))
                 .into()
@@ -180,7 +187,7 @@ impl Launcher {
         );
         let mut input = text_input("Search applications", &self.query)
             .id("launcher-query")
-            .style(ghost_shell_theme::text_input)
+            .style(ghost_shell_theme::search_input)
             .on_input(Message::Query)
             .padding(8);
         if let Some(command) = self.command() {

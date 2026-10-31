@@ -1,4 +1,5 @@
 mod app;
+mod blur;
 mod services;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

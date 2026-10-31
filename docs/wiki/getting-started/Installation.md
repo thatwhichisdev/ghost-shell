@@ -264,8 +264,8 @@ journalctl --user -u ghost-shell-bar.service -b
   defaults, which show a bar on each connected output.
 - Check `config.toml`; it takes precedence over the older application-specific
   files.
-- Compare `niri msg outputs` with your `[bar."OUTPUT"]` table keys. Setting only
-  `output = "DP-1"` inside `[bar.main]` will not select `DP-1`.
+- Compare `niri msg outputs` with your `[bar.outputs."OUTPUT"]` table keys.
+  Geometry and decoration belong in the global `[bar]` settings.
 
 ### Changes have no effect
 
