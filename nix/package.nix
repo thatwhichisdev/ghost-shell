@@ -73,6 +73,11 @@ rustPlatform.buildRustPackage {
 
   LIBPAMSYS_IMPL = "LinuxPam";
 
+  preCheck = ''
+    # Cargo test binaries run before postFixup creates the application wrappers.
+    export LD_LIBRARY_PATH="${lib.makeLibraryPath runtimeLibraries}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  '';
+
   postFixup = ''
     for application in ghost-shell-bar ghost-shell-launcher ghost-shell-finder ghost-shell-lockscreen ghost-shell-greeter; do
       wrapProgram $out/bin/$application \
