@@ -13,6 +13,8 @@ pub enum Event {
     Removed(StatusNotifierId),
     Menu(Menu),
     Error(String),
+    Notification(ghost_shell_dbus::NotificationEvent),
+    NotificationError(String),
 }
 
 pub fn events() -> impl Stream<Item = Event> {
@@ -31,7 +33,29 @@ pub fn events() -> impl Stream<Item = Event> {
                 }
             }
         });
-        drop(sender);
+        workers.spawn(async move {
+            let (events, mut received) = mpsc::channel(128);
+            let server = ghost_shell_dbus::notifications(events);
+            tokio::pin!(server);
+            loop {
+                tokio::select! {
+                    result = &mut server => {
+                        let error = match result {
+                            Ok(()) => "Notification service stopped".to_owned(),
+                            Err(error) => format!("Notifications: {error:#}"),
+                        };
+                        if sender.send(Event::NotificationError(error)).await.is_err() {
+                            log::debug!("Notification receiver closed");
+                        }
+                        break;
+                    }
+                    event = received.recv() => match event {
+                        Some(event) => if sender.send(Event::Notification(event)).await.is_err() { break; },
+                        None => break,
+                    }
+                }
+            }
+        });
         loop {
             tokio::select! {
                 event = receiver.recv() => { let Some(event) = event else { break; }; if output.send(event).await.is_err() { break; } }

@@ -202,3 +202,10 @@ adapter, run `cargo test -p ghost-shell-wallpaper -- --ignored` to validate the
 custom wgpu pipeline. D-Bus tests start private buses and require permission to
 create Unix sockets. Test compositor operations in an isolated nested Niri
 session.
+
+### Temporary Waycrate patch
+
+`vendor/exwlshellev` contains the pinned Waycrate runtime crate with popup
+background-effect initialization added. The root Cargo patch applies equally
+to Cargo and Nix builds; do not edit Cargo's checkout cache. Provenance and the
+removal condition are recorded in `vendor/exwlshellev/GHOST-PATCH.md`.

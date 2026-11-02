@@ -18,6 +18,7 @@ where
     menu: Element<'a, TrayMessage, Theme, R>,
     canvas: Size,
     generation: u64,
+    blur: bool,
 }
 
 #[derive(Default)]
@@ -25,6 +26,7 @@ struct State {
     opened: bool,
     generation: u64,
     reported: Option<(u32, u32)>,
+    decorations: Option<Vec<ghost_shell_theme::bar::Decoration>>,
 }
 
 impl<'a, R: renderer::Renderer + 'a> Popup<'a, R> {
@@ -32,6 +34,8 @@ impl<'a, R: renderer::Renderer + 'a> Popup<'a, R> {
         menu: Menu<'a, TrayMessage, Theme, R>,
         depth: usize,
         generation: u64,
+        opacity: f32,
+        blur: bool,
     ) -> Self {
         let menu = MenuBar::new(vec![Item::with_menu(
             iced::widget::Space::new().width(1).height(1),
@@ -40,19 +44,22 @@ impl<'a, R: renderer::Renderer + 'a> Popup<'a, R> {
         .safe_bounds_margin(f32::MAX)
         .close_on_item_click_global(false)
         .close_on_background_click_global(false)
-        .style(|theme: &Theme, _| menu_style(theme));
+        .style(move |theme: &Theme, _| menu_style(theme, opacity));
         Self {
             menu: menu.into(),
             canvas: Size::new((depth.max(1) as f32 + 1.0) * 270.0, 702.0),
             generation,
+            blur,
         }
     }
 }
 
-fn menu_style(theme: &Theme) -> iced_aw::menu::Style {
+fn menu_style(theme: &Theme, opacity: f32) -> iced_aw::menu::Style {
     iced_aw::menu::Style {
         bar_background: iced::Color::TRANSPARENT.into(),
-        menu_background: theme.palette().background.into(),
+        menu_background: ghost_shell_theme::surface(theme, opacity)
+            .background
+            .unwrap_or(iced::Color::TRANSPARENT.into()),
         menu_border: ghost_shell_theme::menu_surface(theme).border,
         menu_shadow: iced::Shadow::default(),
         ..Default::default()
@@ -151,6 +158,8 @@ impl<R: renderer::Renderer> Widget<TrayMessage, Theme, R> for Popup<'_, R> {
             canvas: self.canvas,
             reported: &mut state.reported,
             measured: (258, 38),
+            blur: self.blur,
+            decorations: &mut state.decorations,
         })))
     }
 }
@@ -167,6 +176,8 @@ struct PopupOverlay<'a, R: renderer::Renderer> {
     canvas: Size,
     reported: &'a mut Option<(u32, u32)>,
     measured: (u32, u32),
+    blur: bool,
+    decorations: &'a mut Option<Vec<ghost_shell_theme::bar::Decoration>>,
 }
 
 // This is the layout contract of iced_aw 0.14.1's MenuBarOverlay:
@@ -245,6 +256,24 @@ impl<R: renderer::Renderer> overlay::Overlay<TrayMessage, Theme, R>
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, TrayMessage>,
     ) {
+        let decorations = if self.blur {
+            layout
+                .children()
+                .next()
+                .into_iter()
+                .flat_map(menu_bounds)
+                .map(|bounds| ghost_shell_theme::bar::Decoration {
+                    bounds,
+                    radius: 6.0.into(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        if self.decorations.as_ref() != Some(&decorations) {
+            shell.publish(TrayMessage::Decorations(decorations.clone()));
+            *self.decorations = Some(decorations);
+        }
         if *self.reported != Some(self.measured) {
             *self.reported = Some(self.measured);
             shell.publish(TrayMessage::Resize(self.measured.0, self.measured.1));
@@ -327,7 +356,10 @@ mod tests {
                     .weak
                     .color
             );
-            assert_eq!(menu_style(&theme).menu_background, background.into());
+            assert_eq!(menu_style(&theme, 1.0).menu_background, background.into());
+            let mut translucent = background;
+            translucent.a = 0.4;
+            assert_eq!(menu_style(&theme, 0.4).menu_background, translucent.into());
         }
     }
 
@@ -359,6 +391,8 @@ mod tests {
             .offset(8.0),
             2,
             0,
+            1.0,
+            true,
         )
     }
 
@@ -396,6 +430,9 @@ mod tests {
             &mut iced::advanced::clipboard::Null,
             &mut Shell::new(&mut messages),
         );
+        assert!(messages.iter().any(|message| matches!(message,
+            TrayMessage::Decorations(regions) if regions.len() == 1 && regions[0].bounds == root
+        )));
         // The submenu exists before the compositor acknowledges the wider surface.
         let pending = overlay
             .as_overlay_mut()
@@ -453,6 +490,10 @@ mod tests {
                 .iter()
                 .any(|message| matches!(message, TrayMessage::Resize(516, 68)))
         );
+        assert!(messages.iter().any(|message| matches!(message,
+            TrayMessage::Decorations(regions) if regions.len() == 2
+                && regions.iter().zip(&menus).all(|(region, bounds)| region.bounds == *bounds)
+        )));
         let position = menus[1].center();
         for event in [
             mouse::Event::ButtonPressed(mouse::Button::Left),
@@ -531,6 +572,48 @@ mod tests {
             1
         );
     }
+    #[test]
+    fn blur_toggle_updates_regions_without_resizing() {
+        let mut popup = popup();
+        let mut tree = Tree::new(&popup as &dyn Widget<TrayMessage, Theme, ()>);
+        let size = Size::new(258.0, 68.0);
+        for enabled in [true, false, true] {
+            popup.blur = enabled;
+            let node = popup.layout(&mut tree, &(), &Limits::new(Size::ZERO, size));
+            let viewport = Rectangle::new(Point::ORIGIN, size);
+            let mut overlay = popup
+                .overlay(&mut tree, Layout::new(&node), &(), &viewport, Vector::ZERO)
+                .unwrap();
+            let node = overlay.as_overlay_mut().layout(&(), size);
+            let mut messages = Vec::new();
+            for _ in 0..2 {
+                overlay.as_overlay_mut().update(
+                    &Event::Window(iced::window::Event::RedrawRequested(
+                        std::time::Instant::now(),
+                    )),
+                    Layout::new(&node),
+                    mouse::Cursor::Unavailable,
+                    &(),
+                    &mut iced::advanced::clipboard::Null,
+                    &mut Shell::new(&mut messages),
+                );
+            }
+            let reports: Vec<_> = messages
+                .iter()
+                .filter_map(|message| match message {
+                    TrayMessage::Decorations(regions) => Some(regions),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                reports.len(),
+                1,
+                "unchanged regions must not generate repeated updates"
+            );
+            assert_eq!(reports[0].is_empty(), !enabled);
+        }
+    }
+
     #[test]
     fn escape_and_clicking_empty_popup_space_dismiss_without_activation() {
         use iced::keyboard::{self, Key, key};

@@ -36,6 +36,7 @@ pub struct Decoration {
 struct State {
     hovered: bool,
     decorations: Option<Vec<Decoration>>,
+    anchor: Option<(String, Rectangle)>,
 }
 
 pub fn outer<'a, Message: 'a>(
@@ -79,6 +80,7 @@ pub fn group<'a, Message: 'a>(
         root: false,
         background: true,
         interactive: false,
+        report_bounds: None,
         report: None,
         content: content.into(),
     })
@@ -102,6 +104,7 @@ fn item_inner<'a, Message: 'a>(
         root: false,
         background,
         interactive: true,
+        report_bounds: None,
         report: None,
         content: container(content)
             .padding([0.0, style.widgets.padding_horizontal])
@@ -121,10 +124,29 @@ pub fn decorated<'a, Message: 'a>(
         root: true,
         background: true,
         interactive: false,
+        report_bounds: None,
         report: style
             .decoration
             .blur
             .then(|| Box::new(report) as Box<dyn Fn(Vec<Decoration>) -> Message>),
+        content: content.into(),
+    })
+}
+
+pub fn anchor<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    style: Style,
+    key: String,
+    report: impl Fn(Rectangle) -> Message + 'a,
+) -> Element<'a, Message> {
+    Element::new(Hover {
+        radius: 0.0.into(),
+        style,
+        root: false,
+        background: false,
+        interactive: false,
+        report: None,
+        report_bounds: Some((key, Box::new(report))),
         content: content.into(),
     })
 }
@@ -150,6 +172,7 @@ struct Hover<'a, Message> {
     background: bool,
     interactive: bool,
     report: Option<Box<dyn Fn(Vec<Decoration>) -> Message + 'a>>,
+    report_bounds: Option<(String, Box<dyn Fn(Rectangle) -> Message + 'a>)>,
     content: Element<'a, Message>,
 }
 
@@ -211,6 +234,19 @@ impl<Message> Widget<Message, Theme, Renderer> for Hover<'_, Message> {
             && cursor.is_over(layout.bounds())
             && cursor.is_over(*viewport);
         let state = tree.state.downcast_mut::<State>();
+        if let Some((key, report)) = &self.report_bounds {
+            let bounds = layout.bounds();
+            if !state
+                .anchor
+                .as_ref()
+                .is_some_and(|(previous, rectangle)| {
+                    previous == key && *rectangle == bounds
+                })
+            {
+                state.anchor = Some((key.clone(), bounds));
+                shell.publish(report(bounds));
+            }
+        }
         if state.hovered != hovered {
             state.hovered = hovered;
             shell.request_redraw();

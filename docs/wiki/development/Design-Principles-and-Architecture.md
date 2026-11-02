@@ -170,3 +170,15 @@ applications intended to exit on dismissal.
 Update configuration pages when fields or behavior change. Keep the README on
 overview and roadmap, the wiki on user and design guidance, and AGENTS.md on
 actionable instructions linked to these guides.
+
+### Notification service
+
+The bar starts the notifications service from the D-Bus adapter alongside the
+tray service. The adapter owns the session-bus name, protocol methods, IDs,
+replacement, deadlines and closure signals. A bounded command channel serializes
+state changes; the timer sleeps until the next deadline and does not poll.
+The bar owns the service task and popup lifecycle; the notification widget owns
+only presentation state and the in-memory mute preference. Icon lookup runs on
+workers, with stale results rejected by notification revision and icon theme.
+The adapter refuses to replace another notification daemon. Unsupported actions,
+markup, images in bodies, and sound are not advertised as capabilities.

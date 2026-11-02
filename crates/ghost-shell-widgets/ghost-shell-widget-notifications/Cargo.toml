@@ -1,0 +1,22 @@
+[package]
+license.workspace = true
+name = "ghost-shell-widget-notifications"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/notifications.rs"
+
+[dependencies]
+iced = { workspace = true, features = ["advanced", "image-without-codecs", "svg", "tokio", "wayland", "wgpu"] }
+ghost-shell-dbus.workspace = true
+ghost-shell-theme.workspace = true
+freedesktop-icons.workspace = true
+anyhow.workspace = true
+log.workspace = true
+# Iced decodes raster icons through image; keep codec selection with the consumer.
+image = { workspace = true, features = ["bmp", "gif", "ico", "jpeg", "png", "webp"] }
+freedesktop-desktop-entry.workspace = true

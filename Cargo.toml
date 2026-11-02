@@ -1,5 +1,6 @@
 [workspace]
 resolver = "3"
+exclude = ["vendor/exwlshellev"]
 members = [
   "crates/ghost-shell-applications/ghost-shell-cli",
   "crates/ghost-shell-core/ghost-shell-assets",
@@ -26,6 +27,7 @@ members = [
   "crates/ghost-shell-widgets/ghost-shell-widget-workspaces",
   "crates/ghost-shell-widgets/ghost-shell-widget-styling",
   "crates/ghost-shell-widgets/ghost-shell-widget-theme",
+  "crates/ghost-shell-widgets/ghost-shell-widget-notifications",
 ]
 default-members = [
   "crates/ghost-shell-applications/ghost-shell-bar",
@@ -71,6 +73,8 @@ ghost-shell-widget-workspaces = { path = "crates/ghost-shell-widgets/ghost-shell
 ghost-shell-widget-styling = { path = "crates/ghost-shell-widgets/ghost-shell-widget-styling" }
 
 ghost-shell-widget-theme = { path = "crates/ghost-shell-widgets/ghost-shell-widget-theme" }
+
+ghost-shell-widget-notifications = { path = "crates/ghost-shell-widgets/ghost-shell-widget-notifications" }
 
 # iced gui framework
 iced = { version = "0.14.0", default-features = false }
@@ -128,3 +132,6 @@ lz4_flex = "0.14.0"
 regex = "1.13.1"
 rust-embed = "8.12.0"
 uuid = "1.1.2"
+
+[patch."https://github.com/waycrate/exwlshelleventloop"]
+exwlshellev = { path = "vendor/exwlshellev" }

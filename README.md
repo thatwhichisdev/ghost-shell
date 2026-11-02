@@ -69,7 +69,7 @@ confident that Ghost Shell is robust and performant enough for a proper release.
   - [ ] Widget: CPU/GPU usage
   - [ ] Widget: Network usage
   - [x] Widget: Tray
-  - [ ] Widget: Notifications
+  - [x] Widget: Notifications
   - [ ] Widget: Camera
   - [ ] Widget: Audio Control (Speakers/Microphone)
   - [ ] Widget: Bluetooth Control

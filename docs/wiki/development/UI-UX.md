@@ -252,3 +252,28 @@ also change the system menu entry to **Appearance!**. The styling panel uses
 `base08` in place of `base0D` for control accents; palette swatches and exported
 values keep their original slots. Its controls use stable startup typography so large font
 previews remain recoverable.
+
+## Notifications
+
+The bell shares standard bar decoration and sits between tray and audio. Left
+click opens the unread list; right click toggles mute. The muted icon takes
+precedence over the unread icon. Muting retains incoming notifications and
+suppresses the ringing indicator; it does not discard messages. Each list entry
+contains the application icon (or a fallback), app name, summary, optional plain
+text body, and an explicit Mark as read action. That action dismisses the entry.
+Opening the menu alone does not mark entries read. Notification text wraps;
+long lists scroll and popup height follows content up to 600px. Backend failures
+are visible in the popup. No unsolicited toast or sound is produced.
+
+
+Menus opened from the start section align their left edge with the triggering
+inner container. End-section menus align their right edge with the triggering
+inner container, including individual tray icons and audio controls. Menus open
+7 logical pixels below the bar's bottom edge. Appearance inherits the system
+menu's anchor. Open menus follow widget layout changes and retain alignment
+when their content resizes; the compositor can slide them to stay on screen.
+
+Widget popup backgrounds inherit bar decoration opacity and compositor blur.
+Report actual menu bounds (including open tray submenus) and preserve clear
+rounded corners and empty space. Notification rows share the popup background
+to avoid stacking translucent fills. Live changes update already-open popups.

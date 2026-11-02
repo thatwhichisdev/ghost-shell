@@ -14,7 +14,7 @@ path = "src/dbus.rs"
 anyhow.workspace = true
 futures-util.workspace = true
 log.workspace = true
-tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 zbus = { workspace = true, features = ["async-io"] }
 
 [dev-dependencies]

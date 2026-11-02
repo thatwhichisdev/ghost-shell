@@ -1,0 +1,37 @@
+[package]
+name = "exwlshellev"
+authors = ["Decodertalkers <aakari@tutanota.com>", "Aakash Sen Sharma <aakashsensharma@gmail.com>"]
+version = "0.21.0-rc2"
+edition = "2024"
+license = "MIT"
+keywords = ["wayland", "wlroots"]
+repository = "https://github.com/waycrate/exwlshelleventloop"
+readme = "README.md"
+description = "extra shell binding for layershell with winit like eventloop"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tempfile = "3.27.0"
+thiserror = "2.0.20"
+wayland-client = { version = "0.31.15" }
+
+wayland-protocols = { version = "0.32.13", default-features = false, features = ["unstable", "staging", "client"] }
+
+wayland-cursor = "0.31.14"
+
+wayland-protocols-wlr = { version = "0.3.12", default-features = false, features = ["client"] }
+
+wayland-protocols-misc = { version = "0.3.12", features = ["client"] }
+
+wayland-backend = { version = "0.3.17", features = ["client_system"] }
+
+rwh_06 = { package = "raw-window-handle", version = "0.6", features = ["std"] }
+
+calloop = "0.14.4"
+calloop-wayland-source = "0.4.1"
+
+log = "0.4"
+
+waycrate_xkbkeycode = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91" }
+sctk = { package = "smithay-client-toolkit", version = "0.21.1" }

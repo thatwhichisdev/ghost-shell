@@ -6,6 +6,7 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Open,
+    Bounds(iced::Rectangle),
     Resize(u32, u32),
     Shutdown,
     Reboot,
@@ -15,13 +16,18 @@ pub enum Message {
 
 pub fn view(style: ghost_shell_theme::bar::Style) -> Element<'static, Message> {
     ghost_shell_theme::bar::outer(
-        button(ghost_shell_theme::bar::inner(
-            ghost_shell_theme::bar::icon("icons/nixos.svg", style.widgets.icon_size),
+        ghost_shell_theme::bar::anchor(
+            button(ghost_shell_theme::bar::inner(
+                ghost_shell_theme::bar::icon("icons/nixos.svg", style.widgets.icon_size),
+                style,
+            ))
+            .padding(0)
+            .on_press(Message::Open)
+            .style(ghost_shell_theme::bar::transparent_button),
             style,
-        ))
-        .padding(0)
-        .on_press(Message::Open)
-        .style(ghost_shell_theme::bar::transparent_button),
+            "system".into(),
+            Message::Bounds,
+        ),
         style,
     )
 }
@@ -32,6 +38,7 @@ pub fn popup<'a>(
     configuration_error: bool,
     font: iced::Font,
     font_size: f32,
+    opacity: f32,
 ) -> Element<'a, Message> {
     let mut items = column![];
     for (label, icon, message) in [
@@ -81,7 +88,7 @@ pub fn popup<'a>(
         .padding(4)
         .width(Fill)
         .height(Fill)
-        .style(ghost_shell_theme::menu_surface)
+        .style(move |theme| ghost_shell_theme::menu_surface_with_opacity(theme, opacity))
         .into()
 }
 

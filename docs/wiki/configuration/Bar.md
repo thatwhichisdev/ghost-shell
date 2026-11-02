@@ -89,7 +89,7 @@ their own styling.
 | --- | --- |
 | Start | System menu, theme toggle, workspaces |
 | Center | Focused window |
-| End | Tray, audio, power, clock |
+| End | Tray, notifications, audio, power, clock |
 
 The bar retains 9px horizontal insets. Global widget defaults are:
 
@@ -183,7 +183,7 @@ configuration. Their fonts and colors follow the shared theme.
   | [Power](Bar.md#power)                   | Partial battery indicator                | None                    |
   | [Clock](Clock.md)                       | Implemented                              | `[clock].format`        |
   | [Network](Bar.md#network)               | Not implemented                          | None                    |
-  | [Notifications](Bar.md#notifications)   | Not implemented as a widget              | None                    |
+  | [Notifications](Notifications.md)       | Unread list and mute control              | None                    |
 
 The linked pages and sections describe behavior, supported configuration, and
 limits. Status here describes what exists; the
@@ -259,15 +259,21 @@ This planned feature has no implementation yet.
 
 ## Notifications
 
-Status: **Not implemented as a widget.**
+The bell between tray and audio opens the unread notification list; right-click
+toggles mute. See [Notifications](Notifications.md) for service setup, dismissal,
+timeouts, and limitations.
 
-Notifications are not included in the bar. No notification service or center is
-started by the bar daemon.
 
-### Setup and configuration
+Menus opened from the start section align their left edge with the triggering
+inner container. End-section menus align their right edge with the triggering
+inner container, including individual tray icons and audio controls. Menus open
+7 logical pixels below the bar's bottom edge. Appearance inherits the system
+menu's anchor. Open menus follow widget layout changes and retain alignment
+when their content resizes; the compositor can slide them to stay on screen.
 
-There are no supported notification-widget interactions or `[notifications]`
-settings. Document service setup, notification history, popup behavior, and
-options here as they become implemented.
-
-This planned feature has no implementation yet.
+Widget menus (including tray submenus, audio, notifications, system menu, and
+Appearance) inherit `bar.decoration.opacity` and `bar.decoration.blur`. Open
+menus update live. Blur follows each rounded menu background rather than the
+entire popup rectangle, leaving empty areas clear. At opacity `1.0`, the opaque
+background hides blur; use a value below `1.0` to see it. The compositor must
+support the background-effect protocol. Menu corner radii remain unchanged.

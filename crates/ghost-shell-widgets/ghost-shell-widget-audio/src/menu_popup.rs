@@ -18,6 +18,8 @@ where
     generation: u64,
     on_resize: fn(u32, u32) -> Message,
     on_dismiss: Message,
+    blur: bool,
+    on_decorations: fn(Vec<ghost_shell_theme::bar::Decoration>) -> Message,
 }
 
 #[derive(Default)]
@@ -25,6 +27,7 @@ struct State {
     opened: bool,
     generation: u64,
     reported: Option<(u32, u32)>,
+    decorations: Option<Vec<ghost_shell_theme::bar::Decoration>>,
 }
 
 impl<'a, Message: Clone + 'a, R: renderer::Renderer + 'a> Popup<'a, Message, R> {
@@ -35,6 +38,9 @@ impl<'a, Message: Clone + 'a, R: renderer::Renderer + 'a> Popup<'a, Message, R> 
         generation: u64,
         on_resize: fn(u32, u32) -> Message,
         on_dismiss: Message,
+        opacity: f32,
+        blur: bool,
+        on_decorations: fn(Vec<ghost_shell_theme::bar::Decoration>) -> Message,
     ) -> Self {
         let menu = MenuBar::new(vec![Item::with_menu(
             iced::widget::Space::new().width(1).height(1),
@@ -43,21 +49,25 @@ impl<'a, Message: Clone + 'a, R: renderer::Renderer + 'a> Popup<'a, Message, R> 
         .safe_bounds_margin(f32::MAX)
         .close_on_item_click_global(false)
         .close_on_background_click_global(false)
-        .style(|theme: &Theme, _| menu_style(theme));
+        .style(move |theme: &Theme, _| menu_style(theme, opacity));
         Self {
             menu: menu.into(),
             canvas: Size::new((depth.max(1) as f32 + 1.0) * (width + 20.0), 702.0),
             generation,
             on_resize,
             on_dismiss,
+            blur,
+            on_decorations,
         }
     }
 }
 
-fn menu_style(theme: &Theme) -> iced_aw::menu::Style {
+fn menu_style(theme: &Theme, opacity: f32) -> iced_aw::menu::Style {
     iced_aw::menu::Style {
         bar_background: iced::Color::TRANSPARENT.into(),
-        menu_background: theme.palette().background.into(),
+        menu_background: ghost_shell_theme::surface(theme, opacity)
+            .background
+            .unwrap_or(iced::Color::TRANSPARENT.into()),
         menu_border: iced::Border {
             color: theme
                 .extended_palette()
@@ -168,6 +178,9 @@ impl<Message: Clone, R: renderer::Renderer> Widget<Message, Theme, R>
             measured: (258, 38),
             on_resize: self.on_resize,
             on_dismiss: self.on_dismiss.clone(),
+            blur: self.blur,
+            on_decorations: self.on_decorations,
+            decorations: &mut state.decorations,
         })))
     }
 }
@@ -184,8 +197,11 @@ struct PopupOverlay<'a, Message, R: renderer::Renderer> {
     canvas: Size,
     reported: &'a mut Option<(u32, u32)>,
     measured: (u32, u32),
+    decorations: &'a mut Option<Vec<ghost_shell_theme::bar::Decoration>>,
     on_resize: fn(u32, u32) -> Message,
     on_dismiss: Message,
+    blur: bool,
+    on_decorations: fn(Vec<ghost_shell_theme::bar::Decoration>) -> Message,
 }
 
 // This is the layout contract of iced_aw 0.14.1's MenuBarOverlay:
@@ -260,6 +276,24 @@ impl<Message: Clone, R: renderer::Renderer> overlay::Overlay<Message, Theme, R>
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
     ) {
+        let decorations = if self.blur {
+            layout
+                .children()
+                .next()
+                .into_iter()
+                .flat_map(menu_bounds)
+                .map(|bounds| ghost_shell_theme::bar::Decoration {
+                    bounds,
+                    radius: 6.0.into(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        if self.decorations.as_ref() != Some(&decorations) {
+            shell.publish((self.on_decorations)(decorations.clone()));
+            *self.decorations = Some(decorations);
+        }
         if *self.reported != Some(self.measured) {
             *self.reported = Some(self.measured);
             shell.publish((self.on_resize)(self.measured.0, self.measured.1));
@@ -330,6 +364,7 @@ mod tests {
         Dismiss,
         Activate(i32),
         Volume(f32),
+        Blur,
     }
 
     #[test]
@@ -350,7 +385,10 @@ mod tests {
                     .weak
                     .color
             );
-            assert_eq!(menu_style(&theme).menu_background, background.into());
+            assert_eq!(menu_style(&theme, 1.0).menu_background, background.into());
+            let mut translucent = background;
+            translucent.a = 0.4;
+            assert_eq!(menu_style(&theme, 0.4).menu_background, translucent.into());
         }
     }
 
@@ -381,6 +419,9 @@ mod tests {
             0,
             TestMessage::Resize,
             TestMessage::Dismiss,
+            0.8,
+            true,
+            |_| TestMessage::Blur,
         )
     }
 
@@ -487,6 +528,9 @@ mod tests {
             0,
             TestMessage::Resize,
             TestMessage::Dismiss,
+            0.8,
+            true,
+            |_| TestMessage::Blur,
         )
     }
 

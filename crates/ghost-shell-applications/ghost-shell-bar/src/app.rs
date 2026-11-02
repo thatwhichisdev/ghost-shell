@@ -49,6 +49,11 @@ enum Message {
     Configuration(Result<BarAppConfig, String>),
     TrayIcons(Result<Vec<ghost_shell_widget_tray::IconUpdate>, String>),
     Audio(ghost_shell_audio::AudioUpdate),
+    NotificationRead(Result<(), String>),
+    NotificationIcon(
+        Option<String>,
+        Result<ghost_shell_widget_notifications::IconUpdate, String>,
+    ),
     Battery(Result<Option<&'static str>, String>),
     Tick,
     Key(Id, iced::keyboard::key::Named, bool),
@@ -75,6 +80,7 @@ enum Surface {
     Menu,
     Styling,
     SystemMenu,
+    Notifications,
 }
 
 enum PopupRequest {
@@ -82,6 +88,25 @@ enum PopupRequest {
     Menu(Id, ghost_shell_dbus::MenuId),
     Styling(Id),
     SystemMenu(Id),
+    Notifications(Id),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum PopupOrigin {
+    System,
+    AudioInput,
+    AudioOutput,
+    Tray(ghost_shell_dbus::MenuId),
+    Notifications,
+}
+
+impl PopupOrigin {
+    fn audio(direction: ghost_shell_audio::AudioDirection) -> Self {
+        match direction {
+            ghost_shell_audio::AudioDirection::Input => Self::AudioInput,
+            ghost_shell_audio::AudioDirection::Output => Self::AudioOutput,
+        }
+    }
 }
 
 struct Shell {
@@ -94,6 +119,8 @@ struct Shell {
     outputs: BTreeMap<u32, ExWlOutputInfo>,
     surfaces: HashMap<Id, Surface>,
     cursor: HashMap<Id, iced::Point>,
+    widget_bounds: HashMap<(Id, PopupOrigin), iced::Rectangle>,
+    popup_origins: HashMap<Id, PopupOrigin>,
     popup_settings: HashMap<Id, IcedNewPopupSettings>,
     closing_popup: Option<Id>,
     pending_popup: Option<PopupRequest>,
@@ -107,11 +134,12 @@ struct Shell {
     menu_state: Option<MenuState>,
     menu_generation: u64,
     menu_task: Option<iced::task::Handle>,
-    loading_menu: Option<(Id, Id, iced::Point)>,
+    loading_menu: Option<(Id, Id, PopupOrigin)>,
     error: Option<String>,
     system_dark: bool,
     system_busy: bool,
     system_error: Option<String>,
+    notifications: Option<ghost_shell_dbus::Notifications>,
 }
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -166,7 +194,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         Message::Cursor(..) => iced_exwlshell::redraw::Scope::None,
         Message::Bar(
             _,
-            ghost_shell_bar::Message::Styling(_) | ghost_shell_bar::Message::Theme(_),
+            ghost_shell_bar::Message::Styling(_)
+            | ghost_shell_bar::Message::Theme(_)
+            | ghost_shell_bar::Message::Notifications(_),
         ) => iced_exwlshell::redraw::Scope::All,
         Message::Bar(window, _) => iced_exwlshell::redraw::Scope::Window(*window),
         _ => iced_exwlshell::redraw::Scope::All,
@@ -259,6 +289,8 @@ impl Shell {
             outputs: BTreeMap::new(),
             surfaces: HashMap::new(),
             cursor: HashMap::new(),
+            widget_bounds: HashMap::new(),
+            popup_origins: HashMap::new(),
             popup_settings: HashMap::new(),
             closing_popup: None,
             pending_popup: None,
@@ -277,6 +309,7 @@ impl Shell {
             system_dark: true,
             system_busy: false,
             system_error: None,
+            notifications: None,
         };
 
         shell.clock();
@@ -342,6 +375,17 @@ impl Shell {
                 },
                 Message::TrayIcons,
             ));
+        }
+        if self.config.theme.icons != previous.theme.icons {
+            tasks.extend(
+                self.bar
+                    .notifications
+                    .snapshots()
+                    .into_iter()
+                    .map(|notification| {
+                        notification_icon(notification, self.config.theme.icons.clone())
+                    }),
+            );
         }
         if self.config.clock != previous.clock {
             self.clock();
@@ -420,7 +464,7 @@ impl Shell {
         if self.config.bar.outputs != previous.bar.outputs {
             tasks.push(self.reconcile());
         } else if self.config.bar.height != previous.bar.height {
-            tasks.push(self.update_styling_position());
+            tasks.push(self.update_popup_positions());
         }
         Task::batch(tasks)
     }
@@ -519,14 +563,20 @@ impl Shell {
             }
         }
 
-        tasks.push(self.update_styling_position());
+        tasks.push(self.update_popup_positions());
         Task::batch(tasks)
     }
 
     fn close(&mut self, window: Id) -> Task<Message> {
         if matches!(
             self.surfaces.get(&window),
-            Some(Surface::Audio | Surface::Menu | Surface::Styling | Surface::SystemMenu)
+            Some(
+                Surface::Audio
+                    | Surface::Menu
+                    | Surface::Styling
+                    | Surface::SystemMenu
+                    | Surface::Notifications
+            )
         ) {
             if self.closing_popup == Some(window) {
                 return Task::none();
@@ -553,7 +603,8 @@ impl Shell {
     fn closed(&mut self, window: Id) {
         if self
             .loading_menu
-            .is_some_and(|(_, parent, _)| parent == window)
+            .as_ref()
+            .is_some_and(|(_, parent, _)| *parent == window)
         {
             self.cancel_loading_menu();
         }
@@ -571,6 +622,9 @@ impl Shell {
         }
 
         self.cursor.remove(&window);
+        self.widget_bounds
+            .retain(|(parent, _), _| *parent != window);
+        self.popup_origins.remove(&window);
 
         self.popup_settings.remove(&window);
     }
@@ -581,36 +635,59 @@ impl Shell {
         surface: Surface,
         width: u32,
         height: u32,
+        origin: PopupOrigin,
     ) -> (Id, Task<Message>) {
-        let position = self
-            .cursor
-            .get(&parent)
-            .copied()
-            .unwrap_or_default();
-
         let id = Id::unique();
-
         self.surfaces.insert(id, surface);
-
         let settings = if surface == Surface::Styling {
             self.styling_settings(parent)
         } else {
-            IcedNewPopupSettings::new(
-                parent,
-                PixelSize::px(width, height),
-                Position::new(position.x as i32, position.y as i32),
-                PixelSize::px(1, 1),
-            )
-            .anchor(PopupAnchor::BottomRight)
-            .gravity(PopupGravity::BottomLeft)
-            .constraint_adjustment(
-                PopupConstraintAdjustment::SlideX | PopupConstraintAdjustment::SlideY,
-            )
+            self.popup_position(parent, &origin, width, height)
         };
-
+        self.popup_origins.insert(id, origin);
         self.popup_settings.insert(id, settings);
-
         (id, Task::done(Message::NewPopUp { id, settings }))
+    }
+
+    fn popup_position(
+        &self,
+        parent: Id,
+        origin: &PopupOrigin,
+        width: u32,
+        height: u32,
+    ) -> IcedNewPopupSettings {
+        let bounds = self
+            .widget_bounds
+            .get(&(parent, origin.clone()))
+            .copied()
+            .unwrap_or_default();
+        popup_position(
+            parent,
+            origin == &PopupOrigin::System,
+            bounds,
+            self.config.bar.height,
+            width,
+            height,
+        )
+    }
+
+    fn bounds_changed(
+        &mut self,
+        parent: Id,
+        origin: PopupOrigin,
+        bounds: iced::Rectangle,
+    ) -> Task<Message> {
+        if !matches!(self.surfaces.get(&parent), Some(Surface::Bar(_))) {
+            return Task::none();
+        }
+        if self
+            .widget_bounds
+            .insert((parent, origin), bounds)
+            == Some(bounds)
+        {
+            return Task::none();
+        }
+        self.update_popup_positions()
     }
 
     fn styling_settings(&self, parent: Id) -> IcedNewPopupSettings {
@@ -633,47 +710,35 @@ impl Shell {
                 )
             })
             .unwrap_or((480, 640));
-        let position = self
-            .cursor
-            .get(&parent)
-            .copied()
-            .unwrap_or_default();
-        IcedNewPopupSettings::new(
-            parent,
-            PixelSize::px(width, height),
-            Position::new(position.x as i32, self.config.bar.height.ceil() as i32),
-            PixelSize::px(1, 1),
-        )
-        .anchor(PopupAnchor::BottomRight)
-        .gravity(PopupGravity::BottomLeft)
-        .constraint_adjustment(
-            PopupConstraintAdjustment::SlideX | PopupConstraintAdjustment::SlideY,
-        )
+        self.popup_position(parent, &PopupOrigin::System, width, height)
     }
 
-    fn update_styling_position(&mut self) -> Task<Message> {
-        let Some(window) = self.find(Surface::Styling) else {
-            return Task::none();
-        };
-        let Some(parent) = self
+    fn update_popup_positions(&mut self) -> Task<Message> {
+        let mut tasks = Vec::new();
+        let updates: Vec<_> = self
             .popup_settings
-            .get(&window)
-            .and_then(|settings| settings.parent)
-        else {
-            return Task::none();
-        };
-        if !self.surfaces.contains_key(&parent) {
-            return Task::none();
+            .iter()
+            .filter_map(|(window, previous)| {
+                let parent = previous.parent?;
+                let origin = self.popup_origins.get(window)?;
+                let settings = if self.surfaces.get(window) == Some(&Surface::Styling) {
+                    self.styling_settings(parent)
+                } else {
+                    self.popup_position(
+                        parent,
+                        origin,
+                        previous.size.width.get(),
+                        previous.size.height.get(),
+                    )
+                };
+                (settings != *previous).then_some((*window, settings))
+            })
+            .collect();
+        for (id, settings) in updates {
+            self.popup_settings.insert(id, settings);
+            tasks.push(Task::done(Message::PopUpReposition { id, settings }));
         }
-        let settings = self.styling_settings(parent);
-        if self.popup_settings.get(&window) == Some(&settings) {
-            return Task::none();
-        }
-        self.popup_settings.insert(window, settings);
-        Task::done(Message::PopUpReposition {
-            id: window,
-            settings,
-        })
+        Task::batch(tasks)
     }
 
     fn request_popup(&mut self, request: PopupRequest) -> Task<Message> {
@@ -682,7 +747,8 @@ impl Shell {
             PopupRequest::Audio(parent, _)
             | PopupRequest::Menu(parent, _)
             | PopupRequest::Styling(parent)
-            | PopupRequest::SystemMenu(parent) => *parent,
+            | PopupRequest::SystemMenu(parent)
+            | PopupRequest::Notifications(parent) => *parent,
         };
         if !self.bars_visible
             || !matches!(self.surfaces.get(&parent), Some(Surface::Bar(_)))
@@ -694,6 +760,7 @@ impl Shell {
             .or_else(|| self.find(Surface::Audio))
             .or_else(|| self.find(Surface::Styling))
             .or_else(|| self.find(Surface::SystemMenu))
+            .or_else(|| self.find(Surface::Notifications))
         {
             self.pending_popup = Some(request);
             return self.close(window);
@@ -706,18 +773,40 @@ impl Shell {
                         .as_ref()
                         .map(|audio| audio.state()),
                 );
-                self.popup(parent, Surface::Audio, width, height)
-                    .1
+                self.popup(
+                    parent,
+                    Surface::Audio,
+                    width,
+                    height,
+                    PopupOrigin::audio(direction),
+                )
+                .1
             }
             PopupRequest::Menu(parent, menu) => self.open_menu(parent, menu),
+            PopupRequest::Notifications(parent) => {
+                self.popup(
+                    parent,
+                    Surface::Notifications,
+                    400,
+                    120,
+                    PopupOrigin::Notifications,
+                )
+                .1
+            }
             PopupRequest::SystemMenu(parent) => {
                 let (width, height) =
                     ghost_shell_widget_menu::initial_size(self.config.general.font_size);
-                self.popup(parent, Surface::SystemMenu, width, height)
-                    .1
+                self.popup(
+                    parent,
+                    Surface::SystemMenu,
+                    width,
+                    height,
+                    PopupOrigin::System,
+                )
+                .1
             }
             PopupRequest::Styling(parent) => {
-                self.popup(parent, Surface::Styling, 480, 640)
+                self.popup(parent, Surface::Styling, 480, 640, PopupOrigin::System)
                     .1
             }
         }
@@ -733,14 +822,8 @@ impl Shell {
         };
 
         let window = Id::unique();
-        let position = self
-            .cursor
-            .get(&parent)
-            .copied()
-            .unwrap_or_default();
-        // Wait for the layout before creating a Wayland surface, avoiding a
-        // visible placeholder and compositor placement based on the wrong size.
-        self.loading_menu = Some((window, parent, position));
+        // Keep the trigger identity while D-Bus loads; its bounds may change meanwhile.
+        self.loading_menu = Some((window, parent, PopupOrigin::Tray(menu_id.clone())));
 
         self.menu_generation = self.menu_generation.wrapping_add(1);
 
@@ -865,6 +948,7 @@ impl Shell {
                     && self.find(Surface::Audio).is_none()
                     && self.find(Surface::Styling).is_none()
                     && self.find(Surface::SystemMenu).is_none()
+                    && self.find(Surface::Notifications).is_none()
                 {
                     if let Some(request) = self.pending_popup.take() {
                         return self.request_popup(request);
@@ -918,6 +1002,31 @@ impl Shell {
                 services::Event::Removed(id) => self.bar.tray.remove(&id),
                 services::Event::Menu(menu) => self.menu = Some(menu),
                 services::Event::Error(error) => self.error(error),
+                services::Event::Notification(event) => match event {
+                    ghost_shell_dbus::NotificationEvent::Ready(server) => {
+                        self.notifications = Some(server);
+                        self.bar.notifications.ready = true;
+                        self.bar.notifications.error = None;
+                    }
+                    ghost_shell_dbus::NotificationEvent::Updated(notification) => {
+                        self.bar
+                            .notifications
+                            .update(notification.clone());
+                        return notification_icon(
+                            notification,
+                            self.config.theme.icons.clone(),
+                        );
+                    }
+                    ghost_shell_dbus::NotificationEvent::Closed(id) => {
+                        self.bar.notifications.close(id)
+                    }
+                },
+                services::Event::NotificationError(error) => {
+                    log::warn!("{error}");
+                    self.bar.notifications.ready = false;
+                    self.bar.notifications.error = Some(error);
+                    self.notifications = None;
+                }
             },
             Message::Audio(update) => {
                 if let Some(audio) = &mut self.audio {
@@ -942,6 +1051,7 @@ impl Shell {
                             | Surface::Menu
                             | Surface::Styling
                             | Surface::SystemMenu
+                            | Surface::Notifications
                     )
                 ) {
                     return self.close(window);
@@ -952,11 +1062,12 @@ impl Shell {
                     && (self.surfaces.get(&window) == Some(&Surface::Menu)
                         || self
                             .loading_menu
-                            .is_some_and(|(id, _, _)| id == window)) =>
+                            .as_ref()
+                            .is_some_and(|(id, _, _)| *id == window)) =>
             {
                 match result {
                     Ok(layout) => {
-                        if let Some((_, parent, position)) = self.loading_menu.take() {
+                        if let Some((_, parent, origin)) = self.loading_menu.take() {
                             if !self.bars_visible
                                 || !matches!(
                                     self.surfaces.get(&parent),
@@ -970,18 +1081,9 @@ impl Shell {
                             }
                             let state = MenuState::new(layout);
                             let (width, height) = state.size();
-                            let settings = IcedNewPopupSettings::new(
-                                parent,
-                                PixelSize::px(width, height),
-                                Position::new(position.x as i32, position.y as i32),
-                                PixelSize::px(1, 1),
-                            )
-                            .anchor(PopupAnchor::BottomRight)
-                            .gravity(PopupGravity::BottomLeft)
-                            .constraint_adjustment(
-                                PopupConstraintAdjustment::SlideX
-                                    | PopupConstraintAdjustment::SlideY,
-                            );
+                            let settings =
+                                self.popup_position(parent, &origin, width, height);
+                            self.popup_origins.insert(window, origin);
                             self.menu_state = Some(state);
                             self.surfaces.insert(window, Surface::Menu);
                             self.popup_settings.insert(window, settings);
@@ -1025,6 +1127,18 @@ impl Shell {
                     }
                 }
             }
+            Message::NotificationRead(result) => {
+                self.bar.notifications.error = result.err();
+            }
+            Message::NotificationIcon(theme, result)
+                if theme == self.config.theme.icons =>
+            {
+                match result {
+                    Ok(update) => self.bar.notifications.apply_icon(update),
+                    Err(error) => self.bar.notifications.error = Some(error),
+                }
+            }
+            Message::NotificationIcon(..) => {}
             Message::SystemTheme(mode) => {
                 self.system_dark = mode != iced::theme::Mode::Light
             }
@@ -1082,6 +1196,46 @@ impl Shell {
                 );
                 return self.apply_config(config);
             }
+            BarMessage::Notifications(message) => {
+                use ghost_shell_widget_notifications::Message as NotificationMessage;
+                match message {
+                    NotificationMessage::Bounds(bounds) => {
+                        return self.bounds_changed(
+                            window,
+                            PopupOrigin::Notifications,
+                            bounds,
+                        );
+                    }
+                    NotificationMessage::Open => {
+                        if let Some(popup) = self.find(Surface::Notifications) {
+                            self.pending_popup = None;
+                            return self.close(popup);
+                        }
+                        return self.request_popup(PopupRequest::Notifications(window));
+                    }
+                    NotificationMessage::ToggleMuted => {
+                        self.bar.notifications.muted = !self.bar.notifications.muted;
+                    }
+                    NotificationMessage::Read(id) => {
+                        if let Some(server) = self.notifications.clone() {
+                            return Task::perform(
+                                async move {
+                                    server
+                                        .dismiss(id)
+                                        .await
+                                        .map_err(|error| error.to_string())
+                                },
+                                Message::NotificationRead,
+                            );
+                        }
+                    }
+                    NotificationMessage::Resize(width, height) => {
+                        if self.surfaces.get(&window) == Some(&Surface::Notifications) {
+                            return self.resize_popup(window, (width, height));
+                        }
+                    }
+                }
+            }
             BarMessage::Styling(message) => {
                 use ghost_shell_widget_styling::Message as StylingMessage;
                 match message {
@@ -1108,11 +1262,15 @@ impl Shell {
                     }
                 }
             }
-            BarMessage::Decorations(decorations) => {
-                if matches!(self.surfaces.get(&window), Some(Surface::Bar(_)))
-                    && self.config.bar.decoration.blur
-                {
-                    let regions = crate::blur::regions(&decorations);
+            BarMessage::Decorations(decorations)
+            | BarMessage::Audio(AudioMessage::Decorations(decorations))
+            | BarMessage::Tray(TrayMessage::Decorations(decorations)) => {
+                if self.surfaces.contains_key(&window) {
+                    let regions = if self.config.bar.decoration.blur {
+                        crate::blur::regions(&decorations)
+                    } else {
+                        Vec::new()
+                    };
                     return Task::done(Message::BlurOptionChange {
                         id: window,
                         option: if regions.is_empty() {
@@ -1125,6 +1283,9 @@ impl Shell {
             }
             BarMessage::Menu(message) => {
                 use ghost_shell_widget_menu::Message as MenuMessage;
+                if let MenuMessage::Bounds(bounds) = message {
+                    return self.bounds_changed(window, PopupOrigin::System, bounds);
+                }
                 if let MenuMessage::Resize(width, height) = message {
                     if self.surfaces.get(&window) == Some(&Surface::SystemMenu) {
                         return self.resize_popup(window, (width, height));
@@ -1158,6 +1319,16 @@ impl Shell {
                 return Task::perform(system_action(message), move |result| {
                     Message::SystemResult(window, result)
                 });
+            }
+            BarMessage::Audio(AudioMessage::Bounds(direction, bounds)) => {
+                return self.bounds_changed(
+                    window,
+                    PopupOrigin::audio(direction),
+                    bounds,
+                );
+            }
+            BarMessage::Tray(TrayMessage::Bounds(menu, bounds)) => {
+                return self.bounds_changed(window, PopupOrigin::Tray(menu), bounds);
             }
             BarMessage::Audio(AudioMessage::Open(direction)) => {
                 if let Some(window) = self.find(Surface::Audio)
@@ -1229,6 +1400,7 @@ impl Shell {
                         | Surface::Menu
                         | Surface::Styling
                         | Surface::SystemMenu
+                        | Surface::Notifications
                 )
             )
         {
@@ -1247,7 +1419,7 @@ impl Shell {
     }
 
     fn view(&self, window: Id) -> Element<'_, Message> {
-        match self.surfaces.get(&window) {
+        let content = match self.surfaces.get(&window) {
             Some(Surface::Wallpaper(_)) => self.wallpaper.view(),
             Some(Surface::Bar(output)) => match self
                 .outputs
@@ -1271,12 +1443,24 @@ impl Shell {
                     .map(move |message| Message::Bar(window, message)),
                 None => text("").into(),
             },
+            Some(Surface::Notifications) => self
+                .bar
+                .notifications
+                .popup(
+                    ghost_shell_theme::font(&self.config.general.font_family),
+                    self.config.general.font_size,
+                    self.config.bar.decoration.opacity,
+                )
+                .map(move |message| {
+                    Message::Bar(window, ghost_shell_bar::Message::Notifications(message))
+                }),
             Some(Surface::SystemMenu) => ghost_shell_widget_menu::popup(
                 self.system_error.as_deref(),
                 self.system_busy,
                 self.configuration_error.is_some(),
                 ghost_shell_theme::font(&self.config.general.font_family),
                 self.config.general.font_size,
+                self.config.bar.decoration.opacity,
             )
             .map(move |message| {
                 Message::Bar(window, ghost_shell_bar::Message::Menu(message))
@@ -1300,6 +1484,8 @@ impl Shell {
                         .map(|audio| audio.state()),
                     ghost_shell_theme::font(&self.config.general.font_family),
                     self.config.general.font_size,
+                    self.config.bar.decoration.opacity,
+                    self.config.bar.decoration.blur,
                 )
                 .map(move |message| {
                     Message::Bar(window, ghost_shell_bar::Message::Audio(message))
@@ -1309,6 +1495,8 @@ impl Shell {
                     .view(
                         ghost_shell_theme::font(&self.config.general.font_family),
                         self.config.general.font_size,
+                        self.config.bar.decoration.opacity,
+                        self.config.bar.decoration.blur,
                     )
                     .map(move |message| {
                         Message::Bar(window, ghost_shell_bar::Message::Tray(message))
@@ -1320,7 +1508,28 @@ impl Shell {
                 .height(Fill)
                 .style(|_| container::Style::default().background(iced::Color::BLACK))
                 .into(),
-        }
+        };
+        let radius = match self.surfaces.get(&window) {
+            Some(Surface::SystemMenu | Surface::Notifications) => 6.0,
+            Some(Surface::Styling) => 4.0,
+            _ => return content,
+        };
+        ghost_shell_theme::bar::anchor(
+            content,
+            ghost_shell_theme::bar::Style::from(&self.config.bar),
+            format!("menu-blur-{}", self.config.bar.decoration.blur),
+            move |bounds| {
+                Message::Bar(
+                    window,
+                    ghost_shell_bar::Message::Decorations(vec![
+                        ghost_shell_theme::bar::Decoration {
+                            bounds,
+                            radius: radius.into(),
+                        },
+                    ]),
+                )
+            },
+        )
     }
 }
 
@@ -1358,6 +1567,67 @@ async fn system_action(action: ghost_shell_widget_menu::Message) -> Result<(), S
     }
 }
 
+const MENU_GAP: i32 = 7;
+
+fn popup_position(
+    parent: Id,
+    left: bool,
+    bounds: iced::Rectangle,
+    bar_height: f32,
+    width: u32,
+    height: u32,
+) -> IcedNewPopupSettings {
+    let x = if left {
+        bounds.x
+    } else {
+        bounds.x + bounds.width
+    };
+    // Bottom/right anchors include the 1px anchor rectangle's extent.
+    IcedNewPopupSettings::new(
+        parent,
+        PixelSize::px(width, height),
+        Position::new(
+            if left {
+                x.round() as i32
+            } else {
+                x.round() as i32 - 1
+            },
+            bar_height.ceil() as i32 + MENU_GAP - 1,
+        ),
+        PixelSize::px(1, 1),
+    )
+    .anchor(if left {
+        PopupAnchor::BottomLeft
+    } else {
+        PopupAnchor::BottomRight
+    })
+    .gravity(if left {
+        PopupGravity::BottomRight
+    } else {
+        PopupGravity::BottomLeft
+    })
+    .constraint_adjustment(
+        PopupConstraintAdjustment::SlideX | PopupConstraintAdjustment::SlideY,
+    )
+}
+
+fn notification_icon(
+    notification: ghost_shell_dbus::Notification,
+    theme: Option<String>,
+) -> Task<Message> {
+    let result_theme = theme.clone();
+    Task::perform(
+        async move {
+            tokio::task::spawn_blocking(move || {
+                ghost_shell_widget_notifications::resolve_icon(notification, theme)
+            })
+            .await
+            .map_err(|error| format!("Notification icon: {error}"))
+        },
+        move |result| Message::NotificationIcon(result_theme.clone(), result),
+    )
+}
+
 fn configuration_changes() -> impl futures::Stream<Item = Result<BarAppConfig, String>> {
     ghost_shell_config::watch::changes("bar")
 }
@@ -1379,6 +1649,8 @@ mod tests {
             outputs: BTreeMap::new(),
             surfaces: HashMap::new(),
             cursor: HashMap::new(),
+            widget_bounds: HashMap::new(),
+            popup_origins: HashMap::new(),
             popup_settings: HashMap::new(),
             closing_popup: None,
             pending_popup: None,
@@ -1397,6 +1669,7 @@ mod tests {
             system_dark: true,
             system_busy: false,
             system_error: None,
+            notifications: None,
         }
     }
 
@@ -1499,6 +1772,93 @@ mod tests {
             assert_ne!(shell.config.theme.mode, expected);
             assert_ne!(shell.config.theme.mode, ThemeMode::System);
         }
+    }
+
+    #[test]
+    fn popup_alignment_tracks_inner_edges_and_bar_height() {
+        let mut shell = shell();
+        let parent = Id::unique();
+        shell
+            .surfaces
+            .insert(parent, Surface::Bar(1));
+        let bounds = iced::Rectangle {
+            x: 100.0,
+            y: 4.0,
+            width: 24.0,
+            height: 20.0,
+        };
+        drop(shell.bounds_changed(parent, PopupOrigin::System, bounds));
+        drop(shell.request_popup(PopupRequest::SystemMenu(parent)));
+        let menu = shell.find(Surface::SystemMenu).unwrap();
+        let (width, height) =
+            ghost_shell_widget_menu::initial_size(shell.config.general.font_size);
+        let expected = IcedNewPopupSettings::new(
+            parent,
+            PixelSize::px(width, height),
+            Position::new(100, 34),
+            PixelSize::px(1, 1),
+        )
+        .anchor(PopupAnchor::BottomLeft)
+        .gravity(PopupGravity::BottomRight)
+        .constraint_adjustment(
+            PopupConstraintAdjustment::SlideX | PopupConstraintAdjustment::SlideY,
+        );
+        assert_eq!(shell.popup_settings.get(&menu), Some(&expected));
+        let moved = iced::Rectangle { x: 130.0, ..bounds };
+        drop(shell.bounds_changed(parent, PopupOrigin::System, moved));
+        let current = shell
+            .popup_settings
+            .get(&menu)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            current,
+            popup_position(
+                parent,
+                true,
+                moved,
+                28.0,
+                current.size.width.get(),
+                current.size.height.get()
+            )
+        );
+        drop(shell.request_popup(PopupRequest::Notifications(parent)));
+        assert_eq!(shell.closing_popup, Some(menu));
+        drop(shell.bounds_changed(parent, PopupOrigin::Notifications, bounds));
+        drop(shell.update(Message::Closed(menu)));
+        let notifications = shell.find(Surface::Notifications).unwrap();
+        let settings = shell
+            .popup_settings
+            .get(&notifications)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            settings,
+            popup_position(parent, false, bounds, 28.0, 400, 120)
+        );
+        assert_eq!(settings.anchor, PopupAnchor::BottomRight);
+        assert_eq!(settings.gravity, PopupGravity::BottomLeft);
+        shell.config.bar.height = 40.0;
+        drop(shell.update_popup_positions());
+        let updated = shell
+            .popup_settings
+            .get(&notifications)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            updated,
+            popup_position(parent, false, bounds, 40.0, 400, 120)
+        );
+        drop(shell.resize_popup(notifications, (500, 300)));
+        let resized = shell
+            .popup_settings
+            .get(&notifications)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            resized,
+            popup_position(parent, false, bounds, 40.0, 500, 300)
+        );
     }
 
     #[test]

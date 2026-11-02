@@ -9,8 +9,10 @@ use iced::{
 #[derive(Debug, Clone)]
 pub enum Message {
     Open(AudioDirection),
+    Bounds(AudioDirection, iced::Rectangle),
     Dismiss,
     Resize(u32, u32),
+    Decorations(Vec<ghost_shell_theme::bar::Decoration>),
     Volume(AudioEndpointId, f32),
     Muted(AudioEndpointId, bool),
     Default(AudioEndpointId),
@@ -53,15 +55,20 @@ pub fn view(
                             }
                         }
                     };
-                    button(ghost_shell_theme::bar::group_inner(
-                        ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
-                        direction == AudioDirection::Input,
-                        direction == AudioDirection::Output,
+                    ghost_shell_theme::bar::anchor(
+                        button(ghost_shell_theme::bar::group_inner(
+                            ghost_shell_theme::bar::icon(icon, style.widgets.icon_size),
+                            direction == AudioDirection::Input,
+                            direction == AudioDirection::Output,
+                            style,
+                        ))
+                        .padding(0)
+                        .on_press(Message::Open(direction))
+                        .style(ghost_shell_theme::bar::transparent_button),
                         style,
-                    ))
-                    .padding(0)
-                    .on_press(Message::Open(direction))
-                    .style(ghost_shell_theme::bar::transparent_button)
+                        format!("audio-{direction:?}"),
+                        move |bounds| Message::Bounds(direction, bounds),
+                    )
                     .into()
                 }),
             )
@@ -137,6 +144,8 @@ impl AudioPopup {
         audio: Option<&'a AudioState>,
         font: iced::Font,
         font_size: f32,
+        opacity: f32,
+        blur: bool,
     ) -> Element<'a, Message> {
         use iced_aw::menu::{Item, Menu};
 
@@ -333,6 +342,9 @@ impl AudioPopup {
             self.generation,
             Message::Resize,
             Message::Dismiss,
+            opacity,
+            blur,
+            Message::Decorations,
         )
         .into()
     }
@@ -340,7 +352,10 @@ impl AudioPopup {
     pub fn update(&mut self, message: Message, audio: Option<&Audio>) {
         if matches!(
             message,
-            Message::Open(_) | Message::Dismiss | Message::Resize(..)
+            Message::Open(_)
+                | Message::Dismiss
+                | Message::Resize(..)
+                | Message::Decorations(_)
         ) {
             return;
         }
@@ -353,7 +368,11 @@ impl AudioPopup {
             Message::Volume(id, volume) => audio.set_volume(id, volume),
             Message::Muted(id, muted) => audio.set_muted(id, muted),
             Message::Default(id) => audio.set_default(id),
-            Message::Open(_) | Message::Dismiss | Message::Resize(..) => return,
+            Message::Open(_)
+            | Message::Dismiss
+            | Message::Resize(..)
+            | Message::Decorations(_)
+            | Message::Bounds(..) => return,
         };
         if let Err(error) = result {
             self.error = Some(error.to_string());

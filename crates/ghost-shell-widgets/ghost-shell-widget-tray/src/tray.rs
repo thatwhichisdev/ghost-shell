@@ -16,8 +16,10 @@ mod menu_popup;
 #[derive(Clone, Debug)]
 pub enum TrayMessage {
     Open(MenuId),
+    Bounds(MenuId, iced::Rectangle),
     Dismiss,
     Resize(u32, u32),
+    Decorations(Vec<ghost_shell_theme::bar::Decoration>),
     Activate(i32),
 }
 
@@ -208,11 +210,16 @@ impl Tray {
                             style,
                         );
                         if let Some(menu) = &item.menu {
-                            button(content)
-                                .padding(0)
-                                .style(ghost_shell_theme::bar::transparent_button)
-                                .on_press(TrayMessage::Open(menu.clone()))
-                                .into()
+                            ghost_shell_theme::bar::anchor(
+                                button(content)
+                                    .padding(0)
+                                    .style(ghost_shell_theme::bar::transparent_button)
+                                    .on_press(TrayMessage::Open(menu.clone())),
+                                style,
+                                menu.to_string(),
+                                move |bounds| TrayMessage::Bounds(menu.clone(), bounds),
+                            )
+                            .into()
                         } else {
                             content
                         }
@@ -434,7 +441,13 @@ impl MenuState {
         self.size
     }
 
-    pub fn view(&self, font: iced::Font, font_size: f32) -> Element<'_, TrayMessage> {
+    pub fn view(
+        &self,
+        font: iced::Font,
+        font_size: f32,
+        opacity: f32,
+        blur: bool,
+    ) -> Element<'_, TrayMessage> {
         fn depth(items: &[MenuItem]) -> usize {
             items
                 .iter()
@@ -448,6 +461,8 @@ impl MenuState {
             menu_items(self.layout.items(), font, font_size),
             depth(self.layout.items()),
             self.generation,
+            opacity,
+            blur,
         )
         .into()
     }

@@ -564,7 +564,11 @@ mod tests {
 }
 
 pub fn menu_surface(theme: &Theme) -> container::Style {
-    surface(theme, 1.0).border(iced::Border {
+    menu_surface_with_opacity(theme, 1.0)
+}
+
+pub fn menu_surface_with_opacity(theme: &Theme, opacity: f32) -> container::Style {
+    surface(theme, opacity).border(iced::Border {
         color: theme
             .extended_palette()
             .background

@@ -1413,7 +1413,6 @@ dependencies = [
 [[package]]
 name = "exwlshellev"
 version = "0.21.0-rc2"
-source = "git+https://github.com/waycrate/exwlshelleventloop?rev=d63ca8be6388846bdd3b2bb71fa1766fc28e5d91#d63ca8be6388846bdd3b2bb71fa1766fc28e5d91"
 dependencies = [
  "calloop 0.14.4",
  "calloop-wayland-source 0.4.1",
@@ -1865,6 +1864,7 @@ dependencies = [
  "ghost-shell-widget-clock",
  "ghost-shell-widget-focus",
  "ghost-shell-widget-menu",
+ "ghost-shell-widget-notifications",
  "ghost-shell-widget-power",
  "ghost-shell-widget-styling",
  "ghost-shell-widget-theme",
@@ -2090,6 +2090,20 @@ version = "0.1.0"
 dependencies = [
  "ghost-shell-theme",
  "iced",
+]
+
+[[package]]
+name = "ghost-shell-widget-notifications"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "freedesktop-desktop-entry",
+ "freedesktop-icons",
+ "ghost-shell-dbus",
+ "ghost-shell-theme",
+ "iced",
+ "image",
+ "log",
 ]
 
 [[package]]

@@ -25,6 +25,7 @@ The [project README](../../README.md) contains screenshots and the roadmap.
   palette editing, and exporting Nix settings.
 - [Menu](configuration/Menu.md): shutdown, reboot, lock, and live styling.
 - [Tray](configuration/Tray.md): session integration and application menus.
+- [Notifications](configuration/Notifications.md): unread notifications, mute, and service setup.
 - [Audio](configuration/Audio.md): PipeWire devices, active-device selection,
   and volume controls.
 - [Clock](configuration/Clock.md): time format and update frequency.

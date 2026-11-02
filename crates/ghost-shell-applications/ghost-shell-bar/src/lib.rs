@@ -13,6 +13,7 @@ use iced::{
 pub enum Message {
     Menu(ghost_shell_widget_menu::Message),
     Theme(ghost_shell_widget_theme::Message),
+    Notifications(ghost_shell_widget_notifications::Message),
     Audio(ghost_shell_widget_audio::Message),
     Tray(ghost_shell_widget_tray::TrayMessage),
     Decorations(Vec<ghost_shell_theme::bar::Decoration>),
@@ -24,6 +25,7 @@ pub struct Bar {
     pub tray: Tray,
     pub clock: Clock,
     pub power: Power,
+    pub notifications: ghost_shell_widget_notifications::Notifications,
 }
 
 impl Bar {
@@ -52,6 +54,9 @@ impl Bar {
         let end = row![
             Space::new().width(Fill),
             self.tray.view(style).map(Message::Tray),
+            self.notifications
+                .view(style)
+                .map(Message::Notifications),
             ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
             self.power.view(style),
             ghost_shell_theme::bar::outer(

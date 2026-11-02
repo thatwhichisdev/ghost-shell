@@ -48,3 +48,5 @@ pub trait WatcherBackend {
 pub async fn watch(events: mpsc::Sender<WatcherEvent>) -> Result<()> {
     Watcher::watch(events).await
 }
+
+pub use zbus_backend::{Notification, NotificationEvent, Notifications, notifications};

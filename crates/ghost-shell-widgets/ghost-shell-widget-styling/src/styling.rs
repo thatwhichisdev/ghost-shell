@@ -350,7 +350,9 @@ impl Styling {
             .padding(12)
             .width(Fill)
             .height(Fill)
-            .style(|theme| ghost_shell_theme::search_window(theme, 1.0))
+            .style(move |theme| {
+                ghost_shell_theme::search_window(theme, config.bar.decoration.opacity)
+            })
             .into()
     }
 }
