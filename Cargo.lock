@@ -1854,6 +1854,7 @@ dependencies = [
  "env_logger",
  "futures",
  "ghost-shell-audio",
+ "ghost-shell-calendar-components",
  "ghost-shell-config",
  "ghost-shell-dbus",
  "ghost-shell-ipc",
@@ -1876,6 +1877,15 @@ dependencies = [
  "jiff",
  "log",
  "tokio",
+]
+
+[[package]]
+name = "ghost-shell-calendar-components"
+version = "0.1.0"
+dependencies = [
+ "ghost-shell-theme",
+ "iced",
+ "jiff",
 ]
 
 [[package]]
@@ -2070,6 +2080,7 @@ name = "ghost-shell-widget-clock"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "ghost-shell-theme",
  "iced",
  "jiff",
  "tokio",

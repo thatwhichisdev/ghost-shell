@@ -2,6 +2,7 @@
 resolver = "3"
 exclude = ["vendor/exwlshellev"]
 members = [
+  "crates/ghost-shell-components/ghost-shell-calendar-components",
   "crates/ghost-shell-applications/ghost-shell-cli",
   "crates/ghost-shell-core/ghost-shell-assets",
   "crates/ghost-shell-core/ghost-shell-config",
@@ -52,6 +53,7 @@ ghost-shell-config = { path = "crates/ghost-shell-core/ghost-shell-config" }
 ghost-shell-theme = { path = "crates/ghost-shell-core/ghost-shell-theme" }
 
 # component crates
+ghost-shell-calendar-components = { path = "crates/ghost-shell-components/ghost-shell-calendar-components" }
 ghost-shell-wallpaper = { path = "crates/ghost-shell-components/ghost-shell-wallpaper" }
 
 # adapter crates

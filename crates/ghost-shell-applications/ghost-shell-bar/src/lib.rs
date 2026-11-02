@@ -11,6 +11,8 @@ use iced::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Clock(ghost_shell_widget_clock::Message),
+    Calendar(ghost_shell_calendar_components::Message),
     Menu(ghost_shell_widget_menu::Message),
     Theme(ghost_shell_widget_theme::Message),
     Notifications(ghost_shell_widget_notifications::Message),
@@ -59,13 +61,7 @@ impl Bar {
                 .map(Message::Notifications),
             ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
             self.power.view(style),
-            ghost_shell_theme::bar::outer(
-                ghost_shell_theme::bar::inner(
-                    self.clock.view(style.font, style.font_size),
-                    style
-                ),
-                style
-            ),
+            self.clock.view(style).map(Message::Clock),
         ]
         .spacing(0)
         .align_y(iced::Center)

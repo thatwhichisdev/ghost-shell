@@ -81,6 +81,7 @@ enum Surface {
     Styling,
     SystemMenu,
     Notifications,
+    Calendar,
 }
 
 enum PopupRequest {
@@ -89,6 +90,7 @@ enum PopupRequest {
     Styling(Id),
     SystemMenu(Id),
     Notifications(Id),
+    Calendar(Id),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -98,6 +100,7 @@ enum PopupOrigin {
     AudioOutput,
     Tray(ghost_shell_dbus::MenuId),
     Notifications,
+    Calendar,
 }
 
 impl PopupOrigin {
@@ -130,6 +133,7 @@ struct Shell {
     bars_visible: bool,
     audio: Option<ghost_shell_audio::Audio>,
     audio_popup: AudioPopup,
+    calendar: ghost_shell_calendar_components::Calendar,
     menu: Option<ghost_shell_dbus::Menu>,
     menu_state: Option<MenuState>,
     menu_generation: u64,
@@ -300,6 +304,9 @@ impl Shell {
             bars_visible: true,
             audio,
             audio_popup: Default::default(),
+            calendar: ghost_shell_calendar_components::Calendar::new(
+                jiff::Zoned::now().date(),
+            ),
             menu: None,
             menu_state: None,
             menu_generation: 0,
@@ -576,6 +583,7 @@ impl Shell {
                     | Surface::Styling
                     | Surface::SystemMenu
                     | Surface::Notifications
+                    | Surface::Calendar
             )
         ) {
             if self.closing_popup == Some(window) {
@@ -748,7 +756,8 @@ impl Shell {
             | PopupRequest::Menu(parent, _)
             | PopupRequest::Styling(parent)
             | PopupRequest::SystemMenu(parent)
-            | PopupRequest::Notifications(parent) => *parent,
+            | PopupRequest::Notifications(parent)
+            | PopupRequest::Calendar(parent) => *parent,
         };
         if !self.bars_visible
             || !matches!(self.surfaces.get(&parent), Some(Surface::Bar(_)))
@@ -761,6 +770,7 @@ impl Shell {
             .or_else(|| self.find(Surface::Styling))
             .or_else(|| self.find(Surface::SystemMenu))
             .or_else(|| self.find(Surface::Notifications))
+            .or_else(|| self.find(Surface::Calendar))
         {
             self.pending_popup = Some(request);
             return self.close(window);
@@ -783,6 +793,22 @@ impl Shell {
                 .1
             }
             PopupRequest::Menu(parent, menu) => self.open_menu(parent, menu),
+            PopupRequest::Calendar(parent) => {
+                self.calendar = ghost_shell_calendar_components::Calendar::new(
+                    jiff::Zoned::now().date(),
+                );
+                let size = ghost_shell_calendar_components::Calendar::size(
+                    self.config.general.font_size,
+                );
+                self.popup(
+                    parent,
+                    Surface::Calendar,
+                    size.width.ceil() as u32,
+                    size.height.ceil() as u32,
+                    PopupOrigin::Calendar,
+                )
+                .1
+            }
             PopupRequest::Notifications(parent) => {
                 self.popup(
                     parent,
@@ -949,6 +975,7 @@ impl Shell {
                     && self.find(Surface::Styling).is_none()
                     && self.find(Surface::SystemMenu).is_none()
                     && self.find(Surface::Notifications).is_none()
+                    && self.find(Surface::Calendar).is_none()
                 {
                     if let Some(request) = self.pending_popup.take() {
                         return self.request_popup(request);
@@ -1052,6 +1079,7 @@ impl Shell {
                             | Surface::Styling
                             | Surface::SystemMenu
                             | Surface::Notifications
+                            | Surface::Calendar
                     )
                 ) {
                     return self.close(window);
@@ -1178,6 +1206,29 @@ impl Shell {
         use ghost_shell_bar::Message as BarMessage;
 
         match message {
+            BarMessage::Clock(ghost_shell_widget_clock::Message::Bounds(bounds)) => {
+                return self.bounds_changed(window, PopupOrigin::Calendar, bounds);
+            }
+            BarMessage::Clock(ghost_shell_widget_clock::Message::Open) => {
+                if let Some(popup) = self.find(Surface::Calendar) {
+                    self.pending_popup = None;
+                    return self.close(popup);
+                }
+                return self.request_popup(PopupRequest::Calendar(window));
+            }
+            BarMessage::Calendar(message) => {
+                if self.surfaces.get(&window) == Some(&Surface::Calendar) {
+                    if let ghost_shell_calendar_components::Message::Resize(size) =
+                        message
+                    {
+                        return self.resize_popup(
+                            window,
+                            (size.width.ceil() as u32, size.height.ceil() as u32),
+                        );
+                    }
+                    self.calendar.update(message);
+                }
+            }
             BarMessage::Theme(ghost_shell_widget_theme::Message::Toggle) => {
                 use ghost_shell_config::ThemeMode;
                 let dark = match self.config.theme.mode {
@@ -1401,6 +1452,7 @@ impl Shell {
                         | Surface::Styling
                         | Surface::SystemMenu
                         | Surface::Notifications
+                        | Surface::Calendar
                 )
             )
         {
@@ -1443,6 +1495,17 @@ impl Shell {
                     .map(move |message| Message::Bar(window, message)),
                 None => text("").into(),
             },
+            Some(Surface::Calendar) => self
+                .calendar
+                .view(
+                    jiff::Zoned::now().date(),
+                    ghost_shell_theme::font(&self.config.general.font_family),
+                    self.config.general.font_size,
+                    self.config.bar.decoration.opacity,
+                )
+                .map(move |message| {
+                    Message::Bar(window, ghost_shell_bar::Message::Calendar(message))
+                }),
             Some(Surface::Notifications) => self
                 .bar
                 .notifications
@@ -1510,7 +1573,7 @@ impl Shell {
                 .into(),
         };
         let radius = match self.surfaces.get(&window) {
-            Some(Surface::SystemMenu | Surface::Notifications) => 6.0,
+            Some(Surface::SystemMenu | Surface::Notifications | Surface::Calendar) => 6.0,
             Some(Surface::Styling) => 4.0,
             _ => return content,
         };
@@ -1660,6 +1723,9 @@ mod tests {
             bars_visible: true,
             audio: None,
             audio_popup: Default::default(),
+            calendar: ghost_shell_calendar_components::Calendar::new(
+                jiff::Zoned::now().date(),
+            ),
             menu: None,
             menu_state: None,
             menu_generation: 0,
@@ -1723,6 +1789,65 @@ mod tests {
             Some(parent)
         );
         assert!(shell.find(Surface::SystemMenu).is_none());
+    }
+
+    #[test]
+    fn calendar_uses_clock_anchor_and_waits_for_previous_popup_to_close() {
+        let mut shell = shell();
+        let parent = Id::unique();
+        shell
+            .surfaces
+            .insert(parent, Surface::Bar(1));
+        let bounds = iced::Rectangle::new(
+            iced::Point::new(800.0, 4.0),
+            iced::Size::new(100.0, 20.0),
+        );
+        drop(shell.bar_message(
+            parent,
+            ghost_shell_bar::Message::Clock(ghost_shell_widget_clock::Message::Bounds(
+                bounds,
+            )),
+        ));
+        drop(shell.request_popup(PopupRequest::SystemMenu(parent)));
+        let menu = shell.find(Surface::SystemMenu).unwrap();
+        drop(shell.bar_message(
+            parent,
+            ghost_shell_bar::Message::Clock(ghost_shell_widget_clock::Message::Open),
+        ));
+        assert_eq!(shell.closing_popup, Some(menu));
+        assert!(shell.find(Surface::Calendar).is_none());
+        drop(shell.update(Message::Closed(menu)));
+        let calendar = shell.find(Surface::Calendar).unwrap();
+        assert_eq!(
+            shell.popup_origins.get(&calendar),
+            Some(&PopupOrigin::Calendar)
+        );
+        let size = ghost_shell_calendar_components::Calendar::size(
+            shell.config.general.font_size,
+        );
+        assert_eq!(
+            shell.popup_settings[&calendar],
+            shell.popup_position(
+                parent,
+                &PopupOrigin::Calendar,
+                size.width as u32,
+                size.height as u32
+            )
+        );
+        drop(shell.key(calendar, iced::keyboard::key::Named::Escape, false));
+        assert_eq!(shell.closing_popup, Some(calendar));
+        drop(shell.update(Message::Closed(calendar)));
+        assert!(shell.find(Surface::Calendar).is_none());
+        drop(shell.bar_message(
+            parent,
+            ghost_shell_bar::Message::Clock(ghost_shell_widget_clock::Message::Open),
+        ));
+        let calendar = shell.find(Surface::Calendar).unwrap();
+        drop(shell.bar_message(
+            parent,
+            ghost_shell_bar::Message::Clock(ghost_shell_widget_clock::Message::Open),
+        ));
+        assert_eq!(shell.closing_popup, Some(calendar));
     }
 
     #[test]

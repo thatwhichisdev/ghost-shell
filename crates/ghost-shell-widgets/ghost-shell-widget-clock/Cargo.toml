@@ -15,3 +15,5 @@ iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
 jiff.workspace = true
 futures.workspace = true
 tokio = { workspace = true, features = ["time"] }
+
+ghost-shell-theme.workspace = true

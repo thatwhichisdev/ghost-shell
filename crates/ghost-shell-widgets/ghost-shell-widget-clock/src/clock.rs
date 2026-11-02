@@ -3,6 +3,12 @@ use std::time::Duration;
 use futures::SinkExt as _;
 use iced::{Element, Subscription, widget::text};
 
+#[derive(Clone, Debug)]
+pub enum Message {
+    Open,
+    Bounds(iced::Rectangle),
+}
+
 #[derive(Default)]
 pub struct Clock {
     label: String,
@@ -11,11 +17,24 @@ impl Clock {
     pub fn update(&mut self, now: &jiff::Zoned, format: &str) {
         self.label = now.strftime(format).to_string();
     }
-    pub fn view<Message>(&self, font: iced::Font, size: f32) -> Element<'_, Message> {
-        text(&self.label)
-            .font(font)
-            .size(size)
-            .into()
+    pub fn view(&self, style: ghost_shell_theme::bar::Style) -> Element<'_, Message> {
+        ghost_shell_theme::bar::outer(
+            ghost_shell_theme::bar::anchor(
+                iced::widget::button(ghost_shell_theme::bar::inner(
+                    text(&self.label)
+                        .font(style.font)
+                        .size(style.font_size),
+                    style,
+                ))
+                .padding(0)
+                .style(ghost_shell_theme::bar::transparent_button)
+                .on_press(Message::Open),
+                style,
+                "clock".into(),
+                Message::Bounds,
+            ),
+            style,
+        )
     }
 }
 

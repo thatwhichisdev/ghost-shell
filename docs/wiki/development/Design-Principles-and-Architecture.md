@@ -182,3 +182,7 @@ only presentation state and the in-memory mute preference. Icon lookup runs on
 workers, with stale results rejected by notification revision and icon theme.
 The adapter refuses to replace another notification daemon. Unsupported actions,
 markup, images in bodies, and sound are not advertised as capabilities.
+
+The calendar component owns month browsing and renders a view-only grid. The
+bar owns its popup lifecycle, current-date input, anchor and blur region. The
+clock only emits open and bounds messages; no component opens Wayland surfaces.
