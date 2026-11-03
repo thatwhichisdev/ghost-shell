@@ -6,8 +6,9 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use anyhow::{Context as _, Result, anyhow, bail};
-use pipewire::{self as pw, proxy::ProxyT as _, spa};
+pub(crate) use ::pipewire as pw;
+use pw::{proxy::ProxyT as _, spa};
+use snafu::{OptionExt as _, ResultExt as _};
 use spa::{
     param::{ParamInfoFlags, ParamType},
     pod::{
@@ -24,6 +25,7 @@ use crate::{
         AudioCommandError, AudioConnectionStatus, AudioDirection, AudioEndpoint,
         AudioEndpointId, AudioUpdate,
     },
+    *,
 };
 
 pub struct PipeWire {
@@ -43,10 +45,16 @@ impl AudioBackend for PipeWire {
             .name("ghost-audio".into())
             .spawn(move || {
                 if let Err(error) = run(receiver, updates.clone()) {
-                    log::error!("Audio backend stopped: {error:#}");
+                    log::error!(
+                        "Audio backend stopped: {}",
+                        snafu::Report::from_error(&error)
+                    );
                     if updates
                         .send(AudioUpdate::Connection(
-                            AudioConnectionStatus::Unavailable(format!("{error:#}")),
+                            AudioConnectionStatus::Unavailable(format!(
+                                "{}",
+                                snafu::Report::from_error(&error)
+                            )),
                         ))
                         .is_err()
                     {
@@ -54,7 +62,7 @@ impl AudioBackend for PipeWire {
                     }
                 }
             })
-            .context("failed to start PipeWire thread")?;
+            .context(StartWorkerSnafu)?;
         Ok((
             Self {
                 commands,
@@ -70,11 +78,11 @@ impl AudioBackend for PipeWire {
             .as_ref()
             .is_none_or(JoinHandle::is_finished)
         {
-            bail!("PipeWire thread has stopped");
+            return WorkerStoppedSnafu.fail();
         }
         self.commands
             .send(command)
-            .map_err(|_| anyhow!("failed to send audio command"))
+            .map_err(|_| CommandQueueClosedSnafu.build())
     }
 }
 
@@ -141,7 +149,7 @@ impl MixerProperties {
 
     fn volume_property(&self, volume: f32) -> Result<Property> {
         if !volume.is_finite() || !(0.0..=1.0).contains(&volume) {
-            bail!("volume must be finite and between 0.0 and 1.0");
+            return InvalidVolumeSnafu.fail();
         }
         let linear = volume.powi(3);
         if let Some(maximum) = self
@@ -173,7 +181,7 @@ impl MixerProperties {
                 Value::Float(linear),
             ))
         } else {
-            bail!("endpoint volume is unavailable");
+            return VolumeUnavailableSnafu.fail();
         }
     }
 }
@@ -266,7 +274,7 @@ impl Graph {
             AudioCommand::SetMuted(endpoint, muted) => (endpoint, None, Some(muted)),
             AudioCommand::SetDefault(endpoint) => {
                 if let Err(error) = self.set_default(endpoint) {
-                    self.failed(Some(endpoint), error);
+                    self.failed(Some(endpoint), snafu::Report::from_error(error));
                 }
                 return;
             }
@@ -276,7 +284,7 @@ impl Graph {
             }
         };
         if let Err(error) = self.set_parameter(endpoint, volume, muted) {
-            self.failed(Some(endpoint), error);
+            self.failed(Some(endpoint), snafu::Report::from_error(error));
         }
     }
 
@@ -285,15 +293,15 @@ impl Graph {
             .nodes
             .values()
             .find(|node| node.endpoint.id == endpoint)
-            .context("audio endpoint was removed")?;
+            .context(RemovedEndpointSnafu)?;
         if node.endpoint.name.is_empty() {
-            bail!("audio endpoint has no node name");
+            return MissingNodeNameSnafu.fail();
         }
         let metadata = self
             .metadata
             .values()
             .find(|metadata| metadata.writable)
-            .context("default audio metadata is unavailable or read-only")?;
+            .context(MetadataUnavailableSnafu)?;
         let key = match node.endpoint.direction {
             AudioDirection::Output => "default.configured.audio.sink",
             AudioDirection::Input => "default.configured.audio.source",
@@ -320,18 +328,18 @@ impl Graph {
             .nodes
             .values()
             .find(|node| node.endpoint.id == endpoint)
-            .context("audio endpoint was removed")?;
+            .context(RemovedEndpointSnafu)?;
         let route = self.route(node);
         let mixer = route.map_or(&node.mixer, |(_, route)| &route.mixer);
         let property = if let Some(volume) = volume {
             mixer.volume_property(volume)?
         } else if let Some(muted) = muted {
             if mixer.muted.is_none() {
-                bail!("endpoint mute is unavailable");
+                return MuteUnavailableSnafu.fail();
             }
             Property::new(spa::sys::SPA_PROP_mute, Value::Bool(muted))
         } else {
-            bail!("missing audio parameter");
+            return MissingParameterSnafu.fail();
         };
         let props = Value::Object(Object {
             type_: spa::sys::SPA_TYPE_OBJECT_Props,
@@ -341,7 +349,7 @@ impl Graph {
         let (parameter, value) = match route {
             Some((device, route)) => {
                 if !device.writable {
-                    bail!("device route is read-only");
+                    return ReadOnlyRouteSnafu.fail();
                 }
                 (
                     ParamType::Route,
@@ -368,15 +376,15 @@ impl Graph {
             }
             None => {
                 if !node.writable {
-                    bail!("audio node is read-only");
+                    return ReadOnlyNodeSnafu.fail();
                 }
                 (ParamType::Props, props)
             }
         };
         let (bytes, _) = PodSerializer::serialize(Cursor::new(Vec::new()), &value)
-            .map_err(|error| anyhow!("failed to encode audio parameter: {error:?}"))?;
+            .context(EncodeParameterSnafu)?;
         let bytes = bytes.into_inner();
-        let pod = Pod::from_bytes(&bytes).context("invalid encoded audio parameter")?;
+        let pod = Pod::from_bytes(&bytes).context(InvalidEncodedParameterSnafu)?;
         if let Some((device, _)) = route {
             device.proxy.set_param(parameter, 0, pod);
         } else {
@@ -403,12 +411,14 @@ fn run(
     commands: pw::channel::Receiver<AudioCommand>,
     updates: mpsc::UnboundedSender<AudioUpdate>,
 ) -> Result<()> {
-    let main_loop = pw::main_loop::MainLoopRc::new(None)?;
-    let context = pw::context::ContextRc::new(&main_loop, None)?;
+    let main_loop = pw::main_loop::MainLoopRc::new(None).context(MainLoopSnafu)?;
+    let context = pw::context::ContextRc::new(&main_loop, None).context(ContextSnafu)?;
     let core = context
         .connect_rc(None)
-        .context("failed to connect to PipeWire")?;
-    let registry = core.get_registry_rc()?;
+        .context(ConnectSnafu)?;
+    let registry = core
+        .get_registry_rc()
+        .context(RegistrySnafu)?;
     let graph = Rc::new(RefCell::new(Graph {
         nodes: BTreeMap::new(),
         devices: BTreeMap::new(),
@@ -486,7 +496,9 @@ fn run(
                     _ => Ok(()),
                 };
                 if let Err(error) = result {
-                    graph.borrow().failed(None, error);
+                    graph
+                        .borrow()
+                        .failed(None, snafu::Report::from_error(error));
                 }
             }
         })
@@ -532,7 +544,9 @@ fn bind_node<P: AsRef<DictRef>>(
         return Ok(());
     };
     let global_id = global.id;
-    let proxy: pw::node::Node = registry.bind(global)?;
+    let proxy: pw::node::Node = registry
+        .bind(global)
+        .context(BindSnafu { id: global.id })?;
     let listener = proxy
         .add_listener_local()
         .info({
@@ -607,7 +621,7 @@ fn bind_node<P: AsRef<DictRef>>(
                         }
                         graph.publish(global_id);
                     }
-                    Err(error) => graph.failed(None, error),
+                    Err(error) => graph.failed(None, snafu::Report::from_error(error)),
                 }
             }
         })
@@ -617,7 +631,7 @@ fn bind_node<P: AsRef<DictRef>>(
     graph.next_id = graph
         .next_id
         .checked_add(1)
-        .context("audio endpoint identifier exhausted")?;
+        .context(IdentifiersExhaustedSnafu)?;
     let name = properties
         .get("node.name")
         .unwrap_or_default()
@@ -669,7 +683,9 @@ fn bind_device<P: AsRef<DictRef>>(
         return Ok(());
     }
     let global_id = global.id;
-    let proxy: pw::device::Device = registry.bind(global)?;
+    let proxy: pw::device::Device = registry
+        .bind(global)
+        .context(BindSnafu { id: global.id })?;
     let listener = proxy
         .add_listener_local()
         .info({
@@ -727,7 +743,7 @@ fn bind_device<P: AsRef<DictRef>>(
                         graph.publish_device(global_id);
                     }
                     Ok(None) => {}
-                    Err(error) => graph.failed(None, error),
+                    Err(error) => graph.failed(None, snafu::Report::from_error(error)),
                 }
             }
         })
@@ -758,7 +774,9 @@ fn bind_metadata<P: AsRef<DictRef>>(
     {
         return Ok(());
     }
-    let proxy: pw::metadata::Metadata = registry.bind(global)?;
+    let proxy: pw::metadata::Metadata = registry
+        .bind(global)
+        .context(BindSnafu { id: global.id })?;
     let listener = proxy
         .add_listener_local()
         .property({
@@ -785,7 +803,7 @@ fn bind_metadata<P: AsRef<DictRef>>(
                     Ok(name) => graph.emit(AudioUpdate::Default(direction, name)),
                     Err(error) => {
                         graph.emit(AudioUpdate::Default(direction, None));
-                        graph.failed(None, error);
+                        graph.failed(None, snafu::Report::from_error(error));
                     }
                 }
                 0
@@ -810,19 +828,23 @@ fn default_name(value: Option<&str>) -> Result<Option<String>> {
         return Ok(None);
     };
     let value: serde_json::Value =
-        serde_json::from_str(value).context("invalid default audio metadata")?;
+        serde_json::from_str(value).context(DefaultMetadataSnafu)?;
     let name = value
         .get("name")
         .and_then(serde_json::Value::as_str)
-        .context("default audio metadata has no name")?;
+        .context(MissingDefaultNameSnafu)?;
     Ok(Some(name.to_owned()))
 }
 
 fn decode_object(pod: &Pod) -> Result<Object> {
     match PodDeserializer::deserialize_any_from(pod.as_bytes()) {
         Ok((_, Value::Object(object))) => Ok(object),
-        Ok(_) => bail!("expected audio parameter object"),
-        Err(error) => bail!("invalid audio parameter: {error:?}"),
+        Ok(_) => ExpectedObjectSnafu.fail(),
+        Err(error) => InvalidParameterSnafu {
+            // libspa’s deserializer error borrows the input and does not implement Error.
+            detail: format!("{error:?}"),
+        }
+        .fail(),
     }
 }
 
@@ -848,8 +870,8 @@ fn decode_route(object: &Object) -> Result<Option<Route>> {
         return Ok(None);
     };
     Ok(Some(Route {
-        index: index.context("audio route has no index")?,
-        device: device.context("audio route has no profile device")?,
+        index: index.context(MissingRouteIndexSnafu)?,
+        device: device.context(MissingProfileDeviceSnafu)?,
         mixer,
     }))
 }
@@ -859,7 +881,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn route_parameters_round_trip() -> Result<()> {
+    fn route_parameters_round_trip() -> std::result::Result<(), Box<dyn std::error::Error>>
+    {
         let route = Value::Object(Object {
             type_: spa::sys::SPA_TYPE_OBJECT_ParamRoute,
             id: ParamType::Route.as_raw(),
@@ -883,10 +906,10 @@ mod tests {
             ],
         });
         let (bytes, _) = PodSerializer::serialize(Cursor::new(Vec::new()), &route)
-            .map_err(|error| anyhow!("{error:?}"))?;
+            .context(EncodeParameterSnafu)?;
         let bytes = bytes.into_inner();
-        let pod = Pod::from_bytes(&bytes).context("invalid test parameter")?;
-        let route = decode_route(&decode_object(pod)?)?.context("missing route")?;
+        let pod = Pod::from_bytes(&bytes).ok_or("invalid test parameter")?;
+        let route = decode_route(&decode_object(pod)?)?.ok_or("missing route")?;
         assert_eq!((route.index, route.device), (3, 1));
         assert_eq!(route.mixer.volume(), Some(0.5));
         assert_eq!(route.mixer.muted, Some(true));
@@ -907,7 +930,7 @@ mod tests {
             }
             if let AudioConnectionStatus::Unavailable(message) = state.connection_status()
             {
-                bail!("{message}");
+                panic!("{message}");
             }
             thread::sleep(Duration::from_millis(10));
         }
@@ -934,14 +957,12 @@ mod tests {
             .is_some_and(|thread| !thread.is_finished())
         {
             if Instant::now() >= deadline {
-                bail!("PipeWire thread did not stop");
+                panic!("PipeWire thread did not stop");
             }
             thread::sleep(Duration::from_millis(10));
         }
         if let Some(thread) = backend.thread.take() {
-            thread
-                .join()
-                .map_err(|_| anyhow!("PipeWire thread panicked"))?;
+            assert!(thread.join().is_ok(), "PipeWire thread panicked");
         }
         Ok(())
     }

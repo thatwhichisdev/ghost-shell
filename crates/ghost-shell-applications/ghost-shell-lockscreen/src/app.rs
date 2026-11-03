@@ -47,10 +47,10 @@ struct App {
     pending: Vec<AsyncRequest>,
     exit_after_unlock: bool,
 }
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), crate::Error> {
     let config = ghost_shell_config::load::<LockscreenConfig>("lockscreen")
         .unwrap_or_else(|error| {
-            log::warn!("Configuration: {error}");
+            log::warn!("Configuration: {}", snafu::Report::from_error(error));
             LockscreenConfig::default()
         });
     let font = iced::Font {
@@ -91,7 +91,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         },
         ..Default::default()
     })
-    .run()?;
+    .run()
+    .map_err(|source| crate::Error::Runtime { source })?;
     Ok(())
 }
 impl App {
@@ -107,10 +108,12 @@ impl App {
                 async move {
                     tokio::task::spawn_blocking(move || {
                         WallpaperSource::load(std::path::Path::new(&path))
-                            .map_err(|error| error.to_string())
+                            .map_err(|error| snafu::Report::from_error(error).to_string())
                     })
                     .await
-                    .unwrap_or_else(|error| Err(error.to_string()))
+                    .unwrap_or_else(|error| {
+                        Err(snafu::Report::from_error(error).to_string())
+                    })
                 },
                 Message::Wallpaper,
             ));
@@ -279,7 +282,7 @@ fn stop_signals() -> impl iced::futures::Stream<Item = Result<(), String>> {
             Ok(signals) => signals,
             Err(error) => {
                 if output
-                    .send(Err(error.to_string()))
+                    .send(Err(snafu::Report::from_error(error).to_string()))
                     .await
                     .is_err()
                 {

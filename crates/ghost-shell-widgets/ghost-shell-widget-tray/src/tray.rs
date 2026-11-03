@@ -11,6 +11,7 @@ use iced::{
     ContentFit, Element, Fill,
     widget::{button, container, row, text},
 };
+use snafu::ResultExt as _;
 mod menu_popup;
 
 #[derive(Clone, Debug)]
@@ -51,7 +52,7 @@ pub fn resolve_icons(requests: Vec<IconRequest>) -> Vec<IconUpdate> {
         .into_iter()
         .map(|request| IconUpdate {
             icon: icon(&request.snapshot, request.theme.as_deref(), request.size)
-                .map_err(|error| error.to_string()),
+                .map_err(|error| snafu::Report::from_error(error).to_string()),
             id: request.snapshot.id.clone(),
             revision: request.revision,
             generation: request.generation,
@@ -235,7 +236,7 @@ fn icon(
     item: &StatusNotifierItem,
     theme: Option<&str>,
     icon_size: u16,
-) -> anyhow::Result<Option<Icon>> {
+) -> Result<Option<Icon>, IconError> {
     if let Some(path) = symbolic_icon(item, theme, icon_size) {
         log::debug!("Tray symbolic icon for {}: {}", item.id, path.display());
         return Ok(Some(Icon::Symbolic(iced::widget::svg::Handle::from_path(
@@ -248,14 +249,18 @@ fn icon(
         .filter(|pixmap| pixmap.width > 0 && pixmap.height > 0)
         .max_by_key(|pixmap| i64::from(pixmap.width) * i64::from(pixmap.height))
     {
-        let width = u32::try_from(pixmap.width)?;
-        let height = u32::try_from(pixmap.height)?;
+        let width = u32::try_from(pixmap.width).context(DimensionsSnafu)?;
+        let height = u32::try_from(pixmap.height).context(DimensionsSnafu)?;
         let length = (width as usize)
             .checked_mul(height as usize)
             .and_then(|pixels| pixels.checked_mul(4));
-        anyhow::ensure!(
+        snafu::ensure!(
             length == Some(pixmap.argb.len()),
-            "invalid tray pixmap length"
+            InvalidPixmapSnafu {
+                width,
+                height,
+                actual: pixmap.argb.len()
+            }
         );
         let mut pixels = pixmap.argb.clone();
         for pixel in pixels.chunks_exact_mut(4) {
@@ -269,14 +274,16 @@ fn icon(
         return Ok(None);
     };
     let path = resolve_icon(name, item.icon_theme_path.as_deref(), theme, icon_size);
-    path.map(|path| -> anyhow::Result<Icon> {
+    path.map(|path| -> Result<Icon, IconError> {
         if path
             .extension()
             .is_some_and(|extension| extension == "svg")
         {
             Ok(Icon::Svg(iced::widget::svg::Handle::from_path(path)))
         } else {
-            let image = image::open(path)?.into_rgba8();
+            let image = image::open(&path)
+                .context(DecodeSnafu { path })?
+                .into_rgba8();
             Ok(Icon::Image(iced::widget::image::Handle::from_rgba(
                 image.width(),
                 image.height(),
@@ -535,4 +542,21 @@ fn menu_items(
         .width(250)
         .padding(4)
         .offset(8.0)
+}
+
+#[derive(Debug, snafu::Snafu)]
+enum IconError {
+    #[snafu(display("Invalid tray icon dimensions"))]
+    Dimensions { source: std::num::TryFromIntError },
+    #[snafu(display("Invalid {width}×{height} tray pixmap: {actual} bytes"))]
+    InvalidPixmap {
+        width: u32,
+        height: u32,
+        actual: usize,
+    },
+    #[snafu(display("Could not decode tray icon {}", path.display()))]
+    Decode {
+        path: PathBuf,
+        source: image::ImageError,
+    },
 }

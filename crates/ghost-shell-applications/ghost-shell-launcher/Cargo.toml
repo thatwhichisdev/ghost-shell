@@ -8,6 +8,7 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+snafu.workspace = true
 ghost-shell-niri.workspace = true
 iced_wayland_subscriber.workspace = true
 iced_exwlshell = { workspace = true, features = ["linux-theme-detection", "macros"] }
@@ -15,7 +16,6 @@ env_logger.workspace = true
 ghost-shell-config.workspace = true
 iced = { workspace = true, features = ["image-without-codecs", "svg", "tokio", "wayland", "wgpu"] }
 ghost-shell-theme.workspace = true
-anyhow.workspace = true
 freedesktop-desktop-entry.workspace = true
 freedesktop-icons.workspace = true
 log.workspace = true

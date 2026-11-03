@@ -60,7 +60,10 @@ impl Playback {
                 break;
             };
             if let Err(error) = delta.apply(&mut self.pixels, &mut self.scratch) {
-                log::error!("Wallpaper playback failed: {error:#}");
+                log::error!(
+                    "Wallpaper playback failed: {}",
+                    snafu::Report::from_error(&error)
+                );
                 self.failed = true;
                 break;
             }
@@ -394,7 +397,7 @@ mod tests {
     use super::*;
     use crate::{DecodedFrame, Frame, FrameDelta};
     #[test]
-    fn late_frames_keep_delta_chain_and_bound_catchup() -> anyhow::Result<()> {
+    fn late_frames_keep_delta_chain_and_bound_catchup() -> crate::Result<()> {
         let first = DecodedFrame {
             pixels: vec![255, 0, 0, 255],
             delay: Duration::from_millis(20),
@@ -428,7 +431,8 @@ mod tests {
     }
     #[test]
     #[ignore = "requires a graphics adapter; run explicitly on a GPU host"]
-    fn persistent_texture_shader_passes_gpu_validation() -> anyhow::Result<()> {
+    fn persistent_texture_shader_passes_gpu_validation()
+    -> Result<(), Box<dyn std::error::Error>> {
         use shader::{Pipeline as _, Primitive as _};
         let runtime = tokio::runtime::Builder::new_current_thread().build()?;
         runtime.block_on(async {
@@ -505,7 +509,7 @@ mod tests {
             );
             queue.submit([encoder.finish()]);
             if let Some(error) = device.pop_error_scope().await {
-                anyhow::bail!("{error}");
+                return Err(error.into());
             }
             drop(primitive);
             pipeline.trim();

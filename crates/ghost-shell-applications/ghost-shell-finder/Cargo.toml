@@ -11,13 +11,13 @@ publish.workspace = true
 path = "src/finder.rs"
 
 [dependencies]
+snafu.workspace = true
 iced_wayland_subscriber.workspace = true
 iced_exwlshell = { workspace = true, features = ["linux-theme-detection", "macros"] }
 env_logger.workspace = true
 ghost-shell-config.workspace = true
 iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
 ghost-shell-theme.workspace = true
-anyhow.workspace = true
 fff-search.workspace = true
 log.workspace = true
 regex.workspace = true

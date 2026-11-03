@@ -35,7 +35,7 @@ pub fn listen(endpoint: Endpoint) -> Subscription<Event> {
 fn run(endpoint: &Endpoint) -> impl Stream<Item = Event> + use<> {
     let endpoint = *endpoint;
     iced::stream::channel(64, async move |mut output| {
-        let result: anyhow::Result<()> = async {
+        let result: crate::Result<()> = async {
             let (sender, mut receiver) = tokio::sync::mpsc::channel(64);
             let server = Server::bind(crate::socket_path(endpoint)?, sender).await?;
             let server = server.run();
@@ -45,14 +45,14 @@ fn run(endpoint: &Endpoint) -> impl Stream<Item = Event> + use<> {
                     result = &mut server => return result,
                     request = receiver.recv() => {
                         let Some(request) = request else { return Ok(()); };
-                        output.send(Event::Request(Incoming(Arc::new(Mutex::new(Some(request)))))).await?;
+                        if output.send(Event::Request(Incoming(Arc::new(Mutex::new(Some(request)))))).await.is_err() { return Ok(()); }
                     }
                 }
             }
         }.await;
         if let Err(error) = result {
             if output
-                .send(Event::Failed(format!("{error:#}")))
+                .send(Event::Failed(snafu::Report::from_error(error).to_string()))
                 .await
                 .is_err()
             {

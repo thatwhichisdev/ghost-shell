@@ -25,7 +25,10 @@ pub fn events() -> impl Stream<Item = Event> {
         workers.spawn(async move {
             if let Err(error) = tray(tray_sender.clone()).await {
                 if tray_sender
-                    .send(Event::Error(format!("Tray: {error:#}")))
+                    .send(Event::Error(format!(
+                        "Tray: {}",
+                        snafu::Report::from_error(&error)
+                    )))
                     .await
                     .is_err()
                 {
@@ -42,7 +45,7 @@ pub fn events() -> impl Stream<Item = Event> {
                     result = &mut server => {
                         let error = match result {
                             Ok(()) => "Notification service stopped".to_owned(),
-                            Err(error) => format!("Notifications: {error:#}"),
+                            Err(error) => format!("Notifications: {}", snafu::Report::from_error(&error)),
                         };
                         if sender.send(Event::NotificationError(error)).await.is_err() {
                             log::debug!("Notification receiver closed");
@@ -65,7 +68,7 @@ pub fn events() -> impl Stream<Item = Event> {
     })
 }
 
-async fn tray(output: mpsc::Sender<Event>) -> anyhow::Result<()> {
+async fn tray(output: mpsc::Sender<Event>) -> Result<(), TrayError> {
     let item = Item::connect().await?;
     output
         .send(Event::Menu(Menu::connect().await?))
@@ -94,7 +97,7 @@ async fn tray(output: mpsc::Sender<Event>) -> anyhow::Result<()> {
                     if clients.contains_key(&id) { continue; }
                     match item.discover(id.clone(), updates.clone()).await {
                         Ok((snapshot, task)) => { cleanup.0.retain(|task| !task.is_finished()); cleanup.0.push(task.abort_handle()); clients.insert(id, task); output.send(Event::Item(snapshot)).await?; }
-                        Err(error) => { output.send(Event::Error(format!("Tray discovery: {error:#}"))).await?; }
+                        Err(error) => { output.send(Event::Error(format!("Tray discovery: {}", snafu::Report::from_error(&error)))).await?; }
                     }
                 }
                 Some(WatcherEvent::Unregistered(registration)) => {
@@ -107,4 +110,24 @@ async fn tray(output: mpsc::Sender<Event>) -> anyhow::Result<()> {
             update = updated.recv() => if let Some(ItemEvent::Updated(item)) = update { if clients.contains_key(&item.id) { output.send(Event::Item(item)).await?; } }
         }
     }
+}
+
+#[derive(Debug, snafu::Snafu)]
+enum TrayError {
+    #[snafu(context(false), display("Tray item failure"))]
+    Item { source: ghost_shell_dbus::ItemError },
+    #[snafu(context(false), display("Tray menu failure"))]
+    Menu { source: ghost_shell_dbus::MenuError },
+    #[snafu(context(false), display("Tray watcher failure"))]
+    Watcher {
+        source: ghost_shell_dbus::WatcherError,
+    },
+    #[snafu(context(false), display("Tray registration failure"))]
+    Registration {
+        source: ghost_shell_dbus::RegistrationError,
+    },
+    #[snafu(context(false), display("Tray event receiver closed"))]
+    ReceiverClosed {
+        source: tokio::sync::mpsc::error::SendError<Event>,
+    },
 }

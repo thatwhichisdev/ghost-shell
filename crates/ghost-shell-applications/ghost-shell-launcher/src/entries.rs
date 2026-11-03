@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use snafu::{OptionExt as _, ResultExt as _};
+
 #[derive(Debug, Clone)]
 pub struct DesktopEntry {
     pub name: String,
@@ -53,7 +55,11 @@ fn desktop_entry(
     let command = match parse_command(entry, locales) {
         Ok(command) => command,
         Err(error) => {
-            log::warn!("Skipping desktop entry {}: {error}", entry.path.display());
+            log::warn!(
+                "Skipping desktop entry {}: {}",
+                entry.path.display(),
+                snafu::Report::from_error(error)
+            );
             return None;
         }
     };
@@ -88,12 +94,14 @@ fn desktop_entry(
 fn parse_command(
     entry: &freedesktop_desktop_entry::DesktopEntry,
     locales: &[String],
-) -> anyhow::Result<Vec<String>> {
+) -> Result<Vec<String>, Error> {
     let Some(exec) = entry.exec().map(str::trim_start) else {
-        anyhow::bail!("Exec key was not found");
+        return MissingExecSnafu.fail();
     };
     if !exec.starts_with('"') {
-        return Ok(entry.parse_exec_with_uris(&[], locales)?);
+        return Ok(entry
+            .parse_exec_with_uris(&[], locales)
+            .context(ExpandExecSnafu)?);
     }
 
     // Nix relocation can double the quotes around an already quoted absolute path.
@@ -104,7 +112,7 @@ fn parse_command(
     };
     let remainder = exec
         .strip_prefix(delimiter)
-        .ok_or_else(|| anyhow::anyhow!("missing opening quote"))?;
+        .context(MissingOpeningQuoteSnafu)?;
     let mut executable = String::new();
     let mut characters = remainder.char_indices();
     let mut arguments = None;
@@ -113,10 +121,10 @@ fn parse_command(
             let suffix = remainder
                 .get(index..)
                 .and_then(|suffix| suffix.strip_prefix(delimiter))
-                .ok_or_else(|| anyhow::anyhow!("unmatched executable quote"))?;
-            anyhow::ensure!(
+                .context(UnmatchedExecutableQuoteSnafu)?;
+            snafu::ensure!(
                 suffix.is_empty() || suffix.starts_with(char::is_whitespace),
-                "unexpected text after executable quote"
+                UnexpectedTextAfterExecutableQuoteSnafu
             );
             arguments = Some(suffix);
             break;
@@ -124,31 +132,32 @@ fn parse_command(
         if character == '\\' {
             let (_, escaped) = characters
                 .next()
-                .ok_or_else(|| anyhow::anyhow!("unfinished executable escape"))?;
-            anyhow::ensure!(
+                .context(UnfinishedExecutableEscapeSnafu)?;
+            snafu::ensure!(
                 matches!(escaped, '"' | '\\' | '$' | '`'),
-                "invalid executable escape"
+                InvalidExecutableEscapeSnafu
             );
             executable.push(escaped);
         } else {
             executable.push(character);
         }
     }
-    let arguments =
-        arguments.ok_or_else(|| anyhow::anyhow!("unmatched executable quote"))?;
-    anyhow::ensure!(
+    let arguments = arguments.context(UnmatchedExecutableQuoteSnafu)?;
+    snafu::ensure!(
         !executable.is_empty() && !executable.contains('='),
-        "invalid executable"
+        InvalidExecutableSnafu
     );
 
     // Keep the dependency's field-code expansion, bypassing its assumption that
     // an opening quote encloses the entire command rather than the executable.
     let mut normalized = entry.clone();
     normalized.add_desktop_entry("Exec".into(), format!("ghost-executable{arguments}"));
-    let mut command = normalized.parse_exec_with_uris(&[], locales)?;
+    let mut command = normalized
+        .parse_exec_with_uris(&[], locales)
+        .context(ExpandExecSnafu)?;
     let first = command
         .first_mut()
-        .ok_or_else(|| anyhow::anyhow!("empty command"))?;
+        .context(EmptyCommandSnafu)?;
     *first = executable;
     Ok(command)
 }
@@ -158,7 +167,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn discovery_continues_after_rejected_entries() -> anyhow::Result<()> {
+    fn discovery_continues_after_rejected_entries()
+    -> Result<(), Box<dyn std::error::Error>> {
         let locales = vec!["en".to_string()];
         let inputs = [
             "Name=Unmatched quote\nExec=\"/bin/example",
@@ -193,7 +203,7 @@ mod tests {
         );
         let application = applications
             .last()
-            .ok_or_else(|| anyhow::anyhow!("missing valid application"))?;
+            .ok_or("missing valid application")?;
         assert_eq!(application.name, "Working");
         assert_eq!(application.command, ["/bin/example", "--flag"]);
         assert_eq!(
@@ -204,7 +214,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn quoted_executables() -> anyhow::Result<()> {
+    fn quoted_executables() -> Result<(), Box<dyn std::error::Error>> {
         let locales = vec!["en".to_owned()];
         for (exec, expected) in [
             (
@@ -247,4 +257,28 @@ mod tests {
         }
         Ok(())
     }
+}
+
+#[derive(Debug, snafu::Snafu)]
+enum Error {
+    #[snafu(display("Exec key was not found"))]
+    MissingExec,
+    #[snafu(display("missing opening quote"))]
+    MissingOpeningQuote,
+    #[snafu(display("unmatched executable quote"))]
+    UnmatchedExecutableQuote,
+    #[snafu(display("unfinished executable escape"))]
+    UnfinishedExecutableEscape,
+    #[snafu(display("empty command"))]
+    EmptyCommand,
+    #[snafu(display("unexpected text after executable quote"))]
+    UnexpectedTextAfterExecutableQuote,
+    #[snafu(display("invalid executable escape"))]
+    InvalidExecutableEscape,
+    #[snafu(display("invalid executable"))]
+    InvalidExecutable,
+    #[snafu(display("Could not expand desktop entry command"))]
+    ExpandExec {
+        source: freedesktop_desktop_entry::ExecError,
+    },
 }

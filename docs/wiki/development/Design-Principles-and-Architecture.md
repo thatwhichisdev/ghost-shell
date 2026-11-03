@@ -62,6 +62,22 @@ state and emit messages rather than opening duplicate integration clients.
 Adapters may retain framework-independent APIs for consumers such as the CLI.
 Their iced-facing interfaces follow the same stream and task rules.
 
+## Error handling
+
+Use [SNAFU](https://docs.rs/snafu/0.9.2/snafu/guide/index.html) for owned error
+contracts. Define errors with the subsystem that can explain them: library and
+adapter APIs return concrete variants that callers can match. Keep the original
+failure in a typed `source` field, and add operation context with `ResultExt::context`
+or `OptionExt::context`. Use source-free variants for validation failures. Avoid
+catch-all boxed errors and converting failures to strings inside fallible APIs.
+
+Applications decide whether to retry, retain existing state, show feedback, or
+exit. Each executable uses `#[snafu::report]` for terminal failures. At a log, UI,
+or string-based protocol boundary, use `snafu::Report::from_error(error)` so the
+cause chain remains visible. Do not repeat the source in an error's display
+message; the report renders it. Test both meaningful variants and retained source
+errors. Heterogeneous test harnesses may return boxed errors.
+
 ## Runtime ownership
 
   | Application | Lifetime and responsibility                                                                               |

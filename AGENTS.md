@@ -109,6 +109,9 @@ black/white foregrounds or borders for ordinary widgets.
 - Prefer straightforward synchronous code when asynchronous execution provides
   no concrete benefit.
 - Keep public APIs narrow and ownership obvious.
+- Use SNAFU for subsystem error enums, retain typed sources and operation context,
+  and let applications choose recovery. Use `#[snafu::report]` on executable entry
+  points and `snafu::Report` at log/UI boundaries to preserve cause chains.
 
 ### Cargo dependencies
 

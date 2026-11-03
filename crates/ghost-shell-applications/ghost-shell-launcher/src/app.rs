@@ -37,10 +37,10 @@ struct App {
     feature: ghost_shell_launcher::Launcher,
     system_dark: bool,
 }
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), crate::Error> {
     let config =
         ghost_shell_config::load::<LauncherConfig>("launcher").unwrap_or_else(|error| {
-            log::warn!("Configuration: {error}");
+            log::warn!("Configuration: {}", snafu::Report::from_error(error));
             LauncherConfig::default()
         });
     let font = iced::Font {
@@ -82,7 +82,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         },
         ..Default::default()
     })
-    .run()?;
+    .run()
+    .map_err(|source| crate::Error::Runtime { source })?;
     Ok(())
 }
 impl App {

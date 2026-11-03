@@ -11,7 +11,7 @@ publish.workspace = true
 path = "src/dbus.rs"
 
 [dependencies]
-anyhow.workspace = true
+snafu.workspace = true
 futures-util.workspace = true
 log.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }

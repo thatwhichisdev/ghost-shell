@@ -1,7 +1,7 @@
 use std::{collections::HashMap, pin::Pin};
 
-use anyhow::{Context as _, Result};
 use futures_util::{Stream, StreamExt as _, stream::select_all};
+use snafu::ResultExt as _;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -14,6 +14,7 @@ use zbus::{
     zvariant::{OwnedObjectPath, OwnedValue},
 };
 
+use super::{InitializationStoppedSnafu, PropertiesSnafu, ProxySnafu, Result};
 use crate::{IconPixmap, ItemEvent, StatusNotifierId, StatusNotifierItem, ToolTip};
 
 const ITEM_INTERFACE: &str = "org.kde.StatusNotifierItem";
@@ -73,10 +74,7 @@ impl StatusNotifierItemClient {
                 Ok(Err(error)) => Err(error),
 
                 Ok(Ok(())) => {
-                    anyhow::bail!(
-                        "status notifier item client \
-                         stopped before initialization"
-                    );
+                    return InitializationStoppedSnafu.fail();
                 }
 
                 Err(error) => Err(error.into()),
@@ -106,12 +104,7 @@ impl StatusNotifierItemClient {
             .path(id.object_path())?
             .build()
             .await
-            .with_context(|| {
-                format!(
-                    "failed to create \
-                     StatusNotifierItem proxy for {id}"
-                )
-            })?;
+            .context(ProxySnafu { id: id.clone() })?;
 
         let properties = Self::properties_proxy(&connection, &id).await?;
 
@@ -155,7 +148,10 @@ impl StatusNotifierItemClient {
             let item = match Self::load(&properties, id.clone()).await {
                 Ok(item) => item,
                 Err(error) => {
-                    log::warn!("failed to refresh StatusNotifierItem {id}: {error:#}");
+                    log::warn!(
+                        "failed to refresh StatusNotifierItem {id}: {}",
+                        snafu::Report::from_error(&error)
+                    );
                     continue;
                 }
             };
@@ -181,12 +177,7 @@ impl StatusNotifierItemClient {
             .path(id.object_path().to_owned())?
             .build()
             .await
-            .with_context(|| {
-                format!(
-                    "failed to create D-Bus properties \
-                     proxy for {id}"
-                )
-            })
+            .context(ProxySnafu { id: id.clone() })
     }
 
     async fn load(
@@ -195,7 +186,10 @@ impl StatusNotifierItemClient {
     ) -> Result<StatusNotifierItem> {
         let interface = InterfaceName::try_from(ITEM_INTERFACE)?;
 
-        let mut properties = properties.get_all(interface).await?;
+        let mut properties = properties
+            .get_all(interface)
+            .await
+            .context(PropertiesSnafu { id: id.clone() })?;
 
         let tool_tip = take_property::<RawToolTip>(&mut properties, "ToolTip").map(
             |(icon_name, icon_pixmaps, title, description)| ToolTip {

@@ -84,7 +84,6 @@ iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", rev =
 iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "9b6dadeae74b7e579aba876064521b94dda189a8" }
 
 # error handling
-anyhow = "1.0.104"
 snafu = "0.9.2"
 
 # logging

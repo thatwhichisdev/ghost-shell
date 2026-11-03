@@ -11,8 +11,8 @@ publish.workspace = true
 path = "src/wallpaper.rs"
 
 [dependencies]
+snafu.workspace = true
 iced = { workspace = true, features = ["tokio", "wayland", "wgpu"] }
-anyhow.workspace = true
 image = { workspace = true, features = ["gif", "png", "jpeg"] }
 log.workspace = true
 lz4_flex.workspace = true

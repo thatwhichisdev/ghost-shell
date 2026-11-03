@@ -4,12 +4,14 @@ mod shader;
 
 use std::{fs::File, io::BufReader, path::Path, sync::Arc, time::Duration};
 
-use anyhow::{Context as _, Result};
 use iced::{Color, Element, Fill};
 use image::{
     AnimationDecoder as _, ImageDecoder as _, ImageReader, codecs::gif::GifDecoder,
 };
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt as _, ResultExt as _};
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub enum WallpaperSource {
@@ -22,41 +24,49 @@ impl WallpaperSource {
         match cache::load(path) {
             Ok(Some(animation)) => return Ok(Self::Image(Arc::new(animation))),
             Ok(None) => {}
-            Err(error) => log::warn!("Ignoring wallpaper cache: {error:#}"),
+            Err(error) => log::warn!(
+                "Ignoring wallpaper cache: {}",
+                snafu::Report::from_error(&error)
+            ),
         }
         let animation = Self::decode(path)?;
         if let Err(error) = cache::save(path, &animation) {
-            log::warn!("wallpaper cache: {error:#}");
+            log::warn!("wallpaper cache: {}", snafu::Report::from_error(&error));
         }
         Ok(Self::Image(Arc::new(animation)))
     }
 
     fn decode(path: &Path) -> Result<Animation> {
-        let reader =
-            ImageReader::new(BufReader::new(File::open(path)?)).with_guessed_format()?;
+        let reader = ImageReader::new(BufReader::new(
+            File::open(path).context(OpenSnafu { path })?,
+        ))
+        .with_guessed_format()
+        .context(DetectFormatSnafu { path })?;
         let animation = match reader.format() {
             Some(image::ImageFormat::Gif) => {
-                let decoder = GifDecoder::new(reader.into_inner())?;
+                let decoder =
+                    GifDecoder::new(reader.into_inner()).context(DecodeSnafu { path })?;
                 let (width, height) = decoder.dimensions();
                 validate_dimensions(width, height)?;
                 let mut frames = decoder.into_frames();
                 let initial = Frame::decode(
                     frames
                         .next()
-                        .context("GIF contains no frames")??,
+                        .context(GifContainsNoFramesSnafu)?
+                        .context(DecodeSnafu { path })?,
                 );
                 let mut previous = initial.clone();
                 let mut deltas = Vec::new();
                 let mut compressed_bytes = 0usize;
                 for frame in frames {
-                    let next = Frame::decode(frame?);
+                    let next = Frame::decode(frame.context(DecodeSnafu { path })?);
                     let delta = FrameDelta::between(&previous, &next)?;
                     compressed_bytes = compressed_bytes
                         .checked_add(delta.patch.len())
-                        .context("animation size overflow")?;
-                    anyhow::ensure!(
+                        .context(AnimationSizeOverflowSnafu)?;
+                    snafu::ensure!(
                         compressed_bytes <= 512 * 1024 * 1024 && deltas.len() < 100_000,
-                        "animation exceeds memory limits"
+                        AnimationExceedsMemoryLimitsSnafu
                     );
                     deltas.push(delta);
                     previous = next;
@@ -75,7 +85,10 @@ impl WallpaperSource {
                 }
             }
             Some(image::ImageFormat::Png | image::ImageFormat::Jpeg) => {
-                let image = reader.decode()?.into_rgba8();
+                let image = reader
+                    .decode()
+                    .context(DecodeSnafu { path })?
+                    .into_rgba8();
                 let (width, height) = image.dimensions();
                 validate_dimensions(width, height)?;
                 Animation {
@@ -88,7 +101,7 @@ impl WallpaperSource {
                     deltas: Vec::new(),
                 }
             }
-            _ => anyhow::bail!("unsupported wallpaper format"),
+            _ => return UnsupportedFormatSnafu.fail(),
         };
         animation.validate()?;
         Ok(animation)
@@ -138,28 +151,28 @@ struct DecodedFrame {
 }
 
 fn validate_dimensions(width: u32, height: u32) -> Result<usize> {
-    anyhow::ensure!(
+    snafu::ensure!(
         width > 0 && height > 0 && width <= 16384 && height <= 16384,
-        "invalid wallpaper dimensions"
+        InvalidWallpaperDimensionsSnafu
     );
     let bytes = (width as usize)
         .checked_mul(height as usize)
         .and_then(|pixels| pixels.checked_mul(4))
-        .context("wallpaper dimensions overflow")?;
-    anyhow::ensure!(
+        .context(WallpaperDimensionsOverflowSnafu)?;
+    snafu::ensure!(
         bytes <= 256 * 1024 * 1024,
-        "wallpaper exceeds frame memory limit"
+        WallpaperExceedsFrameMemoryLimitSnafu
     );
     Ok(bytes)
 }
 impl Animation {
     fn validate(&self) -> Result<()> {
         let bytes = validate_dimensions(self.width, self.height)?;
-        anyhow::ensure!(
+        snafu::ensure!(
             self.initial.pixels.len() == bytes,
-            "invalid initial wallpaper frame"
+            InvalidInitialWallpaperFrameSnafu
         );
-        anyhow::ensure!(self.deltas.len() <= 100_000, "too many animation frames");
+        snafu::ensure!(self.deltas.len() <= 100_000, TooManyAnimationFramesSnafu);
         let mut frame = self.initial.pixels.to_vec();
         let mut buffer = vec![
             0;
@@ -173,9 +186,9 @@ impl Animation {
         for delta in &self.deltas {
             delta.apply(&mut frame, &mut buffer)?;
         }
-        anyhow::ensure!(
+        snafu::ensure!(
             self.deltas.is_empty() || frame.as_slice() == self.initial.pixels.as_ref(),
-            "animation loop does not return to initial frame"
+            AnimationLoopDoesNotReturnToInitialFrameSnafu
         );
         Ok(())
     }
@@ -193,14 +206,14 @@ impl FrameDelta {
     const RUN_HEADER_SIZE: usize = 8;
 
     fn between(first: &DecodedFrame, second: &DecodedFrame) -> Result<Self> {
-        anyhow::ensure!(
+        snafu::ensure!(
             first.pixels.len() == second.pixels.len(),
-            "animation frames have different sizes"
+            AnimationFramesHaveDifferentSizesSnafu
         );
 
-        anyhow::ensure!(
+        snafu::ensure!(
             first.pixels.len() % Self::BYTES_PER_PIXEL == 0,
-            "animation frame is not RGBA-aligned"
+            AnimationFrameIsNotRgbaAlignedSnafu
         );
 
         let pixel_count = first.pixels.len() / Self::BYTES_PER_PIXEL;
@@ -234,10 +247,10 @@ impl FrameDelta {
 
             let changed = cursor - changed_start;
 
-            let skip = u32::try_from(skip).context("wallpaper delta skip exceeds u32")?;
+            let skip = u32::try_from(skip).context(WallpaperDeltaSkipExceedsU32Snafu)?;
 
             let changed =
-                u32::try_from(changed).context("wallpaper delta run exceeds u32")?;
+                u32::try_from(changed).context(WallpaperDeltaRunExceedsU32Snafu)?;
 
             stream.extend_from_slice(&skip.to_le_bytes());
             stream.extend_from_slice(&changed.to_le_bytes());
@@ -276,17 +289,17 @@ impl FrameDelta {
             return Ok(());
         }
 
-        anyhow::ensure!(
+        snafu::ensure!(
             delta_buffer.len() >= self.decoded_len,
-            "wallpaper delta buffer is too small"
+            WallpaperDeltaBufferIsTooSmallSnafu
         );
 
         let decoded_len = lz4_flex::block::decompress_into(&self.patch, delta_buffer)
-            .context("failed to decompress wallpaper delta")?;
+            .context(FailedToDecompressWallpaperDeltaSnafu)?;
 
-        anyhow::ensure!(
+        snafu::ensure!(
             decoded_len == self.decoded_len,
-            "wallpaper delta decompressed to unexpected size"
+            WallpaperDeltaDecompressedToUnexpectedSizeSnafu
         );
 
         let delta = &delta_buffer[..decoded_len];
@@ -297,11 +310,11 @@ impl FrameDelta {
         while source < delta.len() {
             let header_end = source
                 .checked_add(Self::RUN_HEADER_SIZE)
-                .context("wallpaper delta header overflow")?;
+                .context(WallpaperDeltaHeaderOverflowSnafu)?;
 
             let header = delta
                 .get(source..header_end)
-                .context("truncated wallpaper delta header")?;
+                .context(TruncatedWallpaperDeltaHeaderSnafu)?;
 
             let skip =
                 u32::from_le_bytes([header[0], header[1], header[2], header[3]]) as usize;
@@ -313,31 +326,31 @@ impl FrameDelta {
 
             pixel = pixel
                 .checked_add(skip)
-                .context("wallpaper delta pixel offset overflow")?;
+                .context(WallpaperDeltaPixelOffsetOverflowSnafu)?;
 
             let changed_bytes = changed
                 .checked_mul(Self::BYTES_PER_PIXEL)
-                .context("wallpaper delta byte count overflow")?;
+                .context(WallpaperDeltaByteCountOverflowSnafu)?;
 
             let literal_end = source
                 .checked_add(changed_bytes)
-                .context("wallpaper delta literal overflow")?;
+                .context(WallpaperDeltaLiteralOverflowSnafu)?;
 
             let literal = delta
                 .get(source..literal_end)
-                .context("truncated wallpaper delta pixels")?;
+                .context(TruncatedWallpaperDeltaPixelsSnafu)?;
 
             let frame_start = pixel
                 .checked_mul(Self::BYTES_PER_PIXEL)
-                .context("wallpaper frame offset overflow")?;
+                .context(WallpaperFrameOffsetOverflowSnafu)?;
 
             let frame_end = frame_start
                 .checked_add(changed_bytes)
-                .context("wallpaper frame range overflow")?;
+                .context(WallpaperFrameRangeOverflowSnafu)?;
 
             let destination = frame
                 .get_mut(frame_start..frame_end)
-                .context("wallpaper delta exceeds frame bounds")?;
+                .context(WallpaperDeltaExceedsFrameBoundsSnafu)?;
 
             destination.copy_from_slice(literal);
 
@@ -345,7 +358,7 @@ impl FrameDelta {
 
             pixel = pixel
                 .checked_add(changed)
-                .context("wallpaper delta pixel offset overflow")?;
+                .context(WallpaperDeltaPixelOffsetOverflowSnafu)?;
         }
 
         Ok(())
@@ -361,6 +374,28 @@ mod tests {
             delay: Duration::from_millis(20),
         }
     }
+    #[test]
+    fn missing_wallpaper_retains_path_and_io_source() {
+        use std::error::Error as _;
+        let path = std::env::temp_dir().join(format!(
+            "ghost-missing-wallpaper-{}.gif",
+            std::process::id()
+        ));
+        let error = match WallpaperSource::decode(&path) {
+            Err(error) => error,
+            Ok(_) => panic!("Unexpected wallpaper at nonexistent test path"),
+        };
+        assert!(matches!(&error, Error::Open { path: actual, .. } if actual == &path));
+        assert!(
+            error
+                .source()
+                .is_some_and(|source| source.is::<std::io::Error>())
+        );
+        let report = snafu::Report::from_error(error).to_string();
+        assert!(report.contains("Could not open wallpaper"));
+        assert!(report.contains("No such file"));
+    }
+
     #[test]
     fn sparse_deltas_reconstruct_changed_runs_and_wrap() -> Result<()> {
         let first = frame(&[1, 2, 3, 255, 4, 5, 6, 255, 7, 8, 9, 255]);
@@ -399,7 +434,8 @@ mod tests {
         }
     }
     #[test]
-    fn streamed_gif_frames_preserve_rgba_and_delays() -> Result<()> {
+    fn streamed_gif_frames_preserve_rgba_and_delays()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
         let path = std::env::temp_dir()
             .join(format!("ghost-gif-test-{}.gif", std::process::id()));
         let file = File::create(&path)?;
@@ -433,4 +469,77 @@ mod tests {
         std::fs::remove_file(path)?;
         Ok(())
     }
+}
+
+#[derive(Debug, snafu::Snafu)]
+pub enum Error {
+    #[snafu(display("GIF contains no frames"))]
+    GifContainsNoFrames,
+    #[snafu(display("animation size overflow"))]
+    AnimationSizeOverflow,
+    #[snafu(display("wallpaper dimensions overflow"))]
+    WallpaperDimensionsOverflow,
+    #[snafu(display("wallpaper delta skip exceeds u32"))]
+    WallpaperDeltaSkipExceedsU32 { source: std::num::TryFromIntError },
+    #[snafu(display("wallpaper delta run exceeds u32"))]
+    WallpaperDeltaRunExceedsU32 { source: std::num::TryFromIntError },
+    #[snafu(display("failed to decompress wallpaper delta"))]
+    FailedToDecompressWallpaperDelta {
+        source: lz4_flex::block::DecompressError,
+    },
+    #[snafu(display("wallpaper delta header overflow"))]
+    WallpaperDeltaHeaderOverflow,
+    #[snafu(display("truncated wallpaper delta header"))]
+    TruncatedWallpaperDeltaHeader,
+    #[snafu(display("wallpaper delta pixel offset overflow"))]
+    WallpaperDeltaPixelOffsetOverflow,
+    #[snafu(display("wallpaper delta byte count overflow"))]
+    WallpaperDeltaByteCountOverflow,
+    #[snafu(display("wallpaper delta literal overflow"))]
+    WallpaperDeltaLiteralOverflow,
+    #[snafu(display("truncated wallpaper delta pixels"))]
+    TruncatedWallpaperDeltaPixels,
+    #[snafu(display("wallpaper frame offset overflow"))]
+    WallpaperFrameOffsetOverflow,
+    #[snafu(display("wallpaper frame range overflow"))]
+    WallpaperFrameRangeOverflow,
+    #[snafu(display("wallpaper delta exceeds frame bounds"))]
+    WallpaperDeltaExceedsFrameBounds,
+    #[snafu(display("animation exceeds memory limits"))]
+    AnimationExceedsMemoryLimits,
+    #[snafu(display("invalid wallpaper dimensions"))]
+    InvalidWallpaperDimensions,
+    #[snafu(display("wallpaper exceeds frame memory limit"))]
+    WallpaperExceedsFrameMemoryLimit,
+    #[snafu(display("invalid initial wallpaper frame"))]
+    InvalidInitialWallpaperFrame,
+    #[snafu(display("too many animation frames"))]
+    TooManyAnimationFrames,
+    #[snafu(display("animation loop does not return to initial frame"))]
+    AnimationLoopDoesNotReturnToInitialFrame,
+    #[snafu(display("animation frames have different sizes"))]
+    AnimationFramesHaveDifferentSizes,
+    #[snafu(display("animation frame is not RGBA-aligned"))]
+    AnimationFrameIsNotRgbaAligned,
+    #[snafu(display("wallpaper delta buffer is too small"))]
+    WallpaperDeltaBufferIsTooSmall,
+    #[snafu(display("wallpaper delta decompressed to unexpected size"))]
+    WallpaperDeltaDecompressedToUnexpectedSize,
+    #[snafu(display("Unsupported wallpaper format"))]
+    UnsupportedFormat,
+    #[snafu(display("Could not open wallpaper {path:?}"))]
+    Open {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not detect format of wallpaper {path:?}"))]
+    DetectFormat {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+    #[snafu(display("Could not decode wallpaper {path:?}"))]
+    Decode {
+        path: std::path::PathBuf,
+        source: image::ImageError,
+    },
 }

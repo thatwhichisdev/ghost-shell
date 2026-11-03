@@ -75,7 +75,9 @@ impl Service {
         response
             .await
             .map_err(|error| fdo::Error::Failed(error.to_string()))?
-            .map_err(fdo::Error::Failed)
+            .map_err(|error| {
+                fdo::Error::Failed(snafu::Report::from_error(error).to_string())
+            })
     }
 
     async fn close_notification(&self, id: u32) -> fdo::Result<()> {
@@ -87,7 +89,9 @@ impl Service {
         response
             .await
             .map_err(|error| fdo::Error::Failed(error.to_string()))?
-            .map_err(fdo::Error::Failed)
+            .map_err(|error| {
+                fdo::Error::Failed(snafu::Report::from_error(error).to_string())
+            })
     }
 
     #[zbus(signal)]

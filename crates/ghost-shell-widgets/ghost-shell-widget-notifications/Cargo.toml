@@ -15,7 +15,6 @@ iced = { workspace = true, features = ["advanced", "image-without-codecs", "svg"
 ghost-shell-dbus.workspace = true
 ghost-shell-theme.workspace = true
 freedesktop-icons.workspace = true
-anyhow.workspace = true
 log.workspace = true
 # Iced decodes raster icons through image; keep codec selection with the consumer.
 image = { workspace = true, features = ["bmp", "gif", "ico", "jpeg", "png", "webp"] }

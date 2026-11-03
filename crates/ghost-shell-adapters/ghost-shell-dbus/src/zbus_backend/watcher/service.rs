@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use futures_util::StreamExt as _;
+use snafu::OptionExt as _;
 use tokio::sync::mpsc;
 use zbus::{
     Connection,
@@ -11,7 +12,10 @@ use zbus::{
     object_server::SignalEmitter,
 };
 
-use super::{WATCHER_BUS_NAME, WATCHER_OBJECT_PATH, WatcherEvent};
+use super::{
+    MissingUniqueNameSnafu, OwnerStreamEndedSnafu, Result, SignalStreamEndedSnafu,
+    WATCHER_BUS_NAME, WATCHER_OBJECT_PATH, WatcherEvent,
+};
 
 const DEFAULT_ITEM_PATH: &str = "/StatusNotifierItem";
 
@@ -175,7 +179,7 @@ impl StatusNotifierWatcherService {
 }
 
 /// Hosts a watcher when available, otherwise follows the existing watcher.
-pub async fn run(events: mpsc::Sender<WatcherEvent>) -> anyhow::Result<()> {
+pub async fn run(events: mpsc::Sender<WatcherEvent>) -> Result<()> {
     let connection = Connection::session().await?;
     let dbus = DBusProxy::new(&connection).await?;
     let mut owner_changes = dbus.receive_name_owner_changed().await?;
@@ -190,7 +194,7 @@ pub async fn run(events: mpsc::Sender<WatcherEvent>) -> anyhow::Result<()> {
 
     let unique_name = connection
         .unique_name()
-        .ok_or_else(|| anyhow::anyhow!("session bus did not assign a unique name"))?;
+        .context(MissingUniqueNameSnafu)?;
     let host_name = format!(
         "org.kde.StatusNotifierHost.ghost_shell_{}",
         unique_name.as_str().replace([':', '.'], "_")
@@ -235,7 +239,7 @@ pub async fn run(events: mpsc::Sender<WatcherEvent>) -> anyhow::Result<()> {
                     result = &mut follower => break result,
                     _ = events.closed() => return Ok(()),
                     signal = owner_changes.next() => {
-                        let Some(signal) = signal else { return Err(anyhow::anyhow!("session bus owner stream ended")); };
+                        let Some(signal) = signal else { return OwnerStreamEndedSnafu.fail(); };
                         let args = signal.args()?;
                         if args.name().as_str() == WATCHER_BUS_NAME
                             && args.old_owner().as_ref().is_some_and(|previous| previous.as_str() == owner.as_str())
@@ -271,7 +275,7 @@ pub async fn run(events: mpsc::Sender<WatcherEvent>) -> anyhow::Result<()> {
             signal = owner_changes.next() => signal,
         };
         let Some(signal) = signal else {
-            return Err(anyhow::anyhow!("session bus owner stream ended"));
+            return OwnerStreamEndedSnafu.fail();
         };
         let args = signal.args()?;
         if args.old_owner().is_none() {
@@ -296,7 +300,7 @@ async fn follow(
     host_name: &str,
     events: &mpsc::Sender<WatcherEvent>,
     items: &mut HashSet<String>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let proxy =
         zbus::Proxy::new(connection, owner, WATCHER_OBJECT_PATH, WATCHER_BUS_NAME)
             .await?;
@@ -340,5 +344,5 @@ async fn follow(
             _ => {}
         }
     }
-    Err(anyhow::anyhow!("tray watcher signal stream ended"))
+    SignalStreamEndedSnafu.fail()
 }

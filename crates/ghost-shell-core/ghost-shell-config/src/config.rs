@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use config::{Config, ConfigError, File};
+pub use config::ConfigError;
+use config::{Config, File};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 

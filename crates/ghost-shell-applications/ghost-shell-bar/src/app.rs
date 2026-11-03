@@ -146,10 +146,10 @@ struct Shell {
     notifications: Option<ghost_shell_dbus::Notifications>,
 }
 
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), crate::Error> {
     let config =
         ghost_shell_config::load::<BarAppConfig>("bar").unwrap_or_else(|error| {
-            log::warn!("Configuration: {error}");
+            log::warn!("Configuration: {}", snafu::Report::from_error(error));
 
             BarAppConfig::default()
         });
@@ -205,7 +205,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         Message::Bar(window, _) => iced_exwlshell::redraw::Scope::Window(*window),
         _ => iced_exwlshell::redraw::Scope::All,
     })
-    .run()?;
+    .run()
+    .map_err(|source| crate::Error::Runtime { source })?;
 
     Ok(())
 }
@@ -221,7 +222,9 @@ impl Shell {
                 async {
                     tokio::task::spawn_blocking(ghost_shell_widget_power::battery)
                         .await
-                        .unwrap_or_else(|error| Err(error.to_string()))
+                        .unwrap_or_else(|error| {
+                            Err(snafu::Report::from_error(error).to_string())
+                        })
                 },
                 Message::Battery,
             ),
@@ -232,10 +235,12 @@ impl Shell {
                 async move {
                     tokio::task::spawn_blocking(move || {
                         WallpaperSource::load(std::path::Path::new(&path))
-                            .map_err(|error| error.to_string())
+                            .map_err(|error| snafu::Report::from_error(error).to_string())
                     })
                     .await
-                    .unwrap_or_else(|error| Err(error.to_string()))
+                    .unwrap_or_else(|error| {
+                        Err(snafu::Report::from_error(error).to_string())
+                    })
                 },
                 |result| Message::Wallpaper(0, result),
             ));
@@ -270,7 +275,7 @@ impl Shell {
                 Some(audio)
             }
             Err(error) => {
-                log::warn!("Audio: {error:#}");
+                log::warn!("Audio: {}", snafu::Report::from_error(&error));
 
                 None
             }
@@ -378,7 +383,7 @@ impl Shell {
                         ghost_shell_widget_tray::resolve_icons(icons)
                     })
                     .await
-                    .map_err(|error| error.to_string())
+                    .map_err(|error| snafu::Report::from_error(error).to_string())
                 },
                 Message::TrayIcons,
             ));
@@ -404,11 +409,14 @@ impl Shell {
                 tasks.push(Task::perform(
                     async move {
                         tokio::task::spawn_blocking(move || {
-                            WallpaperSource::load(std::path::Path::new(&path))
-                                .map_err(|error| error.to_string())
+                            WallpaperSource::load(std::path::Path::new(&path)).map_err(
+                                |error| snafu::Report::from_error(error).to_string(),
+                            )
                         })
                         .await
-                        .unwrap_or_else(|error| Err(error.to_string()))
+                        .unwrap_or_else(|error| {
+                            Err(snafu::Report::from_error(error).to_string())
+                        })
                     },
                     move |result| Message::Wallpaper(generation, result),
                 ));
@@ -875,7 +883,7 @@ impl Shell {
                         }
                         Err(error) => {
                             if output
-                                .send(Err(error.to_string()))
+                                .send(Err(snafu::Report::from_error(error).to_string()))
                                 .await
                                 .is_err()
                             {
@@ -1274,10 +1282,9 @@ impl Shell {
                         if let Some(server) = self.notifications.clone() {
                             return Task::perform(
                                 async move {
-                                    server
-                                        .dismiss(id)
-                                        .await
-                                        .map_err(|error| error.to_string())
+                                    server.dismiss(id).await.map_err(|error| {
+                                        snafu::Report::from_error(error).to_string()
+                                    })
                                 },
                                 Message::NotificationRead,
                             );
@@ -1305,7 +1312,10 @@ impl Shell {
                                 self.styling.notice = Some("Copied Nix settings. Merge these sections into your configuration.".into());
                                 return iced::clipboard::write(nix);
                             }
-                            Err(error) => self.styling.error = Some(error.to_string()),
+                            Err(error) => {
+                                self.styling.error =
+                                    Some(snafu::Report::from_error(error).to_string())
+                            }
                         }
                     }
                     message => {
@@ -1413,7 +1423,10 @@ impl Shell {
                                     async move {
                                         menu.activate(id, item)
                                             .await
-                                            .map_err(|error| error.to_string())
+                                            .map_err(|error| {
+                                                snafu::Report::from_error(error)
+                                                    .to_string()
+                                            })
                                     },
                                     Message::MenuActivated,
                                 ),

@@ -42,8 +42,9 @@ struct App {
     system_dark: bool,
 }
 
-pub fn run(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    let config = ghost_shell_config::load_file::<GreeterConfig>(path)?;
+pub fn run(path: &std::path::Path) -> Result<(), crate::Error> {
+    let config = ghost_shell_config::load_file::<GreeterConfig>(path)
+        .map_err(|source| crate::Error::Configuration { source })?;
     if config
         .session
         .command
@@ -55,9 +56,7 @@ pub fn run(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .any(|argument| argument.contains('\0'))
     {
-        return Err(
-            "session.command must contain a nonempty command without NUL bytes".into(),
-        );
+        return Err(crate::Error::InvalidSessionCommand);
     }
     if config
         .session
@@ -70,10 +69,7 @@ pub fn run(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
                     .is_none_or(|(name, _)| name.is_empty())
         })
     {
-        return Err(
-            "session.environment must contain NAME=value entries without NUL bytes"
-                .into(),
-        );
+        return Err(crate::Error::InvalidSessionEnvironment);
     }
     let font = iced::Font {
         family: match config.general.font_family.as_str() {
@@ -113,7 +109,8 @@ pub fn run(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
         },
         ..Default::default()
     })
-    .run()?;
+    .run()
+    .map_err(|source| crate::Error::Runtime { source })?;
     Ok(())
 }
 
@@ -131,10 +128,12 @@ impl App {
                 async move {
                     tokio::task::spawn_blocking(move || {
                         WallpaperSource::load(std::path::Path::new(&path))
-                            .map_err(|error| error.to_string())
+                            .map_err(|error| snafu::Report::from_error(error).to_string())
                     })
                     .await
-                    .unwrap_or_else(|error| Err(error.to_string()))
+                    .unwrap_or_else(|error| {
+                        Err(snafu::Report::from_error(error).to_string())
+                    })
                 },
                 Message::Wallpaper,
             ));

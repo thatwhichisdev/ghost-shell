@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
 use fff_search::{
     FilePicker, FilePickerOptions, FuzzySearchOptions, MixedItemRef, MixedSearchConfig,
     PaginationArgs, QueryParser, ScanProgress, SharedFilePicker, SharedFrecency,
 };
+use snafu::{OptionExt as _, ResultExt as _};
+
+type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone)]
 pub struct Search {
@@ -21,16 +23,12 @@ pub struct SearchOptions {
 
 impl SearchOptions {
     pub fn home() -> Result<Self> {
-        let directories = directories::UserDirs::new()
-            .context("Could not resolve the user's home directory")?;
+        let directories = directories::UserDirs::new().context(MissingHomeSnafu)?;
         let home = directories
             .home_dir()
             .to_str()
-            .context("Home directory is not valid UTF-8")?;
-        anyhow::ensure!(
-            home != "/",
-            "Refusing to index the filesystem root as the home directory"
-        );
+            .context(InvalidHomeEncodingSnafu)?;
+        snafu::ensure!(home != "/", RootHomeSnafu);
         Ok(Self {
             base_path: home.to_owned(),
             enable_content_indexing: false,
@@ -79,7 +77,7 @@ impl Search {
         let frecency = SharedFrecency::default();
 
         FilePicker::new_with_shared_state(picker.clone(), frecency.clone(), options)
-            .context("Failed to create shared file picker")?;
+            .context(InitializeSnafu)?;
 
         Ok(Self { picker, frecency })
     }
@@ -88,11 +86,11 @@ impl Search {
         let guard = self
             .picker
             .read()
-            .context("failed to acquire the file picker")?;
+            .map_err(|_| Error::PickerPoisoned)?;
 
         let picker = guard
             .as_ref()
-            .context("file picker is not initialized")?;
+            .context(PickerUninitializedSnafu)?;
 
         Ok(picker.get_scan_progress())
     }
@@ -112,11 +110,11 @@ impl Search {
         let picker_guard = self
             .picker
             .read()
-            .context("failed to acquire the file picker")?;
+            .map_err(|_| Error::PickerPoisoned)?;
 
         let picker = picker_guard
             .as_ref()
-            .context("file picker is not initialized")?;
+            .context(PickerUninitializedSnafu)?;
 
         let query_parser = QueryParser::new(MixedSearchConfig);
         let query = query_parser.parse(needle);
@@ -165,4 +163,20 @@ impl Search {
             indexed_dirs: results.total_dirs,
         })
     }
+}
+
+#[derive(Debug, snafu::Snafu)]
+pub enum Error {
+    #[snafu(display("Could not resolve the user’s home directory"))]
+    MissingHome,
+    #[snafu(display("Home directory is not valid UTF-8"))]
+    InvalidHomeEncoding,
+    #[snafu(display("Refusing to index the filesystem root as the home directory"))]
+    RootHome,
+    #[snafu(display("File picker lock is poisoned"))]
+    PickerPoisoned,
+    #[snafu(display("File picker is not initialized"))]
+    PickerUninitialized,
+    #[snafu(display("Could not initialize file search"))]
+    Initialize { source: fff_search::Error },
 }

@@ -51,10 +51,10 @@ impl Finder {
                     SearchOptions::home()
                         .and_then(Search::try_new)
                         .map(Arc::new)
-                        .map_err(|error| error.to_string())
+                        .map_err(|error| snafu::Report::from_error(error).to_string())
                 })
                 .await
-                .unwrap_or_else(|error| Err(error.to_string()))
+                .unwrap_or_else(|error| Err(snafu::Report::from_error(error).to_string()))
             },
             Message::Ready,
         )
@@ -73,10 +73,10 @@ impl Finder {
                         .map(|progress| {
                             (progress.is_scanning, progress.scanned_files_count)
                         })
-                        .map_err(|error| error.to_string())
+                        .map_err(|error| snafu::Report::from_error(error).to_string())
                 })
                 .await
-                .unwrap_or_else(|error| Err(error.to_string()))
+                .unwrap_or_else(|error| Err(snafu::Report::from_error(error).to_string()))
             },
             Message::Progress,
         )
@@ -124,12 +124,14 @@ impl Finder {
                 return Task::perform(
                     async move {
                         tokio::task::spawn_blocking(move || {
-                            search
-                                .search(&query, 100)
-                                .map_err(|error| error.to_string())
+                            search.search(&query, 100).map_err(|error| {
+                                snafu::Report::from_error(error).to_string()
+                            })
                         })
                         .await
-                        .unwrap_or_else(|error| Err(error.to_string()))
+                        .unwrap_or_else(|error| {
+                            Err(snafu::Report::from_error(error).to_string())
+                        })
                     },
                     move |result| Message::Results(generation, result),
                 );

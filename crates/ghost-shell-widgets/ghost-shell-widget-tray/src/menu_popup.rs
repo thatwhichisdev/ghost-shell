@@ -322,21 +322,47 @@ impl<R: renderer::Renderer> overlay::Overlay<TrayMessage, Theme, R>
 
     fn operate(
         &mut self,
-        layout: Layout<'_>,
-        renderer: &R,
-        operation: &mut dyn iced::advanced::widget::Operation,
+        _: Layout<'_>,
+        _: &R,
+        _: &mut dyn iced::advanced::widget::Operation,
     ) {
-        if let Some(content) = layout.children().next() {
-            self.inner
-                .as_overlay_mut()
-                .operate(content, renderer, operation);
-        }
+        // iced_aw 0.14.1 traverses unopened submenus whose state trees do not
+        // exist yet, panicking in MenuBarOverlay::operate. Tray rows have no
+        // programmatic focus or scroll targets; input and menu scrolling are
+        // handled by update. Keep operations out until upstream fixes traversal.
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct Traverse;
+
+    impl iced::advanced::widget::Operation for Traverse {
+        fn traverse(
+            &mut self,
+            operate: &mut dyn FnMut(&mut dyn iced::advanced::widget::Operation),
+        ) {
+            operate(self);
+        }
+    }
+
+    #[test]
+    fn widget_operations_are_safe_with_unopened_submenus() {
+        let mut popup = popup();
+        let mut tree = Tree::new(&popup as &dyn Widget<TrayMessage, Theme, ()>);
+        let size = Size::new(258.0, 68.0);
+        let node = popup.layout(&mut tree, &(), &Limits::new(Size::ZERO, size));
+        let viewport = Rectangle::new(Point::ORIGIN, size);
+        let mut overlay = popup
+            .overlay(&mut tree, Layout::new(&node), &(), &viewport, Vector::ZERO)
+            .unwrap();
+        let node = overlay.as_overlay_mut().layout(&(), size);
+        overlay
+            .as_overlay_mut()
+            .operate(Layout::new(&node), &(), &mut Traverse);
+    }
 
     #[test]
     fn menu_background_uses_the_exact_surface_color() {
@@ -412,6 +438,9 @@ mod tests {
         let first = overlay
             .as_overlay_mut()
             .layout(&(), viewport.size());
+        overlay
+            .as_overlay_mut()
+            .operate(Layout::new(&first), &(), &mut Traverse);
         let content = Layout::new(&first)
             .children()
             .next()
@@ -453,6 +482,9 @@ mod tests {
         let expanded = overlay
             .as_overlay_mut()
             .layout(&(), Size::new(516.0, 68.0));
+        overlay
+            .as_overlay_mut()
+            .operate(Layout::new(&expanded), &(), &mut Traverse);
         let menus: Vec<_> = menu_bounds(
             Layout::new(&expanded)
                 .children()
@@ -540,6 +572,9 @@ mod tests {
         let collapsed = overlay
             .as_overlay_mut()
             .layout(&(), Size::new(258.0, 68.0));
+        overlay
+            .as_overlay_mut()
+            .operate(Layout::new(&collapsed), &(), &mut Traverse);
         assert_eq!(
             menu_bounds(
                 Layout::new(&collapsed)

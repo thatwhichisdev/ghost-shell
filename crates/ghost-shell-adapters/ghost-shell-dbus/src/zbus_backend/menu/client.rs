@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use anyhow::{Context as _, Result};
 use futures_util::StreamExt as _;
+use snafu::ResultExt as _;
 use tokio::sync::oneshot;
 use zbus::{Connection, proxy, zvariant::OwnedValue};
 
+use super::{ActivateSnafu, DecodeSnafu, LayoutSnafu, ProxySnafu, Result, WatchSnafu};
 use crate::{MenuId, MenuItem, MenuItemType, MenuLayout, MenuSession};
 
 const ROOT_ITEM_ID: i32 = 0;
@@ -45,11 +46,14 @@ impl DbusMenuClient {
             .path(id.object_path().to_owned())?
             .build()
             .await
-            .with_context(|| format!("failed to create D-Bus menu proxy for {id}"))?;
+            .context(ProxySnafu { id: id.clone() })?;
 
         // Some exporters do not implement AboutToShow. Still fetch their layout.
         if let Err(error) = proxy.about_to_show(ROOT_ITEM_ID).await {
-            log::debug!("D-Bus menu AboutToShow failed for {id}: {error:#}");
+            log::debug!(
+                "D-Bus menu AboutToShow failed for {id}: {}",
+                snafu::Report::from_error(&error)
+            );
         }
 
         // Subscribe before fetching so changes during GetLayout cannot be lost.
@@ -57,15 +61,14 @@ impl DbusMenuClient {
             .inner()
             .receive_all_signals()
             .await
-            .with_context(|| format!("failed to watch D-Bus menu {id}"))?;
+            .context(WatchSnafu { id: id.clone() })?;
 
         let (revision, root) = proxy
             .get_layout(ROOT_ITEM_ID, UNLIMITED_RECURSION, Vec::new())
             .await
-            .with_context(|| format!("failed to fetch D-Bus menu layout for {id}"))?;
+            .context(LayoutSnafu { id: id.clone() })?;
 
-        let root = decode_item(root)
-            .with_context(|| format!("failed to decode D-Bus menu layout for {id}"))?;
+        let root = decode_item(root)?;
 
         let (mut invalidated, receiver) = oneshot::channel();
         tokio::spawn(async move {
@@ -102,13 +105,14 @@ impl DbusMenuClient {
             .path(menu.object_path().to_owned())?
             .build()
             .await
-            .with_context(|| format!("failed to create D-Bus menu proxy for {menu}"))?;
+            .context(ProxySnafu { id: menu.clone() })?;
 
         proxy
             .event(item_id, "clicked", OwnedValue::from(0_i32), 0)
             .await
-            .with_context(|| {
-                format!("failed to activate D-Bus menu item {item_id} for {menu}")
+            .context(ActivateSnafu {
+                menu: menu.clone(),
+                item_id,
             })?;
 
         Ok(())
@@ -121,9 +125,7 @@ fn decode_item(raw: RawMenuItem) -> Result<MenuItem> {
     let children = children
         .into_iter()
         .map(|child| {
-            let child = RawMenuItem::try_from(child).with_context(|| {
-                format!("failed to decode child of D-Bus menu item {id}")
-            })?;
+            let child = RawMenuItem::try_from(child).context(DecodeSnafu { id })?;
 
             decode_item(child)
         })

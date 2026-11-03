@@ -1,6 +1,6 @@
-use anyhow::{Context as _, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use ghost_shell_ipc::{BarAction, Endpoint, LockAction, Request};
+use snafu::ResultExt as _;
 
 #[derive(Debug, Parser)]
 #[command(name = "ghost-shell")]
@@ -61,8 +61,9 @@ impl From<Application> for Endpoint {
     }
 }
 
+#[snafu::report]
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     let cli = Cli::parse();
     let endpoint = match &cli.command {
         Command::Msg { command } => match command {
@@ -91,11 +92,8 @@ async fn main() -> Result<()> {
 
     let reply = ghost_shell_ipc::call(endpoint, request)
         .await
-        .with_context(|| {
-            format!(
-                "Could not contact {}; is its service running?",
-                endpoint.name()
-            )
+        .context(ContactSnafu {
+            endpoint: endpoint.name(),
         })?;
 
     match reply {
@@ -104,9 +102,20 @@ async fn main() -> Result<()> {
         }
 
         Err(message) => {
-            bail!("{message}");
+            return Err(Error::Rejected { message });
         }
     }
 
     Ok(())
+}
+
+#[derive(Debug, snafu::Snafu)]
+pub enum Error {
+    #[snafu(display("Could not contact {endpoint}; is its service running?"))]
+    Contact {
+        endpoint: &'static str,
+        source: ghost_shell_ipc::Error,
+    },
+    #[snafu(display("Daemon rejected the request: {message}"))]
+    Rejected { message: String },
 }

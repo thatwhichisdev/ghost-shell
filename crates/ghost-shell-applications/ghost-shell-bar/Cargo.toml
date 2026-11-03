@@ -8,8 +8,8 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+snafu.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "process"] }
-anyhow.workspace = true
 futures.workspace = true
 jiff.workspace = true
 ghost-shell-dbus.workspace = true

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use anyhow::{Result, bail};
+type Result<T> = std::result::Result<T, RegistrationError>;
 
 const DEFAULT_ITEM_PATH: &str = "/StatusNotifierItem";
 
@@ -16,20 +16,14 @@ impl StatusNotifierId {
             Some(index) if index > 0 => (&registration[..index], &registration[index..]),
 
             Some(_) => {
-                bail!(
-                    "status notifier registration \
-                         is missing a service name"
-                );
+                return MissingServiceSnafu.fail();
             }
 
             None => (registration, DEFAULT_ITEM_PATH),
         };
 
         if service.is_empty() {
-            bail!(
-                "status notifier registration \
-                 is missing a service name"
-            );
+            return MissingServiceSnafu.fail();
         }
 
         Ok(Self {
@@ -102,4 +96,11 @@ pub struct StatusNotifierItem {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ItemEvent {
     Updated(StatusNotifierItem),
+}
+
+#[derive(Debug, snafu::Snafu)]
+#[snafu(visibility(pub(super)))]
+pub enum RegistrationError {
+    #[snafu(display("Status notifier registration is missing a service name"))]
+    MissingService,
 }

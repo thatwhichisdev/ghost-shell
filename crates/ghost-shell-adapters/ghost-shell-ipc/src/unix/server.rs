@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::{Context as _, Result, anyhow};
+use snafu::ResultExt as _;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{UnixListener, UnixStream, unix::SocketAddr},
@@ -9,7 +9,8 @@ use tokio::{
 };
 
 use crate::{
-    AsyncRequest,
+    AlreadyRunningSnafu, AsyncRequest, NotSocketSnafu, ProtocolSnafu, ReplyClosedSnafu,
+    RequestReceiverClosedSnafu, Result, SocketSnafu, TransportSnafu,
     protocol::{Reply, Request},
 };
 
@@ -34,14 +35,18 @@ impl crate::RequestServer for Server {
     ) -> Result<Self> {
         if path.exists() {
             use std::os::unix::fs::FileTypeExt as _;
-            anyhow::ensure!(
-                fs::symlink_metadata(&path)?
+            snafu::ensure!(
+                fs::symlink_metadata(&path)
+                    .context(SocketSnafu {
+                        operation: "inspect",
+                        path: &path
+                    })?
                     .file_type()
                     .is_socket(),
-                "IPC path is not a socket"
+                NotSocketSnafu { path: &path }
             );
             match UnixStream::connect(&path).await {
-                Ok(_) => anyhow::bail!("Ghost Shell is already running"),
+                Ok(_) => return AlreadyRunningSnafu { path: &path }.fail(),
                 Err(error)
                     if matches!(
                         error.kind(),
@@ -49,13 +54,25 @@ impl crate::RequestServer for Server {
                             | std::io::ErrorKind::NotFound
                     ) =>
                 {
-                    fs::remove_file(&path)?
+                    fs::remove_file(&path).context(SocketSnafu {
+                        operation: "remove stale",
+                        path: &path,
+                    })?
                 }
-                Err(error) => return Err(error.into()),
+                Err(source) => {
+                    return Err(crate::Error::Socket {
+                        operation: "probe",
+                        path,
+                        source,
+                    });
+                }
             }
         }
 
-        let listener = UnixListener::bind(&path)?;
+        let listener = UnixListener::bind(&path).context(SocketSnafu {
+            operation: "bind",
+            path: &path,
+        })?;
 
         Ok(Self {
             path,
@@ -71,7 +88,7 @@ impl crate::RequestServer for Server {
             tokio::select! {
                 accepted = self.listener.accept() => {
                     let (stream, address) = accepted
-                        .context("failed to accept IPC connection")?;
+                        .context(SocketSnafu { operation: "accept connection on", path: &self.path })?;
 
                     let connection = Connection::new(
                         address,
@@ -88,7 +105,7 @@ impl crate::RequestServer for Server {
                             log::debug!("IPC connection closed normally");
                         }
                         Some(Ok(Err(err))) => {
-                            eprintln!("IPC connection failed: {err:#}");
+                            log::warn!("IPC connection failed: {}", snafu::Report::from_error(err));
                         }
                         Some(Err(err)) if err.is_panic() => {
                             eprintln!("IPC connection task panicked:{err}");
@@ -121,7 +138,7 @@ impl Connection {
 
     pub async fn handle(self) -> Result<()> {
         let Self {
-            address,
+            address: _,
             stream,
             request_sender,
         } = self;
@@ -134,25 +151,24 @@ impl Connection {
         loop {
             buffer.clear();
 
-            let bytes_read = reader
-                .read_line(&mut buffer)
-                .await
-                .with_context(|| {
-                    format!("failed to read IPC request from {address:?}")
-                })?;
+            let bytes_read =
+                reader
+                    .read_line(&mut buffer)
+                    .await
+                    .context(TransportSnafu {
+                        operation: "read request",
+                    })?;
 
             if bytes_read == 0 {
                 // Normal client disconnect.
                 return Ok(());
             }
 
-            let request = serde_json::from_str::<Request>(buffer.trim_end())
-                .with_context(|| {
-                    format!(
-                        "failed to deserialize IPC request from \
-                     {address:?}; contents: {buffer:?}"
-                    )
-                })?;
+            let request = serde_json::from_str::<Request>(buffer.trim_end()).context(
+                ProtocolSnafu {
+                    operation: "decode request",
+                },
+            )?;
 
             let (reply_sender, reply_receiver) = oneshot::channel::<Reply>();
             let (delivered_sender, delivered) = oneshot::channel();
@@ -164,26 +180,31 @@ impl Connection {
                     delivered,
                 })
                 .await
-                .map_err(|_| anyhow!("daemon IPC request receiver was dropped"))?;
+                .map_err(|_| RequestReceiverClosedSnafu.build())?;
 
             let reply = reply_receiver
                 .await
-                .context("daemon dropped the IPC reply channel")?;
+                .context(ReplyClosedSnafu)?;
 
-            let mut response =
-                serde_json::to_vec(&reply).context("failed to serialize IPC reply")?;
+            let mut response = serde_json::to_vec(&reply).context(ProtocolSnafu {
+                operation: "encode reply",
+            })?;
 
             response.push(b'\n');
 
             writer
                 .write_all(&response)
                 .await
-                .context("failed to write IPC reply")?;
+                .context(TransportSnafu {
+                    operation: "write reply",
+                })?;
 
             writer
                 .flush()
                 .await
-                .context("failed to flush IPC reply")?;
+                .context(TransportSnafu {
+                    operation: "flush reply",
+                })?;
             if delivered_sender.send(()).is_err() {
                 log::trace!("IPC caller does not need a flush acknowledgement");
             }

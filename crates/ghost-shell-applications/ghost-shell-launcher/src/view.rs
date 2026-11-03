@@ -35,7 +35,7 @@ impl Launcher {
                     Arc::new(crate::entries::load(theme).items)
                 })
                 .await
-                .map_err(|error| error.to_string())
+                .map_err(|error| snafu::Report::from_error(error).to_string())
             },
             |result| match result {
                 Ok(entries) => Message::Loaded(entries),
