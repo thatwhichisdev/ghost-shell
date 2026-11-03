@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 #[derive(Clone)]
 pub enum Event {
+    Network(Result<ghost_shell_dbus::networkmanager::Snapshot, String>),
     Item(ghost_shell_dbus::StatusNotifierItem),
     Removed(StatusNotifierId),
     Menu(Menu),
@@ -21,6 +22,8 @@ pub fn events() -> impl Stream<Item = Event> {
     iced::stream::channel::<Event>(128, async |mut output| {
         let (sender, mut receiver) = mpsc::channel(128);
         let mut workers = tokio::task::JoinSet::new();
+        let network_sender = sender.clone();
+        workers.spawn(network(network_sender));
         let tray_sender = sender.clone();
         workers.spawn(async move {
             if let Err(error) = tray(tray_sender.clone()).await {
@@ -130,4 +133,33 @@ enum TrayError {
     ReceiverClosed {
         source: tokio::sync::mpsc::error::SendError<Event>,
     },
+}
+
+async fn network(output: mpsc::Sender<Event>) {
+    loop {
+        let (sender, mut receiver) = mpsc::channel(16);
+        let watcher = ghost_shell_dbus::networkmanager::watch(sender);
+        tokio::pin!(watcher);
+        loop {
+            tokio::select! {
+                _ = output.closed() => return,
+                result = &mut watcher => {
+                    if let Err(error) = result {
+                        let message = snafu::Report::from_error(error).to_string();
+                        if output.send(Event::Network(Err(message))).await.is_err() { return; }
+                    }
+                    break;
+                }
+                event = receiver.recv() => {
+                    let Some(event) = event else { break; };
+                    let event = event.map_err(|error| snafu::Report::from_error(error).to_string());
+                    if output.send(Event::Network(event)).await.is_err() { return; }
+                }
+            }
+        }
+        tokio::select! {
+            _ = output.closed() => return,
+            _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {},
+        }
+    }
 }

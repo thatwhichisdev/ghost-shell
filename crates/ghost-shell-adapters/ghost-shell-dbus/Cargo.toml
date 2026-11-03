@@ -1,5 +1,5 @@
 [package]
-license.workspace = true
+license = "MIT AND MPL-2.0"
 name = "ghost-shell-dbus"
 version.workspace = true
 edition.workspace = true
@@ -11,6 +11,10 @@ publish.workspace = true
 path = "src/dbus.rs"
 
 [dependencies]
+bitflags.workspace = true
+derive_builder.workspace = true
+procfs.workspace = true
+jiff.workspace = true
 snafu.workspace = true
 futures-util.workspace = true
 log.workspace = true

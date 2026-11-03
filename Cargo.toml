@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/ghost-shell-widgets/ghost-shell-widget-network",
   "crates/ghost-shell-components/ghost-shell-calendar-components",
   "crates/ghost-shell-applications/ghost-shell-cli",
   "crates/ghost-shell-core/ghost-shell-assets",
@@ -45,6 +46,9 @@ repository = "https://github.com/thatwhichisdev/ghost-shell"
 publish = false
 
 [workspace.dependencies]
+bitflags = "2.11"
+derive_builder = "0.20.2"
+procfs = { version = "0.18", default-features = false }
 directories = "6.0.0"
 # core crates
 ghost-shell-assets = { path = "crates/ghost-shell-core/ghost-shell-assets" }
@@ -63,6 +67,7 @@ ghost-shell-greetd = { path = "crates/ghost-shell-adapters/ghost-shell-greetd" }
 ghost-shell-niri = { path = "crates/ghost-shell-adapters/ghost-shell-niri" }
 
 # widget crates
+ghost-shell-widget-network = { path = "crates/ghost-shell-widgets/ghost-shell-widget-network" }
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
 ghost-shell-widget-focus = { path = "crates/ghost-shell-widgets/ghost-shell-widget-focus" }

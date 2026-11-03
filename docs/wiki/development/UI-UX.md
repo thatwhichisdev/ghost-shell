@@ -27,7 +27,7 @@ controls widget dimensions, and `[bar.decoration]` controls continuous or island
 backgrounds, opacity, blur and rounding. Defaults are 28px bar height, 20px
 inner height, 16px icons, 4px horizontal padding, 2px horizontal/4px vertical
 outer margins and 4px corner radius. All sections share these dimensions.
-Joined tray/audio items round only outside edges and share one painted island
+Joined tray/audio/network items round only outside edges and share one painted island
 background and blur region; individual items paint only their hover highlight.
 Workspaces share one island.
 

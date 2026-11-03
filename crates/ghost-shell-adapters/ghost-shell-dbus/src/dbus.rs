@@ -1,5 +1,6 @@
 mod item;
 mod menu;
+pub mod networkmanager;
 mod watcher;
 pub mod zbus_backend;
 

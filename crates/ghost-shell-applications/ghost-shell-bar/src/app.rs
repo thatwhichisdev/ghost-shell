@@ -1035,6 +1035,7 @@ impl Shell {
                 }
             }
             Message::Services(event) => match event {
+                services::Event::Network(update) => self.bar.network.update(update),
                 services::Event::Item(item) => self.bar.tray.update(item),
                 services::Event::Removed(id) => self.bar.tray.remove(&id),
                 services::Event::Menu(menu) => self.menu = Some(menu),

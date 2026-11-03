@@ -24,6 +24,7 @@ pub enum Message {
 
 #[derive(Default)]
 pub struct Bar {
+    pub network: ghost_shell_widget_network::Network,
     pub tray: Tray,
     pub clock: Clock,
     pub power: Power,
@@ -60,6 +61,7 @@ impl Bar {
                 .view(style)
                 .map(Message::Notifications),
             ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
+            self.network.view(style),
             self.power.view(style),
             self.clock.view(style).map(Message::Clock),
         ]

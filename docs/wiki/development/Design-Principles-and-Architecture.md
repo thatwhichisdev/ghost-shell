@@ -202,3 +202,12 @@ markup, images in bodies, and sound are not advertised as capabilities.
 The calendar component owns month browsing and renders a view-only grid. The
 bar owns its popup lifecycle, current-date input, anchor and blur region. The
 clock only emits open and bounds messages; no component opens Wayland surfaces.
+
+### Network status
+
+The D-Bus adapter contains the vendored NetworkManager bindings and an owned
+signal monitor. The bar runs one monitor for all outputs; the network widget
+only renders snapshots and errors. Discovery subscribes before reading state,
+uses uncached properties, and tracks activated Ethernet and Wi-Fi devices plus
+active access points. Service owner changes trigger rediscovery; failed reads
+clear stale state and retry. Healthy connections have no polling timer.

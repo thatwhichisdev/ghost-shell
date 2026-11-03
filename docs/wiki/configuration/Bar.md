@@ -74,7 +74,7 @@ or hover highlights. Original tray icons retain their own colors.
 
 Both layouts support all combinations. Continuous mode leaves inner containers
 transparent at rest. Islands mode leaves the surrounding bar and gaps transparent.
-Joined tray/audio controls round only their group's outside edges.
+Joined tray/audio/network groups round only their group's outside edges.
 
 Blur requires compositor support; without it the configured background still
 renders. Ghost updates explicit surface-local blur regions when decoration
@@ -89,7 +89,7 @@ their own styling.
 | --- | --- |
 | Start | System menu, theme toggle, workspaces |
 | Center | Focused window |
-| End | Tray, notifications, audio, power, clock |
+| End | Tray, notifications, audio, network, power, clock |
 
 The bar retains 9px horizontal insets. Global widget defaults are:
 
@@ -103,7 +103,7 @@ The bar retains 9px horizontal insets. Global widget defaults are:
 
 Outer containers are transparent and span the bar height. Inner containers
 follow content width, with the configured padding and height. Icons preserve
-aspect ratio. Tray and audio controls have no internal gap and join at square
+aspect ratio. Tray, audio, and network groups have no internal gap and join at square
 edges. Workspaces share one inner container. Empty widgets take no space.
 The focused title is constrained to the center section and clipped if too long.
 All three sections use these settings. Widget ordering remains fixed.
@@ -182,7 +182,7 @@ configuration. Their fonts and colors follow the shared theme.
   | [Audio](Audio.md)                       | Implemented controls                     | None                    |
   | [Power](Bar.md#power)                   | Partial battery indicator                | None                    |
   | [Clock](Clock.md)                       | Implemented                              | `[clock].format`        |
-  | [Network](Bar.md#network)               | Not implemented                          | None                    |
+  | [Network](Bar.md#network)               | Ethernet/Wi-Fi status indicator           | None                    |
   | [Notifications](Notifications.md)       | Unread list and mute control              | None                    |
 
 The linked pages and sections describe behavior, supported configuration, and
@@ -245,17 +245,36 @@ crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-power/src/power.rs
 
 ## Network
 
-Status: **Not implemented.**
+Status: **Implemented indicator.**
 
-Wi-Fi/Ethernet status and controls remain roadmap work.
+The joined Ethernet and Wi-Fi icons sit between audio and power. Both remain
+visible: a slash means no activated connection of that type. Ethernet uses
+`network-fill.svg` when at least one Ethernet device is activated. Wi-Fi uses
+`wifi-low-fill.svg` below 34%, `wifi-medium-fill.svg` from 34–66%, and
+`wifi-high-fill.svg` at 67% or above. With multiple active Wi-Fi devices, the
+icon represents the strongest signal. An activated Wi-Fi device with no
+reported access point uses the low icon.
+
+The icons have no hover tooltips or menu yet. Active means NetworkManager
+reports an activated device; it does not
+guarantee Internet access. VPNs and other virtual interfaces do not count as
+Ethernet or Wi-Fi. This widget only displays status; it does not scan, connect,
+disconnect, or change radio settings.
 
 ### Setup and configuration
 
-No setup, interactions, or `[network]` options are available yet. Adding a TOML
-section will not enable a network widget. Document backend requirements,
-controls, and settings here when implemented.
+Requires NetworkManager on the system D-Bus. On NixOS, enable
+`networking.networkmanager.enable = true;` in the system configuration. No
+`[network]` settings are needed. Dimensions, fonts and colors follow the global
+bar settings.
 
-This planned feature has no implementation yet.
+One monitor serves all outputs. Updates follow D-Bus signals, including active
+access point changes and service restarts. Failed reads clear the active icons
+and recovery is automatic. The healthy monitor does
+not poll. Failed bus connections or reads retry after five seconds.
+
+Implementation: [widget](../../../crates/ghost-shell-widgets/ghost-shell-widget-network/src/network.rs),
+[NetworkManager adapter](../../../crates/ghost-shell-adapters/ghost-shell-dbus/src/networkmanager.rs).
 
 ## Notifications
 

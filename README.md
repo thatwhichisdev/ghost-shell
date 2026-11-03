@@ -124,4 +124,5 @@ builds upon:
 
 ## Licensing
 
-Ghost Shell is licensed under the [MIT License](LICENSE.md).
+Ghost Shell is licensed under the [MIT License](LICENSE.md). The vendored
+NetworkManager bindings retain MPL-2.0; see their [notice](crates/ghost-shell-adapters/ghost-shell-dbus/src/networkmanager/README.md).
