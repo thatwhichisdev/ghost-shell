@@ -653,7 +653,8 @@ impl Shell {
             self.popup_position(parent, &origin, width, height)
         };
         self.popup_origins.insert(id, origin);
-        self.popup_settings.insert(id, settings);
+        self.popup_settings
+            .insert(id, settings.clone());
         (id, Task::done(Message::NewPopUp { id, settings }))
     }
 
@@ -743,7 +744,8 @@ impl Shell {
             })
             .collect();
         for (id, settings) in updates {
-            self.popup_settings.insert(id, settings);
+            self.popup_settings
+                .insert(id, settings.clone());
             tasks.push(Task::done(Message::PopUpReposition { id, settings }));
         }
         Task::batch(tasks)
@@ -1114,7 +1116,8 @@ impl Shell {
                             self.popup_origins.insert(window, origin);
                             self.menu_state = Some(state);
                             self.surfaces.insert(window, Surface::Menu);
-                            self.popup_settings.insert(window, settings);
+                            self.popup_settings
+                                .insert(window, settings.clone());
                             return Task::done(Message::NewPopUp {
                                 id: window,
                                 settings,
@@ -1194,7 +1197,7 @@ impl Shell {
         settings.size = size;
         Task::done(Message::PopUpReposition {
             id: window,
-            settings: *settings,
+            settings: settings.clone(),
         })
     }
 
@@ -1659,6 +1662,8 @@ fn popup_position(
         ),
         PixelSize::px(1, 1),
     )
+    // Measured menu bounds enable blur after layout, without blurring empty popup space.
+    .blur_option(BlurOption::None)
     .anchor(if left {
         PopupAnchor::BottomLeft
     } else {
@@ -1934,7 +1939,7 @@ mod tests {
         let current = shell
             .popup_settings
             .get(&menu)
-            .copied()
+            .cloned()
             .unwrap();
         assert_eq!(
             current,
@@ -1955,7 +1960,7 @@ mod tests {
         let settings = shell
             .popup_settings
             .get(&notifications)
-            .copied()
+            .cloned()
             .unwrap();
         assert_eq!(
             settings,
@@ -1968,7 +1973,7 @@ mod tests {
         let updated = shell
             .popup_settings
             .get(&notifications)
-            .copied()
+            .cloned()
             .unwrap();
         assert_eq!(
             updated,
@@ -1978,7 +1983,7 @@ mod tests {
         let resized = shell
             .popup_settings
             .get(&notifications)
-            .copied()
+            .cloned()
             .unwrap();
         assert_eq!(
             resized,

@@ -1,6 +1,5 @@
 [workspace]
 resolver = "3"
-exclude = ["vendor/exwlshellev"]
 members = [
   "crates/ghost-shell-components/ghost-shell-calendar-components",
   "crates/ghost-shell-applications/ghost-shell-cli",
@@ -81,8 +80,8 @@ ghost-shell-widget-notifications = { path = "crates/ghost-shell-widgets/ghost-sh
 # iced gui framework
 iced = { version = "0.14.0", default-features = false }
 iced_aw = { version = "=0.14.1", default-features = false }
-iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91", default-features = false }
-iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "d63ca8be6388846bdd3b2bb71fa1766fc28e5d91" }
+iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "9b6dadeae74b7e579aba876064521b94dda189a8", default-features = false }
+iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", rev = "9b6dadeae74b7e579aba876064521b94dda189a8" }
 
 # error handling
 anyhow = "1.0.104"
@@ -134,6 +133,3 @@ lz4_flex = "0.14.0"
 regex = "1.13.1"
 rust-embed = "8.12.0"
 uuid = "1.1.2"
-
-[patch."https://github.com/waycrate/exwlshelleventloop"]
-exwlshellev = { path = "vendor/exwlshellev" }

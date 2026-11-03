@@ -203,9 +203,10 @@ custom wgpu pipeline. D-Bus tests start private buses and require permission to
 create Unix sockets. Test compositor operations in an isolated nested Niri
 session.
 
-### Temporary Waycrate patch
+### Waycrate dependency
 
-`vendor/exwlshellev` contains the pinned Waycrate runtime crate with popup
-background-effect initialization added. The root Cargo patch applies equally
-to Cargo and Nix builds; do not edit Cargo's checkout cache. Provenance and the
-removal condition are recorded in `vendor/exwlshellev/GHOST-PATCH.md`.
+Waycrate is pinned to upstream revision
+`9b6dadeae74b7e579aba876064521b94dda189a8` (0.21.3), which initializes
+background effects for popup surfaces. The bar sends measured, rounded blur
+regions through `BlurOptionChange`, including live enable/disable changes.
+Keep both Waycrate dependencies on the same revision in the workspace manifest.
