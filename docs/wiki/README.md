@@ -29,6 +29,7 @@ The [project README](../../README.md) contains screenshots and the roadmap.
 - [Audio](configuration/Audio.md): PipeWire devices, active-device selection,
   and volume controls.
 - [Clock](configuration/Clock.md): time format and update frequency.
+- [Keyboard layout](configuration/Bar.md#keyboard-layout): active Niri language code.
 - [Workspaces](configuration/Workspaces.md): Niri workspace indicators.
 - [Launcher](configuration/Launcher.md): application discovery and appearance.
 - [Finder](configuration/Finder.md): file search and appearance.

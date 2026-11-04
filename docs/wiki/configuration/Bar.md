@@ -89,7 +89,7 @@ their own styling.
 | --- | --- |
 | Start | System menu, theme toggle, workspaces |
 | Center | Focused window |
-| End | Tray, notifications, audio, network, power, clock |
+| End | Tray, notifications, audio, network, power, keyboard layout, clock |
 
 The bar retains 9px horizontal insets. Global widget defaults are:
 
@@ -182,6 +182,7 @@ configuration. Their fonts and colors follow the shared theme.
   | [Audio](Audio.md)                       | Implemented controls                     | None                    |
   | [Power](Bar.md#power)                   | Partial battery indicator                | None                    |
   | [Clock](Clock.md)                       | Implemented                              | `[clock].format`        |
+  | [Keyboard layout](#keyboard-layout)     | Active language indicator                | None                    |
   | [Network](Bar.md#network)               | Ethernet/Wi-Fi status indicator           | None                    |
   | [Notifications](Notifications.md)       | Unread list and mute control              | None                    |
 
@@ -221,6 +222,26 @@ format strings, or click actions. Fonts and colors follow the shared theme.
 
 Implementation: [widget
 crate](../../../crates/ghost-shell-widgets/ghost-shell-widget-focus/src/focus.rs).
+
+## Keyboard layout
+
+The indicator immediately before the clock displays the active keyboard layout's
+lowercase ISO 639-1 language code, such as `en`, `ru`, or `de`. Layout variants
+share their language code. Niri supplies XKB display names; the widget removes
+parenthesized variant information and looks up the English language name.
+Custom names and languages without a two-letter code display `--`.
+
+The existing Niri event subscription supplies the initial layout and subsequent
+switches and layout-list changes to all bars. No polling or additional connection
+is needed. Missing or invalid layout state hides the widget, including while the
+Niri connection is unavailable; reconnecting restores it from the event stream.
+
+There are no dedicated settings or click actions. Configure layouts and switching
+in Niri. Fonts, colors, dimensions and decoration follow the shared bar settings,
+matching the clock.
+
+Implementation: [widget](../../../crates/ghost-shell-widgets/ghost-shell-widget-keyboard-layout/src/keyboard_layout.rs),
+[Niri state](../../../crates/ghost-shell-adapters/ghost-shell-niri/src/protocol.rs).
 
 ## Power
 

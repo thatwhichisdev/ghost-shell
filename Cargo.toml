@@ -21,6 +21,7 @@ members = [
   "crates/ghost-shell-adapters/ghost-shell-greetd",
   "crates/ghost-shell-widgets/ghost-shell-widget-audio",
   "crates/ghost-shell-widgets/ghost-shell-widget-clock",
+  "crates/ghost-shell-widgets/ghost-shell-widget-keyboard-layout",
   "crates/ghost-shell-widgets/ghost-shell-widget-focus",
   "crates/ghost-shell-widgets/ghost-shell-widget-menu",
   "crates/ghost-shell-widgets/ghost-shell-widget-power",
@@ -46,6 +47,7 @@ repository = "https://github.com/thatwhichisdev/ghost-shell"
 publish = false
 
 [workspace.dependencies]
+isolang = { version = "2.4.0", default-features = false }
 bitflags = "2.11"
 derive_builder = "0.20.2"
 procfs = { version = "0.18", default-features = false }
@@ -70,6 +72,7 @@ ghost-shell-niri = { path = "crates/ghost-shell-adapters/ghost-shell-niri" }
 ghost-shell-widget-network = { path = "crates/ghost-shell-widgets/ghost-shell-widget-network" }
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
+ghost-shell-widget-keyboard-layout = { path = "crates/ghost-shell-widgets/ghost-shell-widget-keyboard-layout" }
 ghost-shell-widget-focus = { path = "crates/ghost-shell-widgets/ghost-shell-widget-focus" }
 ghost-shell-widget-menu = { path = "crates/ghost-shell-widgets/ghost-shell-widget-menu" }
 ghost-shell-widget-power = { path = "crates/ghost-shell-widgets/ghost-shell-widget-power" }

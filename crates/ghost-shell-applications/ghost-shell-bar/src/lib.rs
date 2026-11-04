@@ -27,6 +27,7 @@ pub struct Bar {
     pub network: ghost_shell_widget_network::Network,
     pub tray: Tray,
     pub clock: Clock,
+    pub keyboard_layout: ghost_shell_widget_keyboard_layout::KeyboardLayout,
     pub power: Power,
     pub notifications: ghost_shell_widget_notifications::Notifications,
 }
@@ -63,6 +64,7 @@ impl Bar {
             ghost_shell_widget_audio::view(audio, style).map(Message::Audio),
             self.network.view(style),
             self.power.view(style),
+            self.keyboard_layout.view(style),
             self.clock.view(style).map(Message::Clock),
         ]
         .spacing(0)

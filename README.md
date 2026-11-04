@@ -76,6 +76,7 @@ confident that Ghost Shell is robust and performant enough for a proper release.
   - [ ] Widget: Network Control (Wi-Fi/Ethernet)
   - [ ] Widget: Power Control (Battery/Power modes)
   - [x] Widget: Clock
+  - [x] Widget: Keyboard Layout
   - [ ] Widget: Screenshot & Screen recording
   - [x] Widget: Theme Polarity Changer
   - [ ] Widget: Weather

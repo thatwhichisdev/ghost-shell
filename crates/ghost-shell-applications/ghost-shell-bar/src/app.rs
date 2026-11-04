@@ -1017,9 +1017,20 @@ impl Shell {
                 ));
             }
             Message::Niri(update) => match update {
-                Ok(event) => self.niri.update(event),
+                Ok(event) => {
+                    let layout_changed = matches!(
+                        event,
+                        ghost_shell_niri::NiriEvent::KeyboardLayoutsChanged { .. }
+                            | ghost_shell_niri::NiriEvent::KeyboardLayoutSwitched { .. }
+                    );
+                    self.niri.update(event);
+                    if layout_changed {
+                        self.bar.keyboard_layout.update(&self.niri);
+                    }
+                }
                 Err(error) => {
                     self.niri = Default::default();
+                    self.bar.keyboard_layout.update(&self.niri);
                     self.error(format!("Niri: {error}"));
                 }
             },
