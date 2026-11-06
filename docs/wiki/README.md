@@ -21,6 +21,7 @@ The [project README](../../README.md) contains screenshots and the roadmap.
   shared settings, themes, wallpapers, and configuration migration.
 - [Bar](configuration/Bar.md): outputs, appearance, fixed layout, and widget
   status.
+- [System monitor](configuration/Bar.md#system-monitor): CPU, GPU and RAM graphs.
 - [Styling](configuration/Styling.md): live bar configuration, preview/reset,
   palette editing, and exporting Nix settings.
 - [Menu](configuration/Menu.md): shutdown, reboot, lock, and live styling.

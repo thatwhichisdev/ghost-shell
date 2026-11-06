@@ -89,7 +89,7 @@ their own styling.
 | --- | --- |
 | Start | System menu, theme toggle, workspaces |
 | Center | Focused window |
-| End | Tray, notifications, audio, network, power, keyboard layout, clock |
+| End | CPU, GPU, memory, tray, notifications, audio, network, power, keyboard layout, clock |
 
 The bar retains 9px horizontal insets. Global widget defaults are:
 
@@ -105,7 +105,9 @@ Outer containers are transparent and span the bar height. Inner containers
 follow content width, with the configured padding and height. Icons preserve
 aspect ratio. Tray, audio, and network groups have no internal gap and join at square
 edges. Workspaces share one inner container. Empty widgets take no space.
-The focused title is constrained to the center section and clipped if too long.
+Start, center and end use equal-width sections, keeping the focused title
+centered on the bar regardless of side-widget widths. The title is clipped if
+too long; overflowing side widgets do not move the center section.
 All three sections use these settings. Widget ordering remains fixed.
 
 ## Live configuration
@@ -178,6 +180,7 @@ configuration. Their fonts and colors follow the shared theme.
   | [Theme toggle](#theme-toggle) | Live dark/light toggle | None |
   | [Workspaces](Workspaces.md)             | Implemented indicator                    | None                    |
   | [Focused window](Bar.md#focused-window) | Implemented indicator                    | None                    |
+  | [System monitor](#system-monitor) | CPU/GPU/memory history | None |
   | [System tray](Tray.md)                  | Implemented with incomplete interactions | None                    |
   | [Audio](Audio.md)                       | Implemented controls                     | None                    |
   | [Power](Bar.md#power)                   | Partial battery indicator                | None                    |
@@ -317,3 +320,26 @@ menus update live. Blur follows each rounded menu background rather than the
 entire popup rectangle, leaving empty areas clear. At opacity `1.0`, the opaque
 background hides blur; use a value below `1.0` to see it. The compositor must
 support the background-effect protocol. Menu corner radii remain unchanged.
+
+
+## System monitor
+
+Three separate containers before the tray display CPU, GPU and memory icons
+with small filled graphs. Each graph spans the last 60 seconds on a fixed
+0–100% scale, with newest samples at the right. Sampling runs once per second
+on one background worker shared by every output. History starts empty; gaps
+and suspend time are not filled with invented samples. Graphs have no axes or
+labels. Dimensions and decoration follow the bar settings, with a 30px graph.
+There are no dedicated settings or click actions.
+
+CPU is overall utilization; memory is used system RAM divided by total RAM.
+GPU shows the highest available utilization among detected GPUs. Linux GPU
+usage depends on driver support: sysinfo supports readings from some AMD and
+NVIDIA devices; other devices may have no usage reading. NVIDIA requires the
+driver's `libnvidia-ml.so.1` to be discoverable at runtime. A section is hidden
+whenever its latest reading is unavailable, including
+while waiting for the first sample. It reappears when readings resume.
+The widgets have no tooltips or hover text.
+
+Implementation: [widget](../../../crates/ghost-shell-widgets/ghost-shell-widget-system/src/system.rs),
+[system adapter](../../../crates/ghost-shell-adapters/ghost-shell-system/src/sysinfo.rs).

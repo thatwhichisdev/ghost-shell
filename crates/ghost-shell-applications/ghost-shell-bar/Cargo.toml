@@ -38,3 +38,6 @@ ghost-shell-widget-theme.workspace = true
 ghost-shell-widget-notifications.workspace = true
 
 ghost-shell-calendar-components.workspace = true
+
+ghost-shell-system.workspace = true
+ghost-shell-widget-system.workspace = true

@@ -12,14 +12,17 @@ path = "src/system.rs"
 
 [features]
 default = ["sysinfo"]
-sysinfo = ["dep:sysinfo"]
+sysinfo = ["dep:sysinfo", "dep:iced"]
 
 [dependencies]
 iced.workspace = true
-iced.features = ["tokio"]
+iced.optional = true
+iced.features = ["tokio", "wayland", "wgpu"]
 
 tokio.workspace = true
-tokio.features = ["time"]
+tokio.features = ["time", "rt", "sync"]
 
 sysinfo.workspace = true
 sysinfo.optional = true
+sysinfo.features = ["system", "gpu"]
+snafu.workspace = true

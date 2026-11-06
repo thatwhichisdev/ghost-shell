@@ -24,6 +24,7 @@ pub enum Message {
 
 #[derive(Default)]
 pub struct Bar {
+    pub system: ghost_shell_widget_system::SystemMonitor,
     pub network: ghost_shell_widget_network::Network,
     pub tray: Tray,
     pub clock: Clock,
@@ -57,6 +58,7 @@ impl Bar {
 
         let end = row![
             Space::new().width(Fill),
+            self.system.view(style),
             self.tray.view(style).map(Message::Tray),
             self.notifications
                 .view(style)

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/ghost-shell-widgets/ghost-shell-widget-system",
   "crates/ghost-shell-widgets/ghost-shell-widget-network",
   "crates/ghost-shell-components/ghost-shell-calendar-components",
   "crates/ghost-shell-applications/ghost-shell-cli",
@@ -62,6 +63,7 @@ ghost-shell-calendar-components = { path = "crates/ghost-shell-components/ghost-
 ghost-shell-wallpaper = { path = "crates/ghost-shell-components/ghost-shell-wallpaper" }
 
 # adapter crates
+ghost-shell-system = { path = "crates/ghost-shell-adapters/ghost-shell-system" }
 ghost-shell-audio = { path = "crates/ghost-shell-adapters/ghost-shell-audio" }
 ghost-shell-dbus = { path = "crates/ghost-shell-adapters/ghost-shell-dbus" }
 ghost-shell-ipc = { path = "crates/ghost-shell-adapters/ghost-shell-ipc" }
@@ -69,6 +71,7 @@ ghost-shell-greetd = { path = "crates/ghost-shell-adapters/ghost-shell-greetd" }
 ghost-shell-niri = { path = "crates/ghost-shell-adapters/ghost-shell-niri" }
 
 # widget crates
+ghost-shell-widget-system = { path = "crates/ghost-shell-widgets/ghost-shell-widget-system" }
 ghost-shell-widget-network = { path = "crates/ghost-shell-widgets/ghost-shell-widget-network" }
 ghost-shell-widget-audio = { path = "crates/ghost-shell-widgets/ghost-shell-widget-audio" }
 ghost-shell-widget-clock = { path = "crates/ghost-shell-widgets/ghost-shell-widget-clock" }
@@ -133,7 +136,7 @@ serde = "1.0.228"
 serde_json = "1.0.151"
 
 # system information
-sysinfo = "0.39.6"
+sysinfo = { version = "0.40.1", default-features = false }
 
 # util
 lz4_flex = "0.14.0"

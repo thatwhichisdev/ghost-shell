@@ -66,7 +66,7 @@ confident that Ghost Shell is robust and performant enough for a proper release.
   - [ ] Widget: System Menu
   - [x] Widget: Niri Workspaces
   - [x] Widget: Focused Window
-  - [ ] Widget: CPU/GPU usage
+  - [x] Widget: CPU/GPU/memory usage
   - [ ] Widget: Network usage
   - [x] Widget: Tray
   - [x] Widget: Notifications

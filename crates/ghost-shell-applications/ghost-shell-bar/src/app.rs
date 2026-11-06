@@ -54,6 +54,8 @@ enum Message {
         Option<String>,
         Result<ghost_shell_widget_notifications::IconUpdate, String>,
     ),
+    Metrics(ghost_shell_system::Update),
+    RedrawBar(Id),
     Battery(Result<Option<&'static str>, String>),
     Tick,
     Key(Id, iced::keyboard::key::Named, bool),
@@ -195,7 +197,8 @@ pub fn run() -> Result<(), crate::Error> {
         ..Default::default()
     })
     .redraw_scope(|message| match message {
-        Message::Cursor(..) => iced_exwlshell::redraw::Scope::None,
+        Message::RedrawBar(window) => iced_exwlshell::redraw::Scope::Window(*window),
+        Message::Metrics(_) | Message::Cursor(..) => iced_exwlshell::redraw::Scope::None,
         Message::Bar(
             _,
             ghost_shell_bar::Message::Styling(_)
@@ -331,6 +334,8 @@ impl Shell {
 
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
+            ghost_shell_system::subscribe(std::time::Duration::from_secs(1))
+                .map(Message::Metrics),
             self.events.listen().map(Message::Shell),
             Subscription::run(configuration_changes).map(Message::Configuration),
             Subscription::run(services::events).map(Message::Services),
@@ -1085,6 +1090,16 @@ impl Shell {
                 }
             }
             Message::Bar(window, message) => return self.bar_message(window, message),
+            Message::Metrics(update) => {
+                self.bar.system.update(update);
+                return Task::batch(self.surfaces.iter().filter_map(
+                    |(window, surface)| {
+                        matches!(surface, Surface::Bar(_))
+                            .then(|| Task::done(Message::RedrawBar(*window)))
+                    },
+                ));
+            }
+            Message::RedrawBar(_) => {}
             Message::Battery(Ok(battery)) => self.bar.power.update(battery),
             Message::Battery(Err(error)) => log::warn!("Battery: {error}"),
             Message::Tick => self.clock(),
